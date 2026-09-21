@@ -1,0 +1,90 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: #ffffff;
+  color: #000000;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.hero-brand {
+  font-family: "Cormorant Garamond", "Bodoni Moda", Didot, Baskerville, Georgia, serif;
+  font-style: normal;
+  font-weight: 300;
+  font-synthesis: none;
+}
+
+/* Shared light product surface for the portal, onboarding, and host tools. */
+.light-shell {
+  background: #ffffff !important;
+  color: #000000 !important;
+}
+
+.light-shell [class*='bg-black'],
+.light-shell [class*='bg-zinc-950'],
+.light-shell [class*='bg-zinc-900'] {
+  background-color: #ffffff !important;
+}
+
+.light-shell [class*='bg-zinc-800'] {
+  background-color: #f4f4f5 !important;
+}
+
+.light-shell [class*='bg-gradient'] {
+  background-image: linear-gradient(110deg, #fafafa, #e4e4e7, #ffffff) !important;
+}
+
+.light-shell [class*='text-white'] {
+  color: #000000 !important;
+}
+
+.light-shell [class*='text-zinc-300'],
+.light-shell [class*='text-zinc-400'] {
+  color: #52525b !important;
+}
+
+.light-shell [class*='text-zinc-500'],
+.light-shell [class*='text-zinc-600'] {
+  color: #71717a !important;
+}
+
+.light-shell [class*='border-white'] {
+  border-color: #d4d4d8 !important;
+}
+
+.light-shell input,
+.light-shell textarea,
+.light-shell select {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border-color: #d4d4d8 !important;
+}
+
+.light-shell input::placeholder,
+.light-shell textarea::placeholder {
+  color: #a1a1aa !important;
+}
+
+.light-shell > .fixed.inset-0 {
+  background-color: rgb(0 0 0 / 80%) !important;
+}
+
+.light-shell > .fixed.inset-0 aside {
+  background-color: #ffffff !important;
+  border-color: #d4d4d8 !important;
+}
