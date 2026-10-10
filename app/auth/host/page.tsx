@@ -76,7 +76,7 @@ export default function HostAuthPage() {
           <div className="mt-8 flex gap-4 justify-center">
             <Link
               className="inline-flex h-11 items-center justify-center border border-white/20 px-6 text-[10px] uppercase tracking-[0.2em] text-white transition-colors hover:border-white/50 hover:bg-zinc-900"
-              href="/"
+              href="/quad-computing"
             >
               Back
             </Link>

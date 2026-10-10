@@ -1,37 +1,53 @@
 import type { Metadata } from 'next';
-import { LandingNav } from '@/components/landing/LandingNav';
-import { LandingHero } from '@/components/landing/LandingHero';
-import { EcosystemSection } from '@/components/landing/EcosystemSection';
-import { OrderFlowSection } from '@/components/landing/OrderFlowSection';
-import { HostModulesSection } from '@/components/landing/HostModulesSection';
-import { VibersConnectSection } from '@/components/landing/VibersConnectSection';
-import { TrustSection } from '@/components/landing/TrustSection';
-import { PricingSection } from '@/components/landing/PricingSection';
-import { LandingFooter } from '@/components/landing/LandingFooter';
+import { VibersNav } from '@/components/vibers/VibersNav';
+import { VibersHero } from '@/components/vibers/VibersHero';
+import { VibeBand } from '@/components/vibers/VibeBand';
+import { WhoWeAre } from '@/components/vibers/WhoWeAre';
+import { VibeProtocol } from '@/components/vibers/VibeProtocol';
+import { StayJourney } from '@/components/vibers/StayJourney';
+import { SevenPercentPromise } from '@/components/vibers/SevenPercentPromise';
+import { BeyondCheckout } from '@/components/vibers/BeyondCheckout';
+import { CommunitySection } from '@/components/vibers/CommunitySection';
+import { TeamSection } from '@/components/vibers/TeamSection';
+import { JoinAndFooter } from '@/components/vibers/JoinAndFooter';
+import { BODY } from '@/components/vibers/vibers-fonts';
+import { SITE } from '@/components/vibers/vibers-brand';
 
 export const metadata: Metadata = {
-  title: 'Quad Computing · The operating system for restaurants, cafés and stays',
+  metadataBase: new URL(SITE.url),
+  title: 'Vibers Connect · Find your vibe. Find your people. Find yourself.',
   description:
-    'Billing, live tables, kitchen tickets, rooms, inventory and reports in one control centre. Guests order, track, call staff and earn cashback with Vibers Connect.',
+    'Verified stays, honest prices, 7% cashback with no expiry and a toxic-free community. The place where you don’t have to fit in. You just have to be you.',
+  openGraph: {
+    title: 'Vibers Connect',
+    description: 'Find your vibe. Find your people. Find yourself.',
+    url: SITE.url,
+    siteName: SITE.name,
+    type: 'website',
+  },
 };
 
-export default function LandingPage() {
+export default function VibersConnectHome() {
   return (
-    <div className="min-h-screen bg-[#faf9f6] text-black selection:bg-black selection:text-white">
-      <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-full focus:bg-black focus:px-4 focus:py-2 focus:text-sm focus:text-white">
+    <div className={`${BODY} relative min-h-screen bg-[#f7f2ea] text-[#1c1714] selection:bg-[#f0508a] selection:text-white`}>
+      <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-full focus:bg-[#1c1714] focus:px-4 focus:py-2 focus:text-sm focus:text-white">
         Skip to content
       </a>
-      <LandingNav />
-      <main id="main">
-        <LandingHero />
-        <EcosystemSection />
-        <OrderFlowSection />
-        <HostModulesSection />
-        <VibersConnectSection />
-        <TrustSection />
-        <PricingSection />
-      </main>
-      <LandingFooter />
+      <div className="relative z-10">
+        <VibersNav />
+        <main id="main">
+          <VibersHero />
+          <VibeBand />
+          <WhoWeAre />
+          <VibeProtocol />
+          <StayJourney />
+          <SevenPercentPromise />
+          <BeyondCheckout />
+          <CommunitySection />
+          <TeamSection />
+        </main>
+        <JoinAndFooter />
+      </div>
     </div>
   );
 }

@@ -34,7 +34,8 @@ export function LandingFooter() {
           <div className="flex items-center gap-2.5">
             <span aria-hidden="true" className="grid h-7 w-7 place-items-center rounded-md bg-black text-[10px] font-semibold text-white">QC</span>
             <span className="text-[13px] text-zinc-600">
-              <span className="font-semibold text-black">Quad Computing</span> · guests know it as Vibers Connect
+              <span className="font-semibold text-black">Quad Computing</span> · a{' '}
+              <Link href="/" className="underline-offset-4 hover:text-black hover:underline">Vibers Connect</Link> product
             </span>
           </div>
           <nav aria-label="Footer">
@@ -45,7 +46,7 @@ export function LandingFooter() {
             </ul>
           </nav>
         </div>
-        <p className={`${CONTAINER} pb-8 text-[12px] text-zinc-500`}>© {new Date().getFullYear()} Quad Computing. All rights reserved.</p>
+        <p className={`${CONTAINER} pb-8 text-[12px] text-zinc-500`}>© {new Date().getFullYear()} Vibers Connect Pvt. Ltd. All rights reserved.</p>
       </footer>
     </>
   );

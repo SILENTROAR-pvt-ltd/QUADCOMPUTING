@@ -13,10 +13,15 @@ export function LandingNav() {
   return (
     <header className="sticky top-0 z-40 border-b border-black/[0.06] bg-[#faf9f6]/85 backdrop-blur-md">
       <nav aria-label="Main" className={`${CONTAINER} flex h-16 items-center justify-between gap-3`}>
-        <Link href="/" aria-label="Quad Computing home" className="flex shrink-0 items-center gap-2.5">
-          <span aria-hidden="true" className="grid h-8 w-8 place-items-center rounded-lg bg-black text-[11px] font-semibold tracking-wider text-white">QC</span>
-          <span className="font-editorial text-[17px] leading-none text-black">Quad Computing</span>
-        </Link>
+        <div className="flex shrink-0 items-center gap-2.5">
+          <Link href="/quad-computing" aria-label="Quad Computing home" className="flex items-center gap-2.5">
+            <span aria-hidden="true" className="grid h-8 w-8 place-items-center rounded-lg bg-black text-[11px] font-semibold tracking-wider text-white">QC</span>
+            <span className="font-editorial text-[17px] leading-none text-black">Quad Computing</span>
+          </Link>
+          <Link href="/" className="hidden text-[12px] text-zinc-500 underline-offset-4 transition-colors hover:text-black hover:underline lg:inline">
+            by Vibers Connect
+          </Link>
+        </div>
 
         <ul className="hidden items-center gap-7 md:flex">
           {LINKS.map((l) => (
