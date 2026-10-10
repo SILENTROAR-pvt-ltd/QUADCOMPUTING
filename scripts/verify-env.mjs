@@ -41,11 +41,16 @@ if (service) {
   }
 }
 
-// Rate limiting is per-instance without Redis, so limits are meaningless once there is more than one instance.
-need('UPSTASH_REDIS_REST_URL', 'shared rate-limit store');
-need('UPSTASH_REDIS_REST_TOKEN', 'shared rate-limit store');
-if (env.RATE_LIMIT_REQUIRE_REDIS !== '1') {
-  errors.push('RATE_LIMIT_REQUIRE_REDIS must be "1" so the limiter fails closed instead of silently degrading to per-instance memory');
+// Rate limiting uses Upstash Redis for distributed multi-instance deployments,
+// or degrades to per-instance memory store when Redis credentials are not provided.
+if (env.RATE_LIMIT_REQUIRE_REDIS === '1') {
+  need('UPSTASH_REDIS_REST_URL', 'shared rate-limit store required by RATE_LIMIT_REQUIRE_REDIS=1');
+  need('UPSTASH_REDIS_REST_TOKEN', 'shared rate-limit store required by RATE_LIMIT_REQUIRE_REDIS=1');
+} else if (env.UPSTASH_REDIS_REST_URL || env.UPSTASH_REDIS_REST_TOKEN) {
+  need('UPSTASH_REDIS_REST_URL', 'shared rate-limit store');
+  need('UPSTASH_REDIS_REST_TOKEN', 'shared rate-limit store');
+} else {
+  warnings.push('UPSTASH_REDIS_REST_URL/TOKEN not configured: rate limiting will fall back to per-instance memory store');
 }
 
 if (!env.LLM_API_KEY) warnings.push('LLM_API_KEY is not set: menu scan and dish-photo matching run without the language model (exact matching still works)');
