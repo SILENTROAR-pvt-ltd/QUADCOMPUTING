@@ -1,51 +1,44 @@
 import { NextResponse } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
+import { requireHost } from '@/lib/auth/guards';
+import { createHostOrder } from '@/lib/services/orders.service';
+import { withApiErrorBoundary } from '@/lib/middleware/error-handler';
 
-export async function POST(request: Request) {
+export const POST = withApiErrorBoundary(async function POST(request: Request) {
   try {
-    const cookieStore = cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() { return cookieStore.getAll(); },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            );
-          },
-        },
+    const auth = await requireHost(request);
+    if (auth.error) return auth.error;
+    const { businessId, supabase } = auth;
+
+    const body = await request.json().catch(() => ({}));
+    if (body.business_id && body.business_id !== businessId) {
+      return NextResponse.json(
+        { error: 'Forbidden: Business ID mismatch' },
+        { status: 403 }
+      );
+    }
+
+    const order = await createHostOrder(supabase, businessId, body);
+
+    // Counter/takeaway bills have no table session or room checkout to carry the platform fee, and
+    // the browser used to trigger it in a separate fire-and-forget call a host could simply skip.
+    // Charged here, keyed to the order id, so a retry is idempotent. Table bills pay via session
+    // settlement and room stays via checkout.
+    const isCounterBill = order && !order.table_id && !order.room_id;
+    if (isCounterBill && String(order.status || '').toUpperCase() === 'SETTLED') {
+      try {
+        const { invoiceRefFromId, evaluateFeeGuard } = await import('@/lib/services/wallet/fee-guard.service');
+        await evaluateFeeGuard(businessId, 'bill_generate', invoiceRefFromId(order.id), supabase);
+      } catch (feeErr) {
+        console.error('[API Orders POST] counter-bill fee failed', { orderId: order?.id, feeErr });
       }
-    );
+    }
 
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    if (sessionError || !session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-    const { data: business } = await supabase.from('businesses').select('id').eq('host_id', session.user.id).single();
-    if (!business) return NextResponse.json({ error: 'Business not found' }, { status: 404 });
-
-    const body = await request.json();
-    const { items, subtotal, discountType, discountValue, discountAmount, taxAmount, grandTotal } = body;
-
-    const { error: insertError } = await supabase.from('orders').insert({
-      business_id: business.id,
-      items: items,
-      subtotal,
-      discount_type: discountType,
-      discount_value: discountValue,
-      discount_amount: discountAmount,
-      tax_amount: taxAmount,
-      grand_total: grandTotal,
-      created_at: new Date().toISOString()
-    });
-
-    if (insertError) throw insertError;
-
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, order });
   } catch (error: any) {
     console.error('[API Orders POST]', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json(
+      { error: error.message || 'Internal Server Error' },
+      { status: 500 }
+    );
   }
-}
+}, 'HostOrdersCreatePOST');

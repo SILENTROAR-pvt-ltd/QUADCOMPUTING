@@ -1,147 +1,61 @@
 import { NextResponse } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
+import { requireHost } from '@/lib/auth/guards';
+import { withApiErrorBoundary, handleApiError } from '@/lib/middleware/error-handler';
+import { getInventoryOverview } from '@/lib/services/inventory/overview.service';
+import { createItems, parseItemPatch } from '@/lib/services/inventory/item-crud.service';
 
-export async function GET(request: Request) {
+const noStore = { headers: { 'Cache-Control': 'no-store' } };
+
+/** Stock items with status, use, cover and value, and the venue's inventory totals. */
+export const GET = withApiErrorBoundary(async function GET(request: Request) {
   try {
-    const cookieStore = cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() { return cookieStore.getAll(); },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            );
-          },
-        },
-      }
-    );
-
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    if (sessionError || !session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-    const { data: business } = await supabase.from('businesses').select('id').eq('host_id', session.user.id).single();
-    if (!business) return NextResponse.json({ error: 'Business not found' }, { status: 404 });
-
-    const { data: items, error } = await supabase
-      .from('raw_inventory_items')
-      .select('*')
-      .eq('business_id', business.id)
-      .order('updated_at', { ascending: false });
-
-    if (error) throw error;
-    return NextResponse.json({ items });
-  } catch (error: any) {
-    console.error('[API Inventory GET]', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    const auth = await requireHost(request);
+    if (auth.error) return auth.error;
+    const overview = await getInventoryOverview(auth.supabase, auth.businessId);
+    return NextResponse.json(overview, noStore);
+  } catch (error) {
+    return handleApiError(error, request, 'HostInventoryItemsGET');
   }
-}
+}, 'HostInventoryItemsGET');
 
-export async function POST(request: Request) {
+/** Adds one item or a batch; opening stock is recorded as a ledger movement. */
+export const POST = withApiErrorBoundary(async function POST(request: Request) {
   try {
-    const cookieStore = cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() { return cookieStore.getAll(); },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            );
-          },
-        },
-      }
-    );
+    const auth = await requireHost(request);
+    if (auth.error) return auth.error;
+    const body = await request.json().catch(() => ({}));
+    const list = Array.isArray(body.items) ? body.items : body.itemName || body.item_name ? [body] : [];
+    if (list.length === 0) return NextResponse.json({ error: 'Add at least one item.' }, { status: 400 });
+    if (list.length > 200) return NextResponse.json({ error: 'Add up to 200 items at a time.' }, { status: 400 });
 
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    if (sessionError || !session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-    const { data: business } = await supabase.from('businesses').select('id').eq('host_id', session.user.id).single();
-    if (!business) return NextResponse.json({ error: 'Business not found' }, { status: 404 });
-
-    const body = await request.json();
-    const { itemName, category, unit, currentStock, threshold, costPerUnit } = body;
-
-    const { data: item, error } = await supabase
-      .from('raw_inventory_items')
-      .insert({
-        business_id: business.id,
-        item_name: itemName,
-        category: category || 'Raw Stock',
-        unit: unit || 'kg',
-        current_stock: currentStock || 0,
-        threshold: threshold || 5,
-        cost_per_unit: costPerUnit || 0
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    // Log the initial addition
-    if (currentStock > 0) {
-      await supabase.from('inventory_logs').insert({
-        business_id: business.id,
-        item_id: item.id,
-        change_amount: currentStock,
-        action_type: 'MANUAL_ADJUSTMENT',
-        notes: 'Initial Stock Entry'
-      });
-    }
-
-    return NextResponse.json({ item });
-  } catch (error: any) {
-    console.error('[API Inventory POST]', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    const result = await createItems(auth.supabase, auth.businessId, list);
+    if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
+    return NextResponse.json({
+      success: true, count: result.items.length, item: result.items[0] || null, items: result.items,
+      ...(result.warnings.length ? { warnings: result.warnings } : {}),
+    });
+  } catch (error) {
+    return handleApiError(error, request, 'HostInventoryItemsPOST');
   }
-}
+}, 'HostInventoryItemsPOST');
 
-export async function PATCH(request: Request) {
+/** Edits an item's details (name, unit, reorder level, supplier). Stock moves only through movements. */
+export const PATCH = withApiErrorBoundary(async function PATCH(request: Request) {
   try {
-    const cookieStore = cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() { return cookieStore.getAll(); },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            );
-          },
-        },
-      }
-    );
+    const auth = await requireHost(request);
+    if (auth.error) return auth.error;
+    const body = await request.json().catch(() => ({}));
+    if (!body.id) return NextResponse.json({ error: 'Missing item id.' }, { status: 400 });
+    const updates = parseItemPatch(body);
+    if (Object.keys(updates).length === 0) return NextResponse.json({ error: 'Nothing to change.' }, { status: 400 });
 
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    if (sessionError || !session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-    const body = await request.json();
-    const { id, current_stock, cost_per_unit, threshold } = body;
-    if (!id) return NextResponse.json({ error: 'Missing item ID' }, { status: 400 });
-
-    const updates: any = { updated_at: new Date().toISOString() };
-    if (current_stock !== undefined) updates.current_stock = current_stock;
-    if (cost_per_unit !== undefined) updates.cost_per_unit = cost_per_unit;
-    if (threshold !== undefined) updates.threshold = threshold;
-
-    const { data: updatedItem, error } = await supabase
-      .from('raw_inventory_items')
-      .update(updates)
-      .eq('id', id)
-      .select()
-      .single();
-
+    const { data, error } = await auth.supabase.from('raw_inventory_items')
+      .update({ ...updates, updated_at: new Date().toISOString() })
+      .eq('id', body.id).eq('business_id', auth.businessId).select().maybeSingle();
     if (error) throw error;
-    return NextResponse.json({ item: updatedItem });
-  } catch (error: any) {
-    console.error('[API Inventory PATCH]', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    if (!data) return NextResponse.json({ error: 'That stock item no longer exists.' }, { status: 404 });
+    return NextResponse.json({ item: data });
+  } catch (error) {
+    return handleApiError(error, request, 'HostInventoryItemsPATCH');
   }
-}
+}, 'HostInventoryItemsPATCH');

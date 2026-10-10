@@ -1,42 +1,33 @@
 import { NextResponse } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
+import { requireHost, adminDb } from '@/lib/auth/guards';
+import { withApiErrorBoundary } from '@/lib/middleware/error-handler';
 
-export async function GET(request: Request) {
+export const GET = withApiErrorBoundary(async function GET(request: Request) {
   try {
-    const cookieStore = cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() { return cookieStore.getAll(); },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            );
-          },
-        },
-      }
-    );
+    const auth = await requireHost(request);
+    if (auth.error) return auth.error;
+    const { businessId } = auth;
 
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    if (sessionError || !session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-    const { data: business } = await supabase.from('businesses').select('id').eq('host_id', session.user.id).single();
-    if (!business) return NextResponse.json({ error: 'Business not found' }, { status: 404 });
+    const supabase = adminDb();
+    // Newest first, bounded. Unbounded reads hit the API's row cap (1,000 by default) and are
+    // truncated silently; an explicit limit plus a `truncated` flag keeps that visible.
+    const { searchParams } = new URL(request.url);
+    const requested = parseInt(searchParams.get('limit') || '', 10);
+    const limit = Number.isFinite(requested) ? Math.min(Math.max(requested, 1), 1000) : 500;
+    const offset = Math.max(parseInt(searchParams.get('offset') || '0', 10) || 0, 0);
 
     const { data: orders, error } = await supabase
       .from('orders')
       .select('*')
-      .eq('business_id', business.id)
-      .order('created_at', { ascending: false });
+      .eq('business_id', businessId)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
 
     if (error) throw error;
-    
-    return NextResponse.json({ orders });
+
+    return NextResponse.json({ orders, truncated: (orders?.length ?? 0) === limit, limit, offset });
   } catch (error: any) {
     console.error('[API Orders History GET]', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
-}
+}, 'HostOrdersHistoryGET');

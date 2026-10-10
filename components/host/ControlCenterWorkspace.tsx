@@ -1,30 +1,98 @@
 'use client';
 
-import { useHostWorkspace, useCompletionStatus } from '@/lib/store/host-workspace.store';
-import { LEXICON } from '@/lib/lexicon';
-import ProfileHeader from '@/components/host/ProfileHeader';
-import PropertyBranches from '@/components/host/PropertyBranches';
-import ServiceCatalog from '@/components/host/ServiceCatalog';
-import { useDrawer } from '@/lib/store/drawer.store';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { CONTROL_CENTER_TABS, ControlCenterTab } from './ControlCenterHeader';
+import { AdminGatekeeperModal } from '@/components/host/modals/AdminGatekeeperModal';
+import { useControlCenterSecurity } from './control-center/useControlCenterSecurity';
+import { useBillRequests } from './control-center/useBillRequests';
+import { usePendingKot } from './control-center/usePendingKot';
+import { DesktopSidebar } from './control-center/DesktopSidebar';
+import { MobileNavDrawer } from './control-center/MobileNavDrawer';
+import { WorkspaceViewRouter } from './control-center/WorkspaceViewRouter';
+import { useStaffAlerts } from './control-center/useStaffAlerts';
+import { StaffAlertsTray } from './control-center/StaffAlertsTray';
+import { useVenueTabGuard } from './control-center/useVenueTabGuard';
 
-export default function ControlCenterWorkspace() {
-  const hydrated = useHostWorkspace((state) => state.hydrated);
-  const profile = useHostWorkspace((state) => state.profile);
-  const branches = useHostWorkspace((state) => state.propertyBranches);
-  const catalog = useHostWorkspace((state) => state.serviceCatalog);
-  const openDrawer = useDrawer((state) => state.open);
-  const completion = useCompletionStatus();
+interface ControlCenterWorkspaceProps {
+  /** Resolved server-side from the authenticated host's session and the
+   * `?business_id=` URL param, checked against the venues this host owns
+   * (see app/host/control-center/page.tsx). */
+  initialBusinessId?: string;
+  initialBusinessName?: string;
+}
 
-  if (!hydrated) return <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-zinc-500">Syncing...</p>;
+export default function ControlCenterWorkspace({
+  initialBusinessId = '',
+  initialBusinessName = 'Venue',
+}: ControlCenterWorkspaceProps = {}) {
+  const searchParams = useSearchParams();
 
-  if (!profile) {
-    return <section className="mt-10 border border-zinc-200 bg-white p-8 text-black"><p className="font-mono text-[10px] uppercase tracking-[0.14em] text-zinc-500">{LEXICON.profile}</p><h2 className="mt-3 font-serif text-3xl font-light">Workspace not provisioned</h2><p className="mt-3 text-sm text-zinc-500">Complete host onboarding to create the Registered Profile Infrastructure.</p></section>;
-  }
+  const initialTab = (searchParams.get('tab') as ControlCenterTab) || 'billing';
+  const [activeTab, setActiveTab] = useState<ControlCenterTab>(initialTab);
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
 
-  return <div className="mt-10 space-y-10">
-    <ProfileHeader profile={profile} completionScore={completion.score} onOpenEditDrawer={() => openDrawer({ kind: 'edit-profile' })} />
-    <PropertyBranches businesses={branches} />
-    <ServiceCatalog items={catalog} onAddFood={() => branches[0] && openDrawer({ kind: 'add-food', branchId: branches[0].id })} onAddRoom={() => branches[0] && openDrawer({ kind: 'add-room', branchId: branches[0].id })} />
-    <section className="border-t border-zinc-200 pt-6 text-black"><p className="font-mono text-[10px] uppercase tracking-[0.14em] text-zinc-500">{LEXICON.completion}</p><p className="mt-2 text-sm text-zinc-600">{completion.tier}{completion.nextAction ? ` / Next: ${completion.nextAction.hint}` : ''}</p></section>
-  </div>;
+  // Sync state if query param changes
+  useEffect(() => {
+    const tabParam = searchParams.get('tab') as ControlCenterTab;
+    if (tabParam && (CONTROL_CENTER_TABS.some((t) => t.id === tabParam) || (tabParam as string) === 'analytics')) {
+      const resolvedTab = ((tabParam as string) === 'analytics' ? 'dashboard' : tabParam) as ControlCenterTab;
+      setActiveTab(resolvedTab);
+    }
+  }, [searchParams]);
+
+  const switchTab = (tab: ControlCenterTab) => {
+    setActiveTab(tab);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('tab', tab);
+    // Shallow URL update: tabs are client-side views, so don't re-run the
+    // server page (session check + venue lookup) on every tab click.
+    window.history.replaceState(null, '', `/host/control-center?${params.toString()}`);
+  };
+
+  const {
+    securityStatus, isMasterUnlocked, showGatekeeper, isTabProtected,
+    handleUnlock, handleCancelUnlock, handleLockSession, handleUnlockRequest, setPendingLockedTab, setShowGatekeeper,
+  } = useControlCenterSecurity(activeTab, switchTab);
+  useVenueTabGuard(activeTab, switchTab);
+  const { billRequests } = useBillRequests();
+
+  // The server page validated ?business_id= against the host's own venues and redirected before
+  // render if it was missing or foreign, so this is always the venue shown in the URL.
+  const venueId = initialBusinessId;
+  const venueName = initialBusinessName;
+  const { pendingKotCount } = usePendingKot(venueId);
+  const staffAlerts = useStaffAlerts(venueId);
+
+  const handleTabChange = (tab: ControlCenterTab | 'analytics') => {
+    const resolvedTab = ((tab === 'analytics' ? 'dashboard' : tab) as ControlCenterTab);
+    setMobileDrawerOpen(false);
+    // A locked section asks for the master PIN first.
+    if (isTabProtected(resolvedTab) && !isMasterUnlocked) {
+      setPendingLockedTab(resolvedTab);
+      setShowGatekeeper(true);
+      return;
+    }
+    switchTab(resolvedTab);
+  };
+
+  const navProps = {
+    activeTab, onTabChange: handleTabChange, securityStatus, isMasterUnlocked, isTabProtected,
+    onLockSession: handleLockSession, onUnlockRequest: handleUnlockRequest, billRequests, venueName, venueId,
+  };
+
+  return (
+    <div className="flex min-h-screen w-full bg-[#faf9f6] text-zinc-900 font-sans antialiased">
+      {showGatekeeper && <AdminGatekeeperModal onUnlock={handleUnlock} onCancel={handleCancelUnlock} />}
+
+      <DesktopSidebar {...navProps} pendingKotCount={pendingKotCount} />
+
+      <div className="flex-1 min-w-0 flex flex-col min-h-screen">
+        <MobileNavDrawer {...navProps} mobileDrawerOpen={mobileDrawerOpen} setMobileDrawerOpen={setMobileDrawerOpen} />
+        <WorkspaceViewRouter activeTab={activeTab} venueId={venueId} onNavigate={handleTabChange} />
+      </div>
+
+      <StaffAlertsTray alerts={staffAlerts.alerts} freshIds={staffAlerts.freshIds} onResolve={staffAlerts.resolve} />
+    </div>
+  );
 }

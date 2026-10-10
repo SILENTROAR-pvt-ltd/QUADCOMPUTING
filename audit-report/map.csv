@@ -1,0 +1,1 @@
+ui_file,ui_loc,trigger,method,api_path,route_file,route_loc,auth,client_used,services,tables_read,tables_written,rpcs,in_memory_stores,zod?,rate_limited?

@@ -1,0 +1,99 @@
+'use client';
+
+import React from 'react';
+import type { RoomCategory, PhysicalRoom } from '@/types';
+import { RoomDetailsPanel } from './RoomDetailsPanel';
+import { OccupiedRoomModal } from './OccupiedRoomModal';
+import { EditCategoryModal } from './EditCategoryModal';
+import { EditRoomModal } from './EditRoomModal';
+import { AddUnitModal } from './AddUnitModal';
+
+interface AccommodationsModalsHostProps {
+  selectedRoomForPanel: PhysicalRoom | null;
+  onCloseRoomPanel: () => void;
+  occupiedRoomForModal: PhysicalRoom | null;
+  onCloseOccupiedModal: () => void;
+  editingRoomForModal: PhysicalRoom | null;
+  onCloseEditingRoomModal: () => void;
+  editingCategory: RoomCategory | null;
+  onCloseEditingCategoryModal: () => void;
+  isAddUnitModalOpen: boolean;
+  onCloseAddUnitModal: () => void;
+  categories: RoomCategory[];
+  rooms: PhysicalRoom[];
+  onDataRefresh: () => void;
+  onShowToast: (msg: string) => void;
+  onNavigate?: (tab: string, meta?: any) => void;
+}
+
+export function AccommodationsModalsHost({
+  selectedRoomForPanel,
+  onCloseRoomPanel,
+  occupiedRoomForModal,
+  onCloseOccupiedModal,
+  editingRoomForModal,
+  onCloseEditingRoomModal,
+  editingCategory,
+  onCloseEditingCategoryModal,
+  isAddUnitModalOpen,
+  onCloseAddUnitModal,
+  categories,
+  rooms,
+  onDataRefresh,
+  onShowToast,
+  onNavigate,
+}: AccommodationsModalsHostProps) {
+  return (
+    <>
+      <RoomDetailsPanel
+        room={selectedRoomForPanel}
+        onClose={onCloseRoomPanel}
+        onRoomUpdated={onDataRefresh}
+      />
+
+      <OccupiedRoomModal
+        room={occupiedRoomForModal}
+        isOpen={Boolean(occupiedRoomForModal)}
+        onClose={onCloseOccupiedModal}
+        onRoomUpdated={onDataRefresh}
+        onNavigateToBilling={(invoiceData) => {
+          if (onNavigate) {
+            onNavigate('billing', invoiceData);
+          }
+        }}
+      />
+
+      <EditCategoryModal
+        category={editingCategory}
+        rooms={rooms}
+        isOpen={Boolean(editingCategory)}
+        onClose={onCloseEditingCategoryModal}
+        onUpdated={() => {
+          onShowToast(`Updated ${editingCategory?.name} and room units successfully!`);
+          onDataRefresh();
+        }}
+      />
+
+      <EditRoomModal
+        room={editingRoomForModal}
+        categories={categories}
+        isOpen={Boolean(editingRoomForModal)}
+        onClose={onCloseEditingRoomModal}
+        onUpdated={() => {
+          onShowToast(`Updated Room ${editingRoomForModal?.room_number} successfully!`);
+          onDataRefresh();
+        }}
+      />
+
+      <AddUnitModal
+        categories={categories}
+        isOpen={isAddUnitModalOpen}
+        onClose={onCloseAddUnitModal}
+        onAdded={() => {
+          onShowToast('New physical room unit added successfully!');
+          onDataRefresh();
+        }}
+      />
+    </>
+  );
+}

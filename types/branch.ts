@@ -21,14 +21,17 @@ export interface PropertyBranch {
   name: string;
   category: CategoryHandled;
   gstNumber: GstNumber | null;
-  bankName: string | null;
-  bankAccountNumber: string | null;
-  bankIfscCode: string | null;
-  upiId: string | null;
   address: BranchAddress;
   geo: { lat: number; lng: number } | null;
   qrCodeHash: QrCodeHash | null;
   status: BranchStatus;
   createdAt: ISODateString;
   updatedAt: ISODateString;
+  bankName?: string | null;
+  bankAccountNumber?: string | null;
+  bankIfscCode?: string | null;
+  upiId?: string | null;
+  staffPin?: string | null;
+  adminPin?: string | null;
+  protectedModules?: any;
 }

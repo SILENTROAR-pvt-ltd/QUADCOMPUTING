@@ -1,0 +1,110 @@
+import { NextResponse } from 'next/server';
+import { adminDb } from '@/lib/supabase/admin';
+import { getGuestActiveOrder, placeGuestOrder } from '@/lib/services/guest-order.service';
+import { apiError } from '@/lib/utils/api-response';
+import { validateGuestAccess } from '@/lib/auth/guest-validate';
+import { withIdempotency, generateIdempotencyKey } from '@/lib/services/api-idempotency.util';
+import {
+  getClientIp,
+  checkGuestOrderRateLimit,
+  rateLimitResponse,
+} from '@/lib/middleware/rate-limiter';
+import { withApiErrorBoundary, handleApiError } from '@/lib/middleware/error-handler';
+import { accountForRequest } from '@/lib/services/guest-auth/guest-account.service';
+
+/**
+ * GET /api/guest/order
+ * Check if there is an active, unbilled order running for the given table.
+ */
+export const GET = withApiErrorBoundary(async function GET(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const cafeParamRaw = searchParams.get('cafe_id') || searchParams.get('business_id');
+    const tableParamRaw = searchParams.get('table') || searchParams.get('table_number');
+
+    const validation = await validateGuestAccess(cafeParamRaw, tableParamRaw);
+    if (validation.error) return validation.error;
+
+    const supabase = adminDb();
+    const result = await getGuestActiveOrder(request.url, supabase);
+    return NextResponse.json(result);
+  } catch (error: any) {
+    if (error.message?.includes('Missing') || error.message?.includes('Invalid')) {
+      return apiError(error.message, 'INVALID_PARAMS', 400);
+    }
+    return handleApiError(error, request, 'GuestOrderGET');
+  }
+}, 'GuestOrderGET');
+
+/**
+ * POST /api/guest/order
+ * Smart Active Order Detection & Add-on Order Flow:
+ * If an active unbilled order exists for the table, appends new items to that master order
+ * and generates an add-on KOT ticket. Otherwise, creates a fresh master order.
+ */
+export const POST = withApiErrorBoundary(async function POST(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const queryCafeId = searchParams.get('cafe_id') || searchParams.get('business_id');
+
+    const body = await request.json().catch(() => ({}));
+    const rawCafeId = queryCafeId || body?.business_id || body?.cafe_id;
+
+    const validation = await validateGuestAccess(rawCafeId, body?.table_number);
+    if (validation.error) return validation.error;
+    const { businessId, tableNumber } = validation;
+
+    // Rate Limiting: Apply sliding window rate limit per IP & venue
+    const ip = getClientIp(request);
+    const orderRateLimit = await checkGuestOrderRateLimit(ip, businessId);
+    if (!orderRateLimit.allowed) {
+      return rateLimitResponse(
+        orderRateLimit,
+        'Too many order requests. Please wait a moment before submitting again.'
+      );
+    }
+
+    const supabase = adminDb();
+
+    // Venue Credit & Subscription Guard: Zero orders if venue balance < 0 or inactive
+    const { assertVenueBillingAllowed } = await import('@/lib/services/billing/venue-guard.service');
+    const billingGuardError = await assertVenueBillingAllowed(businessId, supabase);
+    if (billingGuardError) return billingGuardError;
+
+    body.business_id = businessId;
+    body.cafe_id = businessId;
+    body.table_number = tableNumber;
+
+    // Identity from the guest's own session when signed in (see the session route).
+    const signedIn = await accountForRequest(supabase, request, businessId);
+    if (signedIn) {
+      body.guest_handle = signedIn.handle;
+      body.guest_name = signedIn.display_name;
+      body.guest_phone = signedIn.phone || undefined;
+    }
+
+    const key = generateIdempotencyKey('guest_order', `${businessId}:${tableNumber}`, body);
+
+    const { response, status } = await withIdempotency(key, async () => {
+      const result = await placeGuestOrder(body, supabase);
+      return { response: result, status: 200 };
+    });
+
+    return NextResponse.json(response, { status });
+  } catch (error: any) {
+    const isClientError =
+      error.message?.includes('Missing') ||
+      error.message?.includes('No items') ||
+      error.message?.includes('Invalid');
+    const isNotFound = error.message?.includes('not found');
+
+    if (isNotFound) {
+      return apiError(error.message, 'NOT_FOUND', 404);
+    }
+    if (isClientError) {
+      return apiError(error.message, 'INVALID_PAYLOAD', 400);
+    }
+
+    return handleApiError(error, request, 'GuestOrderPOST');
+  }
+}, 'GuestOrderPOST');

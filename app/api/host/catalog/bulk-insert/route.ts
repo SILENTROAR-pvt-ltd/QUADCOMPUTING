@@ -1,59 +1,28 @@
 import { NextResponse } from 'next/server';
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
-import { cookies } from 'next/headers';
+import { requireHost } from '@/lib/auth/guards';
+import { withApiErrorBoundary } from '@/lib/middleware/error-handler';
 
-export async function POST(request: Request) {
+export const POST = withApiErrorBoundary(async function POST(request: Request) {
   try {
-    const cookieStore = cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) { return cookieStore.get(name)?.value; },
-          set(name: string, value: string, options: CookieOptions) {
-            try { cookieStore.set({ name, value, ...options }); } catch (error) {}
-          },
-          remove(name: string, options: CookieOptions) {
-            try { cookieStore.set({ name, value: '', ...options }); } catch (error) {}
-          },
-        },
-      }
-    );
-
-    // 1. Authenticate Request
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const auth = await requireHost(request);
+    if (auth.error) return auth.error;
+    const { businessId, supabase } = auth;
 
     const { items } = await request.json();
     if (!items || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json({ error: 'No valid items provided for insertion.' }, { status: 400 });
     }
 
-    // 2. Resolve Host Topology
-    const { data: business } = await supabase
-      .from('businesses')
-      .select('id')
-      .eq('host_id', user.id)
-      .single();
-
-    if (!business) {
-      return NextResponse.json({ error: 'No registered business found for host.' }, { status: 404 });
-    }
-
     const { data: locations } = await supabase
       .from('locations')
       .select('id')
-      .eq('business_id', business.id)
+      .eq('business_id', businessId)
       .limit(1);
 
     const locationId = locations && locations.length > 0 ? locations[0].id : null;
 
-    // 3. Format Catalog Items Payload
     const catalogPayload = items.map((item: any) => ({
-      business_id: business.id,
+      business_id: businessId,
       location_id: locationId,
       item_type: item.item_type || 'food',
       name: item.name,
@@ -61,10 +30,10 @@ export async function POST(request: Request) {
       price: typeof item.price === 'string' ? parseFloat(item.price) : item.price,
       category: item.category,
       image_url: item.image_url || item.imageUrl || null,
-      is_available: true
+      is_available: true,
+      metadata: item.metadata || null
     }));
 
-    // 4. Bulk Insert Catalog Items
     const { data: insertedItems, error: catalogError } = await supabase
       .from('catalog_items')
       .insert(catalogPayload)
@@ -75,7 +44,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: catalogError.message }, { status: 400 });
     }
 
-    // 5. Bulk Insert Inventory Stock (if items have stock > 0, else default to 0)
     if (insertedItems && insertedItems.length > 0) {
       const inventoryPayload = insertedItems.map((record: any, index: number) => {
         const correspondingItem = items[index];
@@ -92,8 +60,36 @@ export async function POST(request: Request) {
 
       if (inventoryError) {
         console.error('Inventory Insert Error:', inventoryError);
-        // We do not fail the request completely if inventory fails, but we log it.
       }
+    }
+
+    try {
+      const { checkFreeTier, logFreeTierUsage, isFreeItemType } = await import('@/lib/services/wallet/free-tier.service');
+      const { evaluateFeeGuard, generateInvoiceRef } = await import('@/lib/services/wallet/fee-guard.service');
+
+      const standardMenuItems = (items || []).filter((it: any) => !isFreeItemType(it.item_type, it.category));
+      const totalBatch = standardMenuItems.length;
+
+      if (totalBatch > 0) {
+        const tierCheck = await checkFreeTier(supabase, businessId, 'menu');
+        const beforeCount = Math.max(0, tierCheck.existingCount - totalBatch);
+        const freeSlots = Math.max(0, tierCheck.threshold - beforeCount);
+        const freeCount = Math.min(totalBatch, freeSlots);
+        const chargedCount = totalBatch - freeCount;
+
+        const bulkRef = generateInvoiceRef();
+
+        if (freeCount > 0) {
+          await logFreeTierUsage(supabase, businessId, 'menu_item_creation', `${bulkRef}-FREE(${freeCount})`);
+        }
+
+        if (chargedCount > 0) {
+          const totalFee = chargedCount * tierCheck.cost;
+          await evaluateFeeGuard(businessId, 'menu_item_creation', bulkRef, supabase, totalFee);
+        }
+      }
+    } catch (guardErr) {
+      console.error('[Bulk Ingest FeeGuard Error]', guardErr);
     }
 
     return NextResponse.json({ success: true, count: insertedItems?.length || 0 });
@@ -101,4 +97,4 @@ export async function POST(request: Request) {
     console.error('Bulk Ingest Error:', error);
     return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
   }
-}
+}, 'HostCatalogBulkInsertPOST');

@@ -1,0 +1,139 @@
+{
+  "venue": { "name": "Bombay Rasoi" },
+  "source": "Printed menu, supplied by the venue. Price null = no price printed: the item is saved hidden until a price is set.",
+  "info": {
+    "tagline": "We Believe to Serve You Taste & Quality",
+    "address": "Shop No 2, Bahang Village, Manali-Leh Highway, Nehrukund",
+    "delivery": "Free delivery within 2 kms",
+    "phones": ["+91-9004192103", "+91-9702922260"],
+    "timings": ["12:00 pm - 3:00 pm", "7:00 pm - 8:30 pm"],
+    "notes": [
+      "Allow us 25-30 minutes to serve you",
+      "All food items are prepared in groundnut oil",
+      "Order once placed will not be cancelled",
+      "Prices are subject to change without any notice"
+    ]
+  },
+  "sections": [
+    { "category": "Quick Bites", "station": "Kitchen", "items": [
+      { "name": "Poha", "price": 100 },
+      { "name": "Khaman Dhokla", "price": null, "made_to_order": true },
+      { "name": "Aloo Paratha", "price": 60 },
+      { "name": "Aloo Pyaaz Paratha", "price": 80 },
+      { "name": "Paneer Paratha", "price": 100 },
+      { "name": "All Mix Paratha", "price": 100 },
+      { "name": "Cheese Mix Paratha", "price": 130 },
+      { "name": "Misal Pav", "price": 150 },
+      { "name": "Batata Vada (2 Pcs)", "price": 100 },
+      { "name": "Vada Pav", "price": 70 },
+      { "name": "Masala Vada Pav", "price": 150 },
+      { "name": "Bread Pakoda (1 Pc)", "price": 60 },
+      { "name": "Fries (Plain / Salted)", "price": 100 },
+      { "name": "Peri Peri Fries", "price": 120 },
+      { "name": "Cheesy Fries", "price": 150 },
+      { "name": "Mayo Fries", "price": 120 },
+      { "name": "Plain Maggi", "price": 60 },
+      { "name": "Veg Masala Maggi", "price": 80 },
+      { "name": "Peri Peri Maggi", "price": 100 },
+      { "name": "Cheesy Maggi", "price": 120 }
+    ]},
+    { "category": "Rolls", "station": "Kitchen", "items": [
+      { "name": "Veg. Roll", "price": 150 },
+      { "name": "Veg. Cheese Roll", "price": 180 },
+      { "name": "Paneer Makhni Roll", "price": 200 }
+    ]},
+    { "category": "Sandwiches", "station": "Kitchen", "items": [
+      { "name": "Bread Butter (2 Slice)", "price": 30 },
+      { "name": "Bread Butter Chutney", "price": 40 },
+      { "name": "Bread Butter Jam", "price": 60 },
+      { "name": "Bread Butter Toast (4 Slice)", "price": 80 },
+      { "name": "Veg Classic Plain Sandwich", "price": 70 },
+      { "name": "Plain Cheese Sandwich (3 Layer)", "price": 100 },
+      { "name": "Mumbai Masala Toast Sandwich", "price": 80 },
+      { "name": "Veg Grill Sandwich", "price": 100, "station": "Grill" },
+      { "name": "Veg Cheese Grill Sandwich", "price": 130, "station": "Grill" },
+      { "name": "Veg. Cheese Grill Sandwich Jumbo", "price": 180, "station": "Grill" },
+      { "name": "Paneer Grill Sandwich", "price": 140, "station": "Grill" },
+      { "name": "Paneer Cheese Grill Sandwich", "price": 170, "station": "Grill" },
+      { "name": "Paneer Makhni Grill Sandwich", "price": 180, "station": "Grill" },
+      { "name": "Paneer Makhni Cheese Grill Sandwich", "price": 200, "station": "Grill" },
+      { "name": "Schezwan Paneer Chilly Grill Sandwich", "price": 180, "station": "Grill" },
+      { "name": "Paneer Pahadi Sandwich", "price": 250 },
+      { "name": "Cheese Chilly Toast", "price": 130 },
+      { "name": "Open Cheese Chilly Toast Jumbo", "price": 220 },
+      { "name": "Pizza Sandwich", "price": 200 },
+      { "name": "Mix Herb Garlic Bread (3 Pcs)", "price": 100 },
+      { "name": "Mix Herb Cheese Garlic Bread", "price": 130 },
+      { "name": "Extra Cheese", "price": 30 }
+    ]},
+    { "category": "Pav Bhaji", "station": "Kitchen", "items": [
+      { "name": "Spl Mumbai Pav Bhaji", "price": 220 },
+      { "name": "Cheese Pav Bhaji", "price": 250 },
+      { "name": "Extra Pav (2 Pcs)", "price": 40 },
+      { "name": "Masala Pav", "price": 150 },
+      { "name": "Tawa Pulao", "price": 200 }
+    ]},
+    { "category": "Breads", "station": "Kitchen", "items": [
+      { "name": "Plain Fulka Roti", "price": 30 },
+      { "name": "Ghee Fulka Roti", "price": 40 },
+      { "name": "Tawa Paratha", "price": 50 },
+      { "name": "Puran Poli (Make To Order)", "price": 100, "made_to_order": true },
+      { "name": "Puri (3 Pcs)", "price": 80 },
+      { "name": "Methi Thepla (3 Pcs)", "price": 60 }
+    ]},
+    { "category": "Main Course", "station": "Kitchen", "items": [
+      { "name": "Aloo Zeera", "price": null },
+      { "name": "Aloo Gobhi", "price": null },
+      { "name": "Aloo Matar", "price": null },
+      { "name": "Bhindi Masala", "price": null },
+      { "name": "Sev Tamatar", "price": null },
+      { "name": "Chole Bhature", "price": null },
+      { "name": "Rajmah Masala", "price": null },
+      { "name": "Paneer Do Pyaza", "price": null },
+      { "name": "Paneer Bhurji", "price": null },
+      { "name": "Poori Bhaji", "price": null }
+    ]},
+    { "category": "Dals & Lentils", "station": "Kitchen", "items": [
+      { "name": "Gujarati Khatti Mithi Dal", "price": 200 },
+      { "name": "Gujarati Kadhi", "price": 150 },
+      { "name": "Dal Fry / Tadka", "price": 250 },
+      { "name": "Dal Makhani", "price": 280 },
+      { "name": "Dahi Tikhari", "price": 100 }
+    ]},
+    { "category": "Salads", "station": "Kitchen", "items": [
+      { "name": "Garden Green Salad", "price": 80 }
+    ]},
+    { "category": "Beverages", "station": "Bar", "items": [
+      { "name": "Cutting Chai", "price": 10 },
+      { "name": "Plain Tea", "price": 20 },
+      { "name": "Ginger Tea", "price": 30 },
+      { "name": "Cardamom Tea", "price": 40 },
+      { "name": "Spl. Masala Tea (Only Milk)", "price": 50 },
+      { "name": "Coffee", "price": 50 },
+      { "name": "Ginger Lemon Honey Tea", "price": 80 },
+      { "name": "Hot Chocolate Milk", "price": 100 },
+      { "name": "Hot Milk Plain", "price": 30 }
+    ]},
+    { "category": "Shakes", "station": "Bar", "items": [
+      { "name": "Strawberry Milkshake (Seasonal)", "price": 150 },
+      { "name": "Banana Milkshake", "price": 120 },
+      { "name": "Chocolate Milkshake", "price": 150 },
+      { "name": "Oreo Milk Shake", "price": 180 },
+      { "name": "Mango Milk Shake (Seasonal)", "price": 180 },
+      { "name": "Vanilla Milk Shake", "price": 150 },
+      { "name": "Cold Coffee", "price": 80 }
+    ]},
+    { "category": "Waffles", "station": "Kitchen", "items": [
+      { "name": "Plain Waffle", "price": 120 },
+      { "name": "Nutella Waffle", "price": 180 },
+      { "name": "Chocolate Waffle", "price": 180 },
+      { "name": "Fruit Creams", "price": 250 },
+      { "name": "Extra Fruit Toppings", "price": 80 }
+    ]}
+  ],
+  "not_imported": [
+    { "reason": "Price printed, name missing (Pizza & Burger column)", "prices": [250, 300, 280, 80, 150] },
+    { "reason": "Price printed, name missing (Quick Bites, after Masala Vada Pav)", "prices": [170] },
+    { "reason": "Rice heading shows 'xx' with no items named", "prices": [] }
+  ]
+}

@@ -23,7 +23,8 @@ yarn-debug.log*
 yarn-error.log*
 
 # local env files
-.env*.local
+.env*
+
 
 # vercel
 .vercel
@@ -34,3 +35,8 @@ tsconfig.tsbuildinfo
 
 # supabase
 supabase/.temp/
+
+# local tooling & cache
+git.cmd
+.next-prod-test/
+scratch/

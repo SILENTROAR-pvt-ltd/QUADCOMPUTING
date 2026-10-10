@@ -1,139 +1,103 @@
 import { NextResponse } from 'next/server';
+import { requireHost } from '@/lib/auth/guards';
 import { hostOnboardingSchema } from '@/lib/validations/onboarding';
-import { createClient } from '@/lib/supabase/server';
+import { generateOwnerCafeId } from '@/lib/utils/ids';
+import { withApiErrorBoundary } from '@/lib/middleware/error-handler';
 
-function generateStrictOwnerCafeId(): string {
-  const bytes = new Uint8Array(2);
-  globalThis.crypto.getRandomValues(bytes);
-  const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('').toUpperCase();
-  const time = Math.floor(Date.now() / 1000).toString(36).toUpperCase().slice(-4).padStart(4, '0');
-  // Ensures exact format: HOST-CF-[0-9A-F]{4}-[0-9A-Z]{4}
-  return `HOST-CF-${hex}-${time}`;
-}
-
-export async function POST(request: Request) {
-  let profileId: string | null = null;
-  const businessIds: string[] = [];
-  const locationIds: string[] = [];
-
+export const POST = withApiErrorBoundary(async function POST(request: Request) {
   try {
+    // allowNoBusiness: a freshly signed-up host has zero businesses yet —
+    // that's expected here. A missing/invalid session is still a hard 401
+    // (see guards.ts) — there is no more "proceed without a real user" path.
+    const auth = await requireHost(request, null, { allowNoBusiness: true });
+    if (auth.error) return auth.error;
+    const { user, supabase } = auth;
+
     const payload = await request.json();
-    const validation = hostOnboardingSchema.safeParse(payload);
-    
-    if (!validation.success) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid onboarding payload', issues: validation.error.flatten() },
-        { status: 400 },
-      );
-    }
+    const validatedData = hostOnboardingSchema.parse(payload);
+    const uniqueOwnerCafeId = generateOwnerCafeId();
+    const hostId = user.id;
 
-    const validatedData = validation.data;
-    const supabase = createClient();
-    const { data: authData, error: authError } = await supabase.auth.getUser();
-
-    if (authError || !authData?.user) {
-      return NextResponse.json(
-        { success: false, error: 'Host authentication is required before provisioning' },
-        { status: 401 },
-      );
-    }
-
-    profileId = authData.user.id;
-    const uniqueOwnerCafeId = generateStrictOwnerCafeId();
-
-    // 1. Provision Profile
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .insert({
-        id: profileId,
-        owner_cafe_id: uniqueOwnerCafeId,
-        role: 'host',
-        full_name: validatedData.fullName,
-        gender: validatedData.gender,
-        dob: validatedData.dob,
-        categories_handled: validatedData.categories,
-        ecosystem_statement: null,
-        revision: 1,
-      })
-      .select('id, owner_cafe_id, full_name, categories_handled, created_at')
-      .single();
-
-    if (profileError || !profile) {
-      throw new Error(`Profile insert failed: ${profileError?.message || profileError?.details || profileError?.hint || 'Unknown Postgres Error'}`);
-    }
-
-    const provisionedBusinesses = [];
-    
+    // Each business is provisioned atomically via one RPC call — profile
+    // upsert + business + location + wallet + subscription all in one
+    // transaction. A failure (e.g. a real DB/constraint error) throws here
+    // and is returned as a real error instead of a silent, fabricated success.
+    const processedBusinesses = [];
     for (const business of validatedData.businesses) {
-      // 2. Provision Business
-      const { data: businessRow, error: businessError } = await supabase
-        .from('businesses')
-        .insert({
-          host_id: profile.id,
-          categories: validatedData.categories,
-          gst_number: business.gstNumber || null,
-        })
-        .select('id')
-        .single();
+      const bizName = business.businessName;
+      const slug = bizName
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+      const qrCodeHash = `qr_${crypto.randomUUID().slice(0, 12)}`;
 
-      if (businessError || !businessRow) {
-        throw new Error(`Business insert failed: ${businessError?.message || businessError?.details || businessError?.hint || 'Unknown Postgres Error'}`);
+      const { data: rpcResult, error: rpcErr } = await supabase.rpc('provision_host_business', {
+        p_host_id: hostId,
+        p_full_name: validatedData.fullName,
+        p_gender: validatedData.gender,
+        p_dob: validatedData.dob || null,
+        p_owner_cafe_id: uniqueOwnerCafeId,
+        p_categories: validatedData.categories,
+        p_business_name: bizName,
+        p_slug: slug,
+        p_address: business.address,
+        p_city: business.city,
+        p_state: business.state,
+        p_pincode: business.pincode,
+        p_qr_code_hash: qrCodeHash,
+        p_email: user.email || null,
+      });
+
+      if (rpcErr) throw rpcErr;
+      if (!rpcResult?.success) {
+        const err: any = new Error(rpcResult?.error || `Failed to provision "${bizName}"`);
+        err.status = 409;
+        throw err;
       }
-      
-      businessIds.push(businessRow.id);
 
-      const qrCodeHash = `qr_${crypto.randomUUID().replace(/-/g, '')}`;
-      
-      // 3. Provision Location
-      const { data: location, error: locationError } = await supabase
-        .from('locations')
-        .insert({
-          business_id: businessRow.id,
-          branch_name: business.businessName,
-          state: business.state,
-          city: business.city,
-          address: business.address,
-          pincode: business.pincode,
-          qr_code_hash: qrCodeHash,
-        })
-        .select('id')
-        .single();
-
-      if (locationError || !location) {
-        throw new Error(`Location insert failed: ${locationError?.message || locationError?.details || locationError?.hint || 'Unknown Postgres Error'}`);
-      }
-      
-      locationIds.push(location.id);
-      provisionedBusinesses.push({ ...business, locationId: location.id, qrCodeHash });
+      processedBusinesses.push({
+        ...business,
+        id: rpcResult.business_id,
+        slug,
+        locationId: rpcResult.location_id,
+        qrCodeHash,
+      });
     }
+
+    const primaryBusinessId = processedBusinesses[0]?.id || '';
+    const controlCenterUrl = primaryBusinessId
+      ? `/host/control-center?business_id=${primaryBusinessId}`
+      : '/host/control-center';
 
     return NextResponse.json({
       success: true,
-      uniqueOwnerCafeId: profile.owner_cafe_id,
-      businesses: provisionedBusinesses,
-      controlCenterUrl: '/host/control-center',
+      uniqueOwnerCafeId,
+      businessId: primaryBusinessId,
+      host: {
+        id: hostId,
+        uniqueOwnerCafeId,
+        fullName: validatedData.fullName,
+        gender: validatedData.gender,
+        dob: validatedData.dob,
+        categories: validatedData.categories,
+      },
+      businesses: processedBusinesses,
+      dashboardUrl: controlCenterUrl,
+      controlCenterUrl,
     });
-    
   } catch (error: unknown) {
-    const supabase = createClient();
-    
-    // Rollback attempt
-    for (const locationId of locationIds) {
-      await supabase.from('locations').delete().eq('id', locationId);
-    }
-    for (const businessId of businessIds) {
-      await supabase.from('businesses').delete().eq('id', businessId);
-    }
-    if (profileId) {
-      await supabase.from('profiles').delete().eq('id', profileId);
-    }
-
-    const errorMessage = error instanceof Error ? error.message : 'Unknown fatal error during provisioning';
-    console.error('[API Provisioning Error]', errorMessage);
-    
+    // Supabase/Postgrest errors (e.g. from the RPC call above) are plain
+    // objects with a `message`, not real Error instances — `error instanceof
+    // Error` is false for them, which was silently collapsing every real DB
+    // failure down to the generic 'Invalid payload' fallback.
+    const message =
+      error instanceof Error
+        ? error.message
+        : (error as any)?.message || 'Invalid payload';
+    console.error('[HostProvisionPOST] Provisioning failed:', error);
     return NextResponse.json(
-      { success: false, error: errorMessage },
-      { status: 500 },
+      { success: false, error: message },
+      { status: (error as any)?.status || 400 },
     );
   }
-}
+}, 'HostProvisionPOST')

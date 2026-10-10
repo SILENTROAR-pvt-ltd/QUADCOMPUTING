@@ -1,114 +1,58 @@
 import { NextResponse } from 'next/server';
-import { GoogleGenAI, Type, Schema } from '@google/genai';
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
-import { cookies } from 'next/headers';
+import { requireHost } from '@/lib/auth/guards';
+import { withApiErrorBoundary } from '@/lib/middleware/error-handler';
+import { checkRateLimit, rateLimitResponse } from '@/lib/middleware/rate-limiter';
+import { generateJson, llmConfigured } from '@/lib/services/catalog/llm-json';
 
-export async function POST(request: Request) {
+const MENU_SCHEMA = {
+  type: 'array',
+  items: {
+    type: 'object',
+    properties: {
+      name: { type: 'string', description: 'The name of the food, beverage, or service item.' },
+      category: { type: 'string', description: 'The printed category, e.g. Starters, Main Course, Beverages.' },
+      item_type: { type: 'string', enum: ['food', 'room', 'service'], description: "Use 'food' for all food and beverages." },
+      price: { type: 'number', description: 'The price as a number. Use 0 when no price is printed.' },
+      description: { type: 'string', description: 'A brief description. Do not include the price.' },
+      stock: { type: 'integer', description: 'Always 50.' },
+    },
+    required: ['name', 'category', 'item_type', 'price', 'description', 'stock'],
+  },
+};
+
+export const POST = withApiErrorBoundary(async function POST(request: Request) {
   try {
-    const cookieStore = cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) { return cookieStore.get(name)?.value; },
-          set(name: string, value: string, options: CookieOptions) {
-            try { cookieStore.set({ name, value, ...options }); } catch (error) {}
-          },
-          remove(name: string, options: CookieOptions) {
-            try { cookieStore.set({ name, value: '', ...options }); } catch (error) {}
-          },
-        },
-      }
-    );
-
-    // Enforce auth
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const auth = await requireHost(request);
+    if (auth.error) return auth.error;
 
     const { image, mimeType } = await request.json();
-
-    if (!image) {
+    if (!image || typeof image !== 'string') {
       return NextResponse.json({ error: 'No image provided' }, { status: 400 });
     }
-
-    // Initialize Google GenAI
-    // The API Key MUST be in environment variables: GEMINI_API_KEY
-    if (!process.env.GEMINI_API_KEY) {
-      return NextResponse.json({ error: 'Server misconfiguration: Missing GEMINI_API_KEY environment variable.' }, { status: 500 });
+    // base64 length; ~6 MB of image data.
+    if (image.length > 8_000_000) {
+      return NextResponse.json({ error: 'Image too large. Please upload a photo under 6 MB.' }, { status: 413 });
     }
 
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+    const limit = await checkRateLimit({ key: `ratelimit:ai_ingest:${auth.businessId}`, limit: 10, windowMs: 60 * 60 * 1000 });
+    if (!limit.allowed) {
+      return rateLimitResponse(limit, 'Menu scan limit reached (10 per hour). Please try again later.');
+    }
+    if (!llmConfigured()) {
+      return NextResponse.json({ error: 'Menu scan is not configured: LLM_API_KEY is not set.' }, { status: 500 });
+    }
 
-    const responseSchema: Schema = {
-      type: Type.ARRAY,
-      description: "List of items extracted from the menu.",
-      items: {
-        type: Type.OBJECT,
-        properties: {
-          name: {
-            type: Type.STRING,
-            description: "The name of the food, beverage, or service item.",
-          },
-          category: {
-            type: Type.STRING,
-            description: "The category of the item (e.g., Starters, Main Course, Dessert, Beverages).",
-          },
-          item_type: {
-            type: Type.STRING,
-            description: "Must be exactly 'food', 'room', or 'service'. Use 'food' for all food and beverages.",
-          },
-          price: {
-            type: Type.NUMBER,
-            description: "The price of the item as a number.",
-          },
-          description: {
-            type: Type.STRING,
-            description: "A brief, appetizing description of the item. Do not include price here.",
-          },
-          stock: {
-            type: Type.INTEGER,
-            description: "Default stock quantity. Always return 50.",
-          }
-        },
-        required: ["name", "category", "item_type", "price", "description", "stock"],
-      }
-    };
-
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.6-flash',
-      contents: [
-        {
-          role: 'user',
-          parts: [
-            { text: "Extract all items from this menu card. Map them to the provided schema." },
-            {
-              inlineData: {
-                data: image,
-                mimeType: mimeType || 'image/jpeg',
-              }
-            }
-          ]
-        }
-      ],
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: responseSchema,
-      }
+    const text = await generateJson({
+      prompt: 'Extract every item from this menu card as a JSON array.',
+      imageBase64: image,
+      mimeType: mimeType || 'image/jpeg',
+      schema: MENU_SCHEMA,
     });
-
-    const textOutput = response.text;
-    if (!textOutput) {
-      throw new Error("No output generated from Vision model.");
-    }
-
-    const extractedItems = JSON.parse(textOutput);
-
-    return NextResponse.json({ items: extractedItems });
+    const items = JSON.parse(text);
+    if (!Array.isArray(items)) throw new Error('The model did not return a list of items.');
+    return NextResponse.json({ items });
   } catch (error: any) {
     console.error('AI Ingest Error:', error);
     return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
   }
-}
+}, 'HostCatalogAiIngestPOST');

@@ -12,10 +12,10 @@ export function calculateCompletionStatus(input: { profile: HostProfile | null; 
   const criteria = [
     criterion('profile', 'display-name', 'Display name', 8, filled(profile?.displayName) ? 1 : 0, 'Set your public display name'),
     criterion('profile', 'legal-entity', 'Legal entity name', 6, filled(profile?.legalEntityName) ? 1 : 0, 'Register your legal entity'),
-    criterion('profile', 'contact-phone', 'Contact phone', 6, filled(profile?.contact.phone) ? 1 : 0, 'Add a contact number'),
+    criterion('profile', 'contact-phone', 'Contact phone', 6, filled(profile?.contact?.phone ?? profile?.phone) ? 1 : 0, 'Add a contact number'),
     criterion('profile', 'avatar', 'Identity mark', 5, filled(profile?.avatarUrl) ? 1 : 0, 'Upload an identity mark'),
-    criterion('profile', 'statement', 'Ecosystem Statement', 10, ratio(profile?.ecosystemStatement.length ?? 0, 120), 'Articulate your Ecosystem Statement'),
-    criterion('profile', 'categories', 'Categories Handled', 5, (profile?.categoriesHandled.length ?? 0) > 0 ? 1 : 0, 'Declare the Categories Handled'),
+    criterion('profile', 'statement', 'Ecosystem Statement', 10, ratio((profile?.ecosystemStatement ?? profile?.bio ?? '').length, 120), 'Articulate your Ecosystem Statement'),
+    criterion('profile', 'categories', 'Categories Handled', 5, (profile?.categoriesHandled ?? profile?.categories ?? []).length ? 1 : 0, 'Declare the Categories Handled'),
     criterion('branches', 'first-branch', 'Registered Property Branch', 12, branches.length ? 1 : 0, 'Register your first Property Branch'),
     criterion('branches', 'gst', 'GST registration', 8, ratio(branches.filter((branch) => branch.gstNumber && isValidGstin(branch.gstNumber)).length, branches.length), 'Attach a valid GST number'),
     criterion('branches', 'address', 'Branch address', 5, ratio(branches.filter((branch) => filled(branch.address.line1) && filled(branch.address.city)).length, branches.length), 'Complete every branch address'),
