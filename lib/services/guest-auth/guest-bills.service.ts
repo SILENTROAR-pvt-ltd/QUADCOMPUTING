@@ -1,8 +1,11 @@
 // A guest's settled bills (invoices) across every venue they have paid at.
 //
-// A bill belongs to the guest when it was placed in a dine-in session for one of the guest's
-// handles, or when cashback for it was credited to one of their wallets. The invoice is the same
-// receipt the host prints: it is built from the settled order row.
+// A bill belongs to the guest only on evidence written for that guest when the bill was settled:
+//   - a cashback or redemption entry for the bill on one of the guest's own wallets, or
+//   - the bill's guest_handle, stamped at settlement (column added by migration 20261010000017).
+// The dine-in session's guest_handle is NOT evidence: it is shared by everyone at the table and
+// used to be overwritten by whoever scanned last, which showed one guest another guest's bills.
+// The invoice is the same receipt the host prints: it is built from the settled order row.
 //
 // The caller must already have proved ownership of the handles (wallet claim). Nothing here
 // reads outside that set.
@@ -142,6 +145,16 @@ function inList(ids: string[]) {
   return `(${ids.map((id) => `"${id}"`).join(',')})`;
 }
 
+const MISSING_COLUMN = new Set(['42703', 'PGRST204']);
+
+/** True once migration 20261010000017 has added orders.guest_handle (the guest a bill was settled to). */
+export async function hasBillOwnerColumn(db: any): Promise<boolean> {
+  const { error } = await db.from('orders').select('guest_handle').limit(1);
+  if (!error) return true;
+  if (MISSING_COLUMN.has(error.code)) return false;
+  throw error;
+}
+
 function itemsFromOrderJson(order: any): InvoiceItem[] {
   if (!Array.isArray(order.items) || order.items.length === 0) return [];
   return order.items.map((i: any) => ({
@@ -186,13 +199,12 @@ export async function queryGuestInvoices(db: any, guestIds: string[], filters: I
   const empty: InvoiceResult = { invoices: [], venues: [], summary: { count: 0, paid: 0, cashback: 0 }, has_more: false, next_before: null };
   if (guestIds.length === 0) return empty;
 
-  // 1. The guest's wallets and dine-in sessions, across venues.
-  const [walletsRes, sessionsRes] = await Promise.all([
+  // 1. The guest's wallets across venues, and whether bills carry their settled guest (migration 20261010000017).
+  const [walletsRes, ownerColumn] = await Promise.all([
     db.from('guest_wallets').select('id, guest_id, business_id, cafe_id, balance, wallet_code').in('guest_id', guestIds),
-    db.from('dine_in_sessions').select('id').in('guest_handle', guestIds).limit(1000),
+    hasBillOwnerColumn(db),
   ]);
   if (walletsRes.error) throw walletsRes.error;
-  if (sessionsRes.error) throw sessionsRes.error;
 
   const wallets: any[] = walletsRes.data || [];
   const walletIds = wallets.map((w) => w.id);
@@ -208,29 +220,30 @@ export async function queryGuestInvoices(db: any, guestIds: string[], filters: I
     for (const b of businesses || []) nameOf.set(String(b.id), b.business_name || 'Venue');
   }
 
-  // 2. Cashback credited to the guest's wallets: which bills it came from, and where it went.
+  // 2. The guest's own wallet entries for bills: cashback (and where it went) and redemptions.
   const cashbackByOrder = new Map<string, { amount: number; wallet_id: string }>();
+  const ledgerOrderIds = new Set<string>();
   if (walletIds.length) {
-    const { data: cashbackRows, error } = await db
+    const { data: ledgerRows, error } = await db
       .from('wallet_transactions')
-      .select('order_id, wallet_id, amount')
+      .select('order_id, wallet_id, amount, transaction_type')
       .in('wallet_id', walletIds)
-      .eq('transaction_type', 'CASHBACK')
+      .in('transaction_type', ['CASHBACK', 'REDEMPTION'])
       .limit(5000);
     if (error) throw error;
-    for (const row of cashbackRows || []) {
+    for (const row of ledgerRows || []) {
       if (!row.order_id) continue;
+      ledgerOrderIds.add(row.order_id);
+      if (row.transaction_type !== 'CASHBACK') continue;
       const prev = cashbackByOrder.get(row.order_id);
       cashbackByOrder.set(row.order_id, { amount: (prev?.amount || 0) + num(row.amount), wallet_id: prev?.wallet_id || row.wallet_id });
     }
   }
 
-  // 3. A bill is the guest's if it sits in one of their sessions or earned them cashback.
-  const sessionIds: string[] = (sessionsRes.data || []).map((s: any) => s.id);
-  const cashbackOrderIds = Array.from(cashbackByOrder.keys());
+  // 3. A bill is the guest's if their wallet holds an entry for it, or it was settled to their handle.
   const clauses: string[] = [];
-  if (sessionIds.length) clauses.push(`session_id.in.${inList(sessionIds)}`);
-  if (cashbackOrderIds.length) clauses.push(`id.in.${inList(cashbackOrderIds)}`);
+  if (ledgerOrderIds.size) clauses.push(`id.in.${inList(Array.from(ledgerOrderIds))}`);
+  if (ownerColumn) clauses.push(`guest_handle.in.${inList(guestIds)}`);
 
   const venueStats = new Map<string, VenueInvoiceStats>();
   for (const id of venueIds) {

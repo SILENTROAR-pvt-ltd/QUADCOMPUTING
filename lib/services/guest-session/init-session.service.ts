@@ -2,6 +2,7 @@ import { isValidUuid, buildTableOrFilter } from './session-utils';
 import { resolveTableAndBusiness, resolveOrInitMasterOrder } from './init-session-helpers.util';
 import { upsertGuestRecord } from './guest-record.util';
 import { ownVisitOrders } from '@/lib/services/guest-order/own-visit.util';
+import { claimSessionGuest } from './session-guest.util';
 export async function initializeGuestSession(bodyOrTable: any, clientOrBiz?: any) {
   const isDirect = typeof bodyOrTable === 'string';
   const supabase = (!isDirect && clientOrBiz) ? clientOrBiz : (await import('@/lib/supabase/client')).createClient();
@@ -21,9 +22,10 @@ export async function initializeGuestSession(bodyOrTable: any, clientOrBiz?: any
       // customer_phone columns, and naming them failed the whole write, so the
       // handle (the guest's wallet key for cashback) was never stored. Name and
       // phone live on the order (customer_name / customer_phone).
-      if (guest_handle && s.guest_handle !== guest_handle) {
-        await supabase.from('dine_in_sessions').update({ guest_handle }).eq('id', s.id);
-      }
+      // The handle is set once, by the guest who opened the table. Anyone scanning
+      // later must not take over the session: it used to be overwritten by every
+      // scan, which moved the table's bill and cashback to the last person to scan.
+      if (guest_handle && !s.guest_handle) await claimSessionGuest(supabase, { guestHandle: guest_handle, sessionId: s.id });
     }
   } catch {}
 

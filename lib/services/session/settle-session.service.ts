@@ -194,10 +194,28 @@ export async function settleAndVacateSession(body: any, supabase: any) {
     ? { redeemed_amount: Number(settlementRpc.redeemed_amount || 0) }
     : null;
 
+  // The bill's owner, recorded once at settlement: the guest's invoices are read from this
+  // (guest-bills.service), never from the table's shared session. Best-effort: the column
+  // only exists once migration 20261010000017 is applied.
+  const ownerHandle = typeof guestHandle === 'string' ? guestHandle.trim().toLowerCase() : '';
+  if (finalOrderId && ownerHandle.startsWith('@')) {
+    const { error: ownerErr } = await supabase.from('orders').update({ guest_handle: ownerHandle })
+      .eq('id', finalOrderId).eq('business_id', businessId);
+    if (ownerErr && !['42703', 'PGRST204'].includes(ownerErr.code)) console.error('[Settlement] Could not record the bill owner:', ownerErr);
+  }
+
   // Secondary cleanup: any other stray open order rows for this session/table (legacy
   // multi-row edge case). Best-effort — logged on failure, does not block settlement
   // since the primary order above is already atomically settled.
   try {
+    // The settled order's own session must close too. The settlement closes the session it
+    // was given, which can be a different one; the order's session then stayed open for good,
+    // and the next guest at the table joined it.
+    const orderSessionId = resolvedOrder?.session_id;
+    if (IS_UUID(orderSessionId) && orderSessionId !== targetSessionId) {
+      await supabase.from('dine_in_sessions').update({ status: 'closed', updated_at: nowIso })
+        .eq('id', orderSessionId).eq('business_id', businessId);
+    }
     if (targetSessionId) {
       await supabase.from('orders').update({ status: 'settled' })
         .eq('session_id', targetSessionId).neq('id', finalOrderId || '')

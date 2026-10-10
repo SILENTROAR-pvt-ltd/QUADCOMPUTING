@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { createFakeSupabase } from '@/lib/testing/fake-supabase';
-import { invoicesToCsv, parseInvoiceFilters, queryGuestInvoices, invoiceNumber } from '@/lib/services/guest-auth/guest-bills.service';
+import { hasBillOwnerColumn, invoicesToCsv, parseInvoiceFilters, queryGuestInvoices, invoiceNumber } from '@/lib/services/guest-auth/guest-bills.service';
 
 const VENUE_A = 'aaaaaaaa-1111-4222-8333-444444444444';
 const VENUE_B = 'bbbbbbbb-1111-4222-8333-444444444444';
@@ -173,6 +173,52 @@ describe('Bills: filters, paging and analysis', () => {
       ['Bombay Rasoi', 14, 'QW-AAAA1111'],
       ['Venus Cafe', 37, 'QW-BBBB2222'],
     ]);
+  });
+});
+
+describe('Bills: privacy between guests at the same table', () => {
+  const HARSHIT_BILL = '44444444-1111-4222-8333-444444444444';
+  const NO_CASHBACK = '55555555-1111-4222-8333-444444444444';
+  const REDEEMED = '66666666-1111-4222-8333-444444444444';
+  const SETTLED_TO_RAVI = '77777777-1111-4222-8333-444444444444';
+  const bill = (id: string, extra: Record<string, unknown>) => ({
+    id, business_id: VENUE_A, status: 'settled', table_number: 'T-01', subtotal: 190, tax_amount: 10, discount_amount: 0,
+    grand_total: 200, payment_method: 'UPI', created_at: '2026-10-08T11:32:00.000Z', items: [], ...extra,
+  });
+
+  it('never shows another party\'s bill because a session was taken over by the guest\'s handle', async () => {
+    // The incident: a later scan rewrote an old, unclosed session to @asha. Harshit's settled bill
+    // sits in that session, with no wallet entry of Asha's and no owner stamp.
+    const db = seed();
+    db.tables.dine_in_sessions.push({ id: 'sess-taken', business_id: VENUE_A, guest_handle: '@asha', status: 'bill_requested' });
+    db.tables.orders.push(bill(HARSHIT_BILL, { session_id: 'sess-taken', customer_name: 'Harshit' }));
+    const res = await queryGuestInvoices(db, ['@asha'], f());
+    expect(res.invoices.some((i) => i.id === HARSHIT_BILL)).toBe(false);
+    expect((await queryGuestInvoices(db, ['@asha'], f({ orderId: HARSHIT_BILL }))).invoices).toEqual([]);
+  });
+
+  it('shows a bill settled to the guest even when it earned no cashback, and a bill they redeemed on', async () => {
+    const db = seed();
+    db.tables.orders.push(bill(NO_CASHBACK, { session_id: null, guest_handle: '@asha' }));
+    db.tables.orders.push(bill(REDEEMED, { session_id: null, created_at: '2026-10-05T10:00:00.000Z' }));
+    db.tables.wallet_transactions.push({ id: 't9', wallet_id: W_A, order_id: REDEEMED, transaction_type: 'REDEMPTION', amount: 20, balance_after: 0, created_at: '2026-10-05T10:05:00.000Z' });
+    const ids = (await queryGuestInvoices(db, ['@asha'], f())).invoices.map((i) => i.id);
+    expect(ids).toContain(NO_CASHBACK);
+    expect(ids).toContain(REDEEMED);
+  });
+
+  it('does not show a bill settled to someone else, even inside the guest\'s own session', async () => {
+    const db = seed();
+    db.tables.orders.push(bill(SETTLED_TO_RAVI, { session_id: 'sess-asha-a', guest_handle: '@ravi' }));
+    const ids = (await queryGuestInvoices(db, ['@asha'], f())).invoices.map((i) => i.id);
+    expect(ids).not.toContain(SETTLED_TO_RAVI);
+  });
+
+  it('works before the owner column exists, and does not hide a real database error', async () => {
+    const stub = (error: any) => ({ from: () => ({ select: () => ({ limit: async () => ({ data: null, error }) }) }) });
+    expect(await hasBillOwnerColumn(stub({ code: '42703', message: 'column orders.guest_handle does not exist' }))).toBe(false);
+    expect(await hasBillOwnerColumn(stub(null))).toBe(true);
+    await expect(hasBillOwnerColumn(stub({ code: 'XX000', message: 'connection reset' }))).rejects.toMatchObject({ code: 'XX000' });
   });
 });
 

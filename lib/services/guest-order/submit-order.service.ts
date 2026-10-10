@@ -4,6 +4,7 @@ import { isValidUuid, buildTableOrFilter } from './order-utils';
 import { defaultGstRate } from '@/lib/utils/gst-rates';
 import { lookupExistingOrder } from './find-order.util';
 import { enabledStations, resolveItemStation } from '@/lib/services/kitchen/item-station';
+import { claimSessionGuest } from '@/lib/services/guest-session/session-guest.util';
 
 export async function submitGuestOrder(body: any, supabase: any) {
   const { business_id, cafe_id, table_number, guest_name, guest_phone, guest_handle, items: incomingItems = [] } = body;
@@ -185,18 +186,22 @@ export async function submitGuestOrder(body: any, supabase: any) {
     throw err;
   }
 
-  // Link the guest's wallet handle to the table's open dine-in session.
+  // Link the guest's wallet handle to this order's dine-in session, when it has none yet.
   // Settlement credits cashback to the session's guest_handle; the session is
   // usually created before the guest fills in their details, so without this
   // the credit fell back to their phone/name — a wallet key the guest app never
   // reads. Best-effort: the order itself is already committed.
+  // Only this order's own session, and never over an existing handle: this used to
+  // rewrite every open or bill_requested session at the table, including earlier
+  // parties' unclosed sessions, so their bills showed in this guest's account.
   if (guest_handle) {
     try {
-      await supabase.from('dine_in_sessions')
-        .update({ guest_handle })
-        .eq('business_id', resolvedBizId)
-        .in('status', ['open', 'bill_requested'])
-        .or(buildTableOrFilter(rawTableNumber));
+      await claimSessionGuest(supabase, {
+        guestHandle: guest_handle,
+        businessId: resolvedBizId,
+        sessionId: rpcResult?.session_id || null,
+        tableFilter: buildTableOrFilter(rawTableNumber),
+      });
     } catch (linkErr) {
       console.error('[GuestOrder] Could not link guest handle to session (cashback may land on phone/name):', linkErr);
     }
