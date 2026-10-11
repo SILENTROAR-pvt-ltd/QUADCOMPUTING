@@ -13,7 +13,8 @@ const MODEL_TEXT = {
   both: 'Food and stays: everything, from tables and kitchen to rooms and check-ins.',
 };
 
-function Chip({ label, on, onClick }: { label: string; on: boolean; onClick: () => void }) {
+/** A toggle chip, shared with the sign-up form so both look the same. */
+export function Chip({ label, on, onClick }: { label: string; on: boolean; onClick: () => void }) {
   return (
     <button type="button" aria-pressed={on} onClick={onClick}
       className={`inline-flex h-10 items-center gap-1.5 rounded-xl border px-3.5 text-sm font-medium transition-colors cursor-pointer ${on ? 'border-neutral-900 bg-neutral-900 text-white' : 'border-neutral-200 bg-white text-neutral-700 hover:border-neutral-400'}`}>

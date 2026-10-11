@@ -16,10 +16,10 @@
   background:
     radial-gradient(circle at 30% 24%, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0) 24%),
     radial-gradient(circle at 74% 28%, #ffc27a 0%, rgba(255, 194, 122, 0) 46%),
-    radial-gradient(circle at 22% 72%, #8f7cf6 0%, rgba(143, 124, 246, 0) 52%),
-    radial-gradient(circle at 78% 78%, #f0508a 0%, rgba(240, 80, 138, 0) 56%),
+    radial-gradient(circle at 22% 72%, #7c3aed 0%, rgba(124,58,237, 0) 52%),
+    radial-gradient(circle at 78% 78%, #ff2e88 0%, rgba(255,46,136, 0) 56%),
     radial-gradient(circle at 50% 50%, #ff8a6a 0%, #f2648f 70%);
-  box-shadow: inset -30px -40px 80px rgba(29, 20, 32, 0.35), 0 40px 90px -20px rgba(240, 80, 138, 0.45);
+  box-shadow: inset -30px -40px 80px rgba(76,29,149, 0.35), 0 40px 90px -20px rgba(255,46,136, 0.45);
   animation: turn 22s linear infinite;
 }
 .sheen {
@@ -29,7 +29,7 @@
 }
 .orbit { position: absolute; inset: 0; transform-style: preserve-3d; animation: tilt 16s ease-in-out infinite; }
 .ring {
-  position: absolute; inset: 2%; border-radius: 9999px; border: 1.5px solid rgba(28, 23, 20, 0.22);
+  position: absolute; inset: 2%; border-radius: 9999px; border: 1.5px solid rgba(42,18,80, 0.22);
   transform: rotateX(74deg) rotateY(-12deg);
 }
 .float { animation: bob 7s ease-in-out infinite; }

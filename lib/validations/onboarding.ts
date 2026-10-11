@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { normalizeVenueTypes } from '@/lib/venue/venue-model';
 
 export const businessLocationSchema = z.object({
   businessName: z.string().min(2, 'Business name is required'),
@@ -18,7 +19,10 @@ export const hostOnboardingSchema = z.object({
     error: 'Please select a gender option',
   }),
   dob: z.string().min(1, 'Date of birth is required'),
-  categories: z.array(z.string()).min(1, 'Select at least one category'),
+  // The same venue types the profile uses (cafe, hotel, homestay…): they decide the sidebar sections.
+  categories: z.array(z.string())
+    .transform((v) => normalizeVenueTypes(v))
+    .refine((v) => v.length > 0, 'Choose what you run: a café, a homestay, or both.'),
   businesses: z
     .array(businessLocationSchema)
     .min(1, 'At least one business location is required'),

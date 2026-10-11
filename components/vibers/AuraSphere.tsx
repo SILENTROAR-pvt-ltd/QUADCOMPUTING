@@ -11,7 +11,7 @@ const CHIPS = [
 export function AuraSphere() {
   return (
     <div aria-hidden="true" className={`relative mx-auto aspect-square w-full max-w-[460px] ${s.stage}`}>
-      <div className={`absolute inset-[18%] rounded-full bg-[#f0508a]/30 ${s.aura}`} />
+      <div className={`absolute inset-[18%] rounded-full bg-[#ff2e88]/30 ${s.aura}`} />
       <div className={s.orbit}>
         <div className={s.ring} />
       </div>
@@ -19,8 +19,8 @@ export function AuraSphere() {
       <div className={s.sheen} />
       {CHIPS.map((c) => (
         <span key={c.text}
-          className={`absolute ${c.pos} ${c.motion} whitespace-nowrap rounded-full border border-white/70 bg-white/70 px-4 py-2 text-[13px] font-semibold text-[#1c1714] shadow-[0_12px_30px_-12px_rgba(28,23,20,0.35)] backdrop-blur-md`}>
-          <span className={`${DISPLAY} mr-1.5 italic text-[#c2410c]`}>✦</span>{c.text}
+          className={`absolute ${c.pos} ${c.motion} whitespace-nowrap rounded-full border border-white/70 bg-white/70 px-4 py-2 text-[13px] font-semibold text-[#2a1250] shadow-[0_12px_30px_-12px_rgba(42,18,80,0.35)] backdrop-blur-md`}>
+          <span className={`${DISPLAY} mr-1.5 italic text-[#be185d]`}>✦</span>{c.text}
         </span>
       ))}
     </div>

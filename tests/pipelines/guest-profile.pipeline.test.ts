@@ -96,8 +96,9 @@ describe('What the browser sees', () => {
     const s = summarize(account({ traveller_type: 'backpacker', intro: 'Budget and beyond' }));
     expect(s).toEqual({
       handle: '@asha', display_name: 'Asha', phone_masked: '•••••01', avatar: '☕', avatar_url: null,
-      traveller_type: 'backpacker', intro: 'Budget and beyond',
+      traveller_type: 'backpacker', intro: 'Budget and beyond', has_pin: true,
     });
     expect(s).not.toHaveProperty('pin_hash');
+    expect(s).not.toHaveProperty('pin_salt');
   });
 });

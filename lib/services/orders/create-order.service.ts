@@ -3,6 +3,7 @@ import { resolveTableTarget } from './resolve-table-id.util';
 import { findActiveRoomStayOrder } from './room-stay-order.util';
 import { executeOrderMutation } from './order-mutation.service';
 import { deductRecipeInventoryForOrder } from './recipe-deduction.service';
+import { loadGstStatus, stripTax } from '@/lib/services/billing/gst-policy';
 
 export async function createHostOrder(supabase: any, businessId: string, body: any): Promise<any> {
   const { tableId, tableNumber } = await resolveTableTarget(supabase, businessId, body.tableId, body.tableNumber);
@@ -12,8 +13,13 @@ export async function createHostOrder(supabase: any, businessId: string, body: a
   const paymentMethod = normalizePaymentMethod(body.paymentMethod);
   const { masterOrderId, customerName, customerPhone } = await findActiveRoomStayOrder(supabase, roomId);
 
-  const grandTotal = Number(body.grandTotal ?? body.subtotal ?? 0);
+  let grandTotal = Number(body.grandTotal ?? body.subtotal ?? 0);
   const subtotal = Number(body.subtotal ?? grandTotal);
+  let taxAmount = Number(body.taxAmount) || 0;
+  // GST only for a verified GSTIN (gst-policy.ts): otherwise the bill is saved without it.
+  if (taxAmount > 0 && !(await loadGstStatus(supabase, businessId)).canCharge) {
+    ({ taxAmount, grandTotal } = stripTax({ taxAmount, grandTotal }));
+  }
 
   const orderPayload = {
     business_id: businessId,
@@ -22,7 +28,7 @@ export async function createHostOrder(supabase: any, businessId: string, body: a
     discount_type: body.discountType || null,
     discount_value: Number(body.discountValue) || 0,
     discount_amount: Number(body.discountAmount) || 0,
-    tax_amount: Number(body.taxAmount) || 0,
+    tax_amount: taxAmount,
     grand_total: grandTotal,
     total_amount: grandTotal,
     payment_method: paymentMethod,

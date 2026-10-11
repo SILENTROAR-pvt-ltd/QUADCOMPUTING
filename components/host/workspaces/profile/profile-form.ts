@@ -5,7 +5,7 @@ export interface ProfileForm {
   owner: { fullName: string; email: string; phone: string; dob: string; gender: string };
   venue: {
     businessName: string; legalName: string; registrationType: string; venueTypes: string[];
-    gstNumber: string; panNumber: string; fssaiNumber: string; contactPhone: string; contactEmail: string;
+    gstNumber: string; gstVerified: boolean; panNumber: string; fssaiNumber: string; contactPhone: string; contactEmail: string;
     checkinTime: string; checkoutTime: string;
   };
   location: { address: string; city: string; state: string; pincode: string };
@@ -31,7 +31,10 @@ export function fromServer(d: any): { form: ProfileForm; preselectedStay: boolea
       owner: { fullName: s(p.full_name), email: s(p.email), phone: s(p.phone), dob: s(p.dob).slice(0, 10), gender: s(p.gender) || 'prefer_not_to_say' },
       venue: {
         businessName: s(b.business_name || b.name || l.branch_name), legalName: s(b.legal_name), registrationType: s(b.registration_type),
-        venueTypes: types, gstNumber: s(b.gst_number), panNumber: s(b.pan_number), fssaiNumber: s(b.fssai_number),
+        venueTypes: types, gstNumber: s(b.gst_number),
+        // Confirmed only for the exact GSTIN on file; a changed number needs confirming again.
+        gstVerified: Boolean(b.gst_number) && s(b.gst_verified_number).toUpperCase() === s(b.gst_number).toUpperCase(),
+        panNumber: s(b.pan_number), fssaiNumber: s(b.fssai_number),
         contactPhone: s(b.contact_phone), contactEmail: s(b.email), checkinTime: s(b.checkin_time) || '12:00', checkoutTime: s(b.checkout_time) || '11:00',
       },
       location: { address: s(l.address), city: s(l.city), state: s(l.state), pincode: s(l.pincode) },

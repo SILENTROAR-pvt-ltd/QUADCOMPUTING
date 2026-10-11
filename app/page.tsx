@@ -29,8 +29,8 @@ export const metadata: Metadata = {
 
 export default function VibersConnectHome() {
   return (
-    <div className={`${BODY} relative min-h-screen bg-[#f7f2ea] text-[#1c1714] selection:bg-[#f0508a] selection:text-white`}>
-      <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-full focus:bg-[#1c1714] focus:px-4 focus:py-2 focus:text-sm focus:text-white">
+    <div className={`${BODY} relative min-h-screen bg-[#fff7f0] bg-[radial-gradient(60rem_40rem_at_0%_0%,rgba(255,106,61,0.14),transparent_70%),radial-gradient(50rem_40rem_at_100%_10%,rgba(124,58,237,0.12),transparent_70%)] text-[#2a1250] selection:bg-[#ff2e88] selection:text-white`}>
+      <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-full focus:bg-[#7c3aed] focus:px-4 focus:py-2 focus:text-sm focus:text-white">
         Skip to content
       </a>
       <div className="relative z-10">

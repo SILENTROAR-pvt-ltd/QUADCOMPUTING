@@ -40,6 +40,9 @@ export interface FieldBinding {
   value: (path: string) => string;
   set: (path: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
   err: (path: string) => string | null;
+  /** Yes/no fields (checkboxes). */
+  checked: (path: string) => boolean;
+  setChecked: (path: string, on: boolean) => void;
 }
 
 /** Wires inputs to the form by dotted path ("venue.gstNumber") and shows the server's error on its field. */
@@ -48,5 +51,7 @@ export function bindFields(form: any, update: (path: string, v: unknown) => void
     value: (path) => { const [g, k] = path.split('.'); return String(form?.[g]?.[k] ?? ''); },
     set: (path) => (e) => update(path, e.target.value),
     err: (path) => (error?.field === path ? error.text : null),
+    checked: (path) => { const [g, k] = path.split('.'); return form?.[g]?.[k] === true; },
+    setChecked: (path, on) => update(path, on),
   };
 }

@@ -13,11 +13,11 @@ const PHRASES = [
 export function VibeBand() {
   const row = [...PHRASES, ...PHRASES];
   return (
-    <div aria-hidden="true" className="overflow-hidden border-y border-[#1c1714]/10 bg-[#1c1714] py-5">
+    <div aria-hidden="true" className="overflow-hidden border-y border-[#2a1250]/10 bg-gradient-to-r from-[#ff6a3d] via-[#ff2e88] to-[#7c3aed] py-5">
       <div className="animate-marquee flex w-max gap-10 motion-reduce:animate-none">
         {row.map((p, i) => (
-          <span key={i} className={`${DISPLAY} flex items-center gap-10 whitespace-nowrap text-2xl italic text-[#f7f2ea] sm:text-3xl`}>
-            {p} <span className="not-italic text-[#ff7a59]">✦</span>
+          <span key={i} className={`${DISPLAY} flex items-center gap-10 whitespace-nowrap text-2xl italic text-white sm:text-3xl`}>
+            {p} <span className="not-italic text-[#ff6a3d]">✦</span>
           </span>
         ))}
       </div>

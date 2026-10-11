@@ -10,7 +10,7 @@ import {
   rateLimitResponse,
 } from '@/lib/middleware/rate-limiter';
 import { withApiErrorBoundary, handleApiError } from '@/lib/middleware/error-handler';
-import { accountForRequest } from '@/lib/services/guest-auth/guest-account.service';
+import { applyRequestIdentity } from '@/lib/services/guest-auth/request-identity';
 
 /**
  * GET /api/guest/order
@@ -75,13 +75,8 @@ export const POST = withApiErrorBoundary(async function POST(request: Request) {
     body.cafe_id = businessId;
     body.table_number = tableNumber;
 
-    // Identity from the guest's own session when signed in (see the session route).
-    const signedIn = await accountForRequest(supabase, request, businessId);
-    if (signedIn) {
-      body.guest_handle = signedIn.handle;
-      body.guest_name = signedIn.display_name;
-      body.guest_phone = signedIn.phone || undefined;
-    }
+    // Identity only from the guest's own sign-in session; a handle sent by the browser is dropped.
+    await applyRequestIdentity(supabase, request, businessId, body, { name: 'guest_name', phone: 'guest_phone' });
 
     const key = generateIdempotencyKey('guest_order', `${businessId}:${tableNumber}`, body);
 

@@ -27,8 +27,9 @@ export interface GuestAccount {
   photo_path: string | null;
   traveller_type: string | null;
   intro: string | null;
-  pin_hash: string;
-  pin_salt: string;
+  /** Null for records linked to a Vibers account: those sign in with the account password. */
+  pin_hash: string | null;
+  pin_salt: string | null;
   failed_attempts: number;
   locked_until: string | null;
 }
@@ -43,6 +44,8 @@ export interface GuestAccountSummary {
   avatar_url: string | null;
   traveller_type: string | null;
   intro: string | null;
+  /** True only for old @handle + PIN records; linked accounts use their account password instead. */
+  has_pin: boolean;
 }
 
 export type GuestAuthResult =
@@ -59,10 +62,11 @@ export function summarize(account: GuestAccount): GuestAccountSummary {
     avatar_url: account.photo_path ? avatarPublicUrl(account.photo_path) : null,
     traveller_type: isTravellerType(account.traveller_type) ? account.traveller_type : null,
     intro: normalizeIntro(account.intro),
+    has_pin: Boolean(account.pin_hash && account.pin_salt),
   };
 }
 
-const ACCOUNT_COLUMNS = 'id, business_id, handle, display_name, phone, avatar, photo_path, traveller_type, intro, pin_hash, pin_salt, failed_attempts, locked_until';
+export const ACCOUNT_COLUMNS = 'id, business_id, handle, display_name, phone, avatar, photo_path, traveller_type, intro, pin_hash, pin_salt, failed_attempts, locked_until';
 
 async function findAccount(db: any, businessId: string, handle: string): Promise<GuestAccount | null> {
   const { data, error } = await db
@@ -75,7 +79,7 @@ async function findAccount(db: any, businessId: string, handle: string): Promise
   return data || null;
 }
 
-async function createSessionRow(db: any, accountId: string, businessId: string): Promise<string> {
+export async function createSessionRow(db: any, accountId: string, businessId: string): Promise<string> {
   const token = newSessionToken();
   const expires = new Date(Date.now() + GUEST_SESSION_TTL_DAYS * 24 * 60 * 60 * 1000).toISOString();
   const { error } = await db.from('guest_auth_sessions').insert({
@@ -194,7 +198,10 @@ export async function signIn(args: {
     };
   }
 
-  const valid = await verifyPin(args.pin, { hash: account.pin_hash, salt: account.pin_salt });
+  if (!account.pin_hash || !account.pin_salt) {
+    return { ok: false, status: 401, error: 'Sign in with your Vibers account email and password.' };
+  }
+  const valid = await verifyPin(args.pin as string, { hash: account.pin_hash, salt: account.pin_salt });
   if (!valid) {
     const next = nextFailureState(account.failed_attempts, now);
     await db.from('guest_accounts').update(next).eq('id', account.id);
@@ -319,7 +326,10 @@ export async function changeGuestPin(
   if (!isValidPin(input.newPin)) return { ok: false, status: 400, error: 'Your new PIN must be exactly 6 digits.' };
   if (input.currentPin === input.newPin) return { ok: false, status: 400, error: 'Choose a PIN different from your current one.' };
 
-  const valid = await verifyPin(input.currentPin, { hash: account.pin_hash, salt: account.pin_salt });
+  if (!account.pin_hash || !account.pin_salt) {
+    return { ok: false, status: 400, error: 'Your account has no PIN. You sign in with your account password.' };
+  }
+  const valid = await verifyPin(input.currentPin as string, { hash: account.pin_hash, salt: account.pin_salt });
   if (!valid) {
     await db.from('guest_accounts').update(nextFailureState(account.failed_attempts, now)).eq('id', account.id);
     return { ok: false, status: 401, error: 'Your current PIN is incorrect.' };
@@ -357,7 +367,8 @@ const RECOVERY_REFUSED = 'We could not verify these details on this phone. Use t
 export async function recoverGuestPin(db: any, input: PinRecoveryInput, now: Date = new Date()): Promise<PinChangeResult> {
   const handle = normalizeHandle(input.rawHandle);
   const account = handle ? await findAccount(db, input.businessId, handle) : null;
-  if (!account) return { ok: false, status: 401, error: RECOVERY_REFUSED };
+  // Linked accounts have no PIN to recover; their password is reset through the account instead.
+  if (!account || !account.pin_hash) return { ok: false, status: 401, error: RECOVERY_REFUSED };
 
   const lock = pinLockState(account.locked_until, now);
   if (lock.locked) {

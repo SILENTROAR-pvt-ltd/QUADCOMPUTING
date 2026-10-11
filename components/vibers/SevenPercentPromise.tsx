@@ -11,9 +11,9 @@ const POINTS = [
 
 export function SevenPercentPromise() {
   return (
-    <section id="promise" aria-labelledby="promise-title" className={`${SECTION} overflow-hidden bg-[#1d1420] text-[#f7f2ea]`}>
-      <div aria-hidden="true" className={`absolute -left-24 top-1/3 h-96 w-96 rounded-full bg-[#ff7a59] ${s.aura}`} />
-      <div aria-hidden="true" className={`absolute -right-24 bottom-0 h-96 w-96 rounded-full bg-[#8f7cf6] ${s.auraSlow}`} />
+    <section id="promise" aria-labelledby="promise-title" className={`${SECTION} overflow-hidden bg-gradient-to-br from-[#5b21b6] via-[#7c3aed] to-[#db2777] text-white`}>
+      <div aria-hidden="true" className={`absolute -left-24 top-1/3 h-96 w-96 rounded-full bg-[#ff6a3d] ${s.aura}`} />
+      <div aria-hidden="true" className={`absolute -right-24 bottom-0 h-96 w-96 rounded-full bg-[#7c3aed] ${s.auraSlow}`} />
 
       <div className={`${CONTAINER} ${s.reveal} relative grid items-center gap-12 lg:grid-cols-[0.9fr_1.1fr]`}>
         <div>
@@ -21,7 +21,7 @@ export function SevenPercentPromise() {
           <h2 id="promise-title" className={`${DISPLAY} mt-4 text-[2.6rem] leading-[1.02] tracking-[-0.02em] sm:text-[3.6rem]`}>
             The <em className="font-normal">7%</em> promise.
           </h2>
-          <p className="mt-5 max-w-md text-[17px] leading-relaxed text-[#f7f2ea]/70">
+          <p className="mt-5 max-w-md text-[17px] leading-relaxed text-white/70">
             We believe in long-term relationships, not short-term profits.
           </p>
           <p aria-hidden="true" className={`${DISPLAY} mt-6 text-[9rem] leading-none tracking-[-0.05em] sm:text-[12rem] ${AURA_TEXT}`}>7%</p>
@@ -35,7 +35,7 @@ export function SevenPercentPromise() {
               </span>
               <div>
                 <h3 className={`${DISPLAY} text-2xl`}>{p.title}</h3>
-                <p className="mt-2 text-[14px] leading-relaxed text-[#f7f2ea]/70">{p.text}</p>
+                <p className="mt-2 text-[14px] leading-relaxed text-white/70">{p.text}</p>
               </div>
             </li>
           ))}

@@ -20,6 +20,8 @@ interface ActiveBillViewProps {
   cashbackCredited?: number;
   /** The wallet redeem option, shown while the bill is open. */
   redeemSlot?: React.ReactNode;
+  /** GST on the open order, as the venue charges it. Zero when the venue has no verified GSTIN. */
+  taxAmount?: number;
 }
 
 export const ActiveBillView: React.FC<ActiveBillViewProps> = ({
@@ -34,6 +36,7 @@ export const ActiveBillView: React.FC<ActiveBillViewProps> = ({
   settledTotal = 0,
   cashbackCredited = 0,
   redeemSlot,
+  taxAmount = 0,
 }) => {
   if (billSettled && Number(settledTotal || 0) > 0) {
     const cashbackEarned = Number(cashbackCredited || 0);
@@ -79,6 +82,8 @@ export const ActiveBillView: React.FC<ActiveBillViewProps> = ({
   // Calculate clean, bulletproof subtotal directly from normalized items
   const computedSubtotal = normalizedItems.reduce((acc, it) => acc + it.lineTotal, 0);
   const displayTotal = Number(runningTotal) > 0 ? Number(runningTotal) : computedSubtotal;
+  const gst = Math.max(0, Number(taxAmount) || 0);
+  const payable = Math.round(displayTotal + gst);
 
   return (
     <div className="max-w-xl mx-auto space-y-6 pt-2">
@@ -118,9 +123,9 @@ export const ActiveBillView: React.FC<ActiveBillViewProps> = ({
           </div>
           <div className="text-right">
             <span className="text-xl sm:text-2xl font-mono font-bold text-zinc-950">
-              ₹{displayTotal.toFixed(0)}
+              ₹{payable.toFixed(0)}
             </span>
-            <p className="text-[10px] text-zinc-400 font-mono">Running Subtotal</p>
+            <p className="text-[10px] text-zinc-400 font-mono">{gst > 0 ? 'Running total incl. GST' : 'Running total'}</p>
           </div>
         </div>
 
@@ -167,13 +172,14 @@ export const ActiveBillView: React.FC<ActiveBillViewProps> = ({
               <span className="font-mono text-zinc-900">₹{displayTotal.toFixed(0)}</span>
             </div>
             <div className="flex justify-between text-zinc-500 font-medium">
-              <span>Taxes & GST</span>
-              <span className="font-mono text-zinc-500">₹0 (Inclusive)</span>
+              <span>GST</span>
+              <span className={`font-mono ${gst > 0 ? 'text-zinc-900' : 'text-zinc-500'}`}>{gst > 0 ? `₹${gst.toFixed(2)}` : 'Not charged'}</span>
             </div>
             <div className="flex justify-between text-sm font-bold text-zinc-950 pt-2 border-t border-zinc-100">
               <span>Total Payable</span>
-              <span className="font-mono text-base">₹{displayTotal.toFixed(0)}</span>
+              <span className="font-mono text-base">₹{payable.toFixed(0)}</span>
             </div>
+            <p className="text-[10px] text-zinc-400">Discounts and wallet credit are applied on your final bill.</p>
           </div>
         )}
 

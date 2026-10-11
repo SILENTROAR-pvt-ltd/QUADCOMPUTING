@@ -19,15 +19,19 @@ export const STAY_TYPES = [
 
 export type BusinessModel = 'food' | 'stay' | 'both';
 
-// Earlier versions stored these names.
-const LEGACY: Record<string, string> = { dorm: 'hostel', estate: 'villa' };
+// Earlier versions stored these names. The old sign-up form saved "Cafe", "Restaurant", "Hotel",
+// "Rooms" and "Lounge"; matching is case-insensitive, so those venues get the right sections too.
+const LEGACY: Record<string, string> = { dorm: 'hostel', estate: 'villa', rooms: 'hotel', lounge: 'bar' };
 const FOOD_IDS = new Set<string>(FOOD_TYPES.map((t) => t.id));
 const STAY_IDS = new Set<string>(STAY_TYPES.map((t) => t.id));
 
 /** Known venue types only, legacy names mapped, no duplicates. */
 export function normalizeVenueTypes(raw: unknown): string[] {
   const list = Array.isArray(raw) ? raw : [];
-  const out = list.map((v) => LEGACY[String(v)] || String(v)).filter((v) => FOOD_IDS.has(v) || STAY_IDS.has(v));
+  const out = list
+    .map((v) => String(v).trim().toLowerCase())
+    .map((v) => LEGACY[v] || v)
+    .filter((v) => FOOD_IDS.has(v) || STAY_IDS.has(v));
   return Array.from(new Set(out));
 }
 

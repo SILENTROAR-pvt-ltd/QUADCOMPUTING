@@ -4,6 +4,20 @@ import { businessModel } from '@/lib/venue/venue-model';
 import { REGISTRATION_TYPES } from '@/lib/services/profile/profile-rules';
 import { Field, Section, input, type FieldBinding } from './ProfileFields';
 
+/** The host confirms the GSTIN is theirs and active. Only then may bills carry GST (gst-policy.ts). */
+function GstConfirm({ f }: { f: FieldBinding }) {
+  const on = f.checked('venue.gstVerified');
+  return (
+    <label className={`mt-2 flex cursor-pointer items-start gap-2.5 rounded-xl border px-3 py-2.5 text-xs ${on ? 'border-emerald-200 bg-emerald-50 text-emerald-900' : 'border-amber-200 bg-amber-50 text-amber-900'}`}>
+      <input type="checkbox" checked={on} onChange={(e) => f.setChecked('venue.gstVerified', e.target.checked)} className="mt-0.5 h-4 w-4 shrink-0 accent-neutral-900" />
+      <span>
+        <span className="block font-semibold">{on ? 'GSTIN confirmed: GST can be added to bills' : 'Confirm to charge GST'}</span>
+        I confirm this GSTIN is registered to this business and is active. Until confirmed, bills carry no GST.
+      </span>
+    </label>
+  );
+}
+
 /** The venue's name, legal registration, tax numbers, contact and (for stays) check-in times. */
 export function BusinessSection({ f, types }: { f: FieldBinding; types: string[] }) {
   // GSTIN and PAN display in capitals here and are stored upper-case by the server.
@@ -24,9 +38,13 @@ export function BusinessSection({ f, types }: { f: FieldBinding; types: string[]
             {REGISTRATION_TYPES.map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
           </select>
         </Field>
-        <Field label="GSTIN" hint="Leave blank if not registered for GST." error={f.err('venue.gstNumber')}>
-          <input value={f.value('venue.gstNumber')} onChange={f.set('venue.gstNumber')} maxLength={15} className={`${input} uppercase`} placeholder="02AABCB1234C1Z5" aria-invalid={Boolean(f.err('venue.gstNumber'))} />
-        </Field>
+        <div>
+          <Field label="GSTIN" hint="Leave blank if not registered for GST." error={f.err('venue.gstNumber')}>
+            <input value={f.value('venue.gstNumber')} maxLength={15} className={`${input} uppercase`} placeholder="02AABCB1234C1Z5" aria-invalid={Boolean(f.err('venue.gstNumber'))}
+              onChange={(e) => { f.set('venue.gstNumber')(e); if (f.checked('venue.gstVerified')) f.setChecked('venue.gstVerified', false); }} />
+          </Field>
+          {f.value('venue.gstNumber').trim() && <GstConfirm f={f} />}
+        </div>
         <Field label="PAN" error={f.err('venue.panNumber')}>
           <input value={f.value('venue.panNumber')} onChange={f.set('venue.panNumber')} maxLength={10} className={`${input} uppercase`} placeholder="ABCDE1234F" aria-invalid={Boolean(f.err('venue.panNumber'))} />
         </Field>

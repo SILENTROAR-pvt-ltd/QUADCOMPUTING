@@ -5,6 +5,7 @@ import { defaultGstRate } from '@/lib/utils/gst-rates';
 import { lookupExistingOrder } from './find-order.util';
 import { enabledStations, resolveItemStation } from '@/lib/services/kitchen/item-station';
 import { claimSessionGuest } from '@/lib/services/guest-session/session-guest.util';
+import { loadGstStatus, stripTax } from '@/lib/services/billing/gst-policy';
 
 export async function submitGuestOrder(body: any, supabase: any) {
   const { business_id, cafe_id, table_number, guest_name, guest_phone, guest_handle, items: incomingItems = [] } = body;
@@ -138,7 +139,10 @@ export async function submitGuestOrder(body: any, supabase: any) {
 
   const cumulativeRawItems = [...previousRawItems, ...newItemsFormatted];
   const aggregatedForBill = aggregateOrderItems(cumulativeRawItems);
-  const totals = calculateOrderTotals(cumulativeRawItems);
+  // GST only when the venue has a verified GSTIN (gst-policy.ts); otherwise the bill carries no tax.
+  const computedTotals = calculateOrderTotals(cumulativeRawItems);
+  const gst = await loadGstStatus(supabase, resolvedBizId);
+  const totals = gst.canCharge ? computedTotals : { ...computedTotals, ...stripTax(computedTotals) };
   const customerName = guest_name || (guest_handle ? `Guest (${guest_handle})` : existingActiveOrder?.customer_name || 'Guest');
   const customerPhone = guest_phone || existingActiveOrder?.customer_phone || null;
   const ticketNumber = isAddonOrder

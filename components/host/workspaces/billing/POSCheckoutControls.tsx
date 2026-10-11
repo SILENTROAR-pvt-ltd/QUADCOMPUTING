@@ -28,6 +28,8 @@ interface Props {
   setDiscountInputValue: (val: string) => void;
   gstEnabled: boolean;
   setGstEnabled: (enabled: boolean) => void;
+  gstAllowed?: boolean;
+  gstReason?: string | null;
   redemptionCode?: string | null;
   setRedemptionCode?: (code: string | null) => void;
   verifiedRedemption?: any;
@@ -37,7 +39,7 @@ interface Props {
 export function POSCheckoutControls({
   cafeId, activeItems = [], cartItems = [], onAddItemToCart, onAddCustomItem, addItem,
   setCustomAmount, discountType, setDiscountType, discountInputValue, setDiscountInputValue,
-  gstEnabled, setGstEnabled, redemptionCode, setRedemptionCode, verifiedRedemption, setVerifiedRedemption,
+  gstEnabled, setGstEnabled, gstAllowed = false, gstReason = null, redemptionCode, setRedemptionCode, verifiedRedemption, setVerifiedRedemption,
 }: Props) {
   return (
     <div className="rounded-2xl sm:rounded-3xl border border-zinc-200 bg-white p-4 sm:p-7 shadow-sm space-y-7">
@@ -52,7 +54,7 @@ export function POSCheckoutControls({
       <POSDiscountTaxControls
         discountType={discountType} setDiscountType={setDiscountType}
         discountInputValue={discountInputValue} setDiscountInputValue={setDiscountInputValue}
-        gstEnabled={gstEnabled} setGstEnabled={setGstEnabled}
+        gstEnabled={gstEnabled} setGstEnabled={setGstEnabled} gstAllowed={gstAllowed} gstReason={gstReason}
       />
       {setRedemptionCode && (
         <POSWalletRedeemCard

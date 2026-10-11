@@ -23,6 +23,12 @@ describe('Venue type decides the sidebar', () => {
     expect(modulesFor('stay')).not.toContain('kitchen');
     expect(normalizeVenueTypes(['dorm', 'estate', 'spaceship', 'cafe', 'cafe'])).toEqual(['hostel', 'villa', 'cafe']);
   });
+
+  it('reads venues created with the old sign-up names, so their sidebar is right from day one', () => {
+    expect(normalizeVenueTypes(['Cafe', 'Restaurant', 'Hotel', 'Rooms', 'Lounge'])).toEqual(['cafe', 'restaurant', 'hotel', 'bar']);
+    expect(businessModel(['Hotel'])).toBe('stay');
+    expect(businessModel(['Cafe', 'Rooms'])).toBe('both');
+  });
 });
 
 describe('PINs', () => {

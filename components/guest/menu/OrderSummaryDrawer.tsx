@@ -231,8 +231,8 @@ export function OrderSummaryDrawer({
                 <span className="font-mono font-medium">₹{effectiveSubtotal}</span>
               </div>
               <div className="flex justify-between">
-                <span>Taxes & GST (5%)</span>
-                <span className="font-mono font-medium">₹{effectiveTax}</span>
+                <span>GST</span>
+                <span className="font-mono font-medium">{effectiveTax > 0 ? `₹${effectiveTax}` : 'On your bill, if the venue is GST-registered'}</span>
               </div>
               <div className="flex justify-between text-sm font-bold text-zinc-900 pt-2 border-t border-zinc-200">
                 <span>Grand Total</span>

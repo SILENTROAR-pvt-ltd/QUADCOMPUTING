@@ -231,7 +231,7 @@ export const CartReviewModal: React.FC<CartReviewModalProps> = ({
                   <span className="font-sans font-bold">₹{subtotalLabel}</span>
                 </div>
                 <p className="text-[11px] text-neutral-500 font-light pt-0.5 leading-relaxed">
-                  Taxes (GST at 5% on food, 18% on services) are added on the final bill.
+                  If the venue is GST-registered, GST (5% on food, 18% on services) is added to your bill.
                 </p>
               </div>
 

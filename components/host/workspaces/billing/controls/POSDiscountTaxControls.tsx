@@ -9,6 +9,9 @@ interface Props {
   setDiscountInputValue: (val: string) => void;
   gstEnabled: boolean;
   setGstEnabled: (enabled: boolean) => void;
+  /** False until the venue has a verified GSTIN in My profile; the switch is locked off. */
+  gstAllowed: boolean;
+  gstReason: string | null;
 }
 
 export function POSDiscountTaxControls({
@@ -18,6 +21,8 @@ export function POSDiscountTaxControls({
   setDiscountInputValue,
   gstEnabled,
   setGstEnabled,
+  gstAllowed,
+  gstReason,
 }: Props) {
   return (
     <div className="grid gap-5 sm:grid-cols-2 pt-1">
@@ -72,12 +77,19 @@ export function POSDiscountTaxControls({
         <div className="flex items-center justify-between rounded-xl border border-zinc-200 bg-zinc-50 p-2.5">
           <div>
             <p className="font-medium text-xs text-black">Apply GST</p>
-            <p className="text-[10px] text-zinc-400">5% food · 18% services, after discount</p>
+            <p className="text-[10px] text-zinc-400">
+              {gstAllowed ? '5% food · 18% services, after discount' : gstReason || 'Checking your GST setup…'}
+            </p>
           </div>
           <button
             type="button"
+            role="switch"
+            aria-checked={gstEnabled}
+            aria-label="Apply GST"
+            disabled={!gstAllowed}
+            title={gstAllowed ? undefined : gstReason || undefined}
             onClick={() => setGstEnabled(!gstEnabled)}
-            className={`relative h-5 w-10 rounded-full transition-colors cursor-pointer ${
+            className={`relative h-5 w-10 shrink-0 rounded-full transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 ${
               gstEnabled ? 'bg-black' : 'bg-zinc-300'
             }`}
           >

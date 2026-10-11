@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import type { ProfileInput } from './profile-input';
 
-// Columns added by migration 20261010000010; without it they are left out and the rest still saves.
-const NEW_COLUMNS = ['legal_name', 'registration_type', 'pan_number', 'fssai_number', 'contact_phone', 'checkin_time', 'checkout_time'];
+// Columns added by migrations 20261010000010 and 20261010000018; without them they are left out and the rest still saves.
+const NEW_COLUMNS = ['legal_name', 'registration_type', 'pan_number', 'fssai_number', 'contact_phone', 'checkin_time', 'checkout_time', 'gst_verified_number', 'gst_verified_at'];
 const missingColumn = (e: any) => e && ['42703', 'PGRST204'].includes(e.code);
 
 type Saved = { ok: true; needsUpdate: boolean } | { ok: false; status: number; error: string };

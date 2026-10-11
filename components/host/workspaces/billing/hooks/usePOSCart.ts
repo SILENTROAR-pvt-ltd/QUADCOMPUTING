@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import type { CatalogItem } from '@/types';
 import type { CatalogItemPayload } from '../controls/POSCatalogGrid';
 import { FOOD_GST_RATE, SERVICE_GST_RATE, defaultGstRate, formatGstRates } from '@/lib/utils/gst-rates';
+import { useGstStatus } from './useGstStatus';
 
 export interface CartItem {
   id: string;
@@ -18,7 +19,11 @@ export interface CartItem {
 export function usePOSCart(activeItems: CatalogItem[] = []) {
   const [selectedItems, setSelectedItems] = useState<CartItem[]>([]);
   const [customAmount, setCustomAmount] = useState('');
-  const [gstEnabled, setGstEnabled] = useState(true);
+  // GST is available only to a venue with a verified GSTIN; it starts on for those, off for everyone else.
+  const gst = useGstStatus();
+  const [gstChosen, setGstChosen] = useState(true);
+  const gstEnabled = gst.canCharge && gstChosen;
+  const setGstEnabled = useCallback((on: boolean) => setGstChosen(on), []);
 
   const [discountType, setDiscountType] = useState<'percentage' | 'flat'>('percentage');
   const [discountInputValue, setDiscountInputValue] = useState('');
@@ -127,7 +132,7 @@ export function usePOSCart(activeItems: CatalogItem[] = []) {
     return () => {
       window.removeEventListener('quad:preload-invoice' as any, handlePreloadEvent);
     };
-  }, []);
+  }, [setGstEnabled]); // stable (useCallback with no deps), so this still runs once
 
   const customNum = parseFloat(customAmount) || 0;
   const itemsSubtotal = selectedItems.reduce((acc, curr) => acc + curr.price * curr.qty, 0);
@@ -253,6 +258,8 @@ export function usePOSCart(activeItems: CatalogItem[] = []) {
     setCustomAmount,
     gstEnabled,
     setGstEnabled,
+    gstAllowed: gst.canCharge,
+    gstReason: gst.loaded ? gst.reason : null,
     discountType,
     setDiscountType,
     discountInputValue,

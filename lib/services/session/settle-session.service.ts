@@ -1,6 +1,7 @@
 import { normalizeTable, buildTableOrFilter } from './session-entry.util';
 import { broadcastToGuestTable } from '@/lib/realtime/channels';
 import { assertRedemptionSettleable } from '@/lib/services/wallet/redemption.service';
+import { loadGstStatus, stripTax } from '@/lib/services/billing/gst-policy';
 // Columns that exist on the deployed dine_in_sessions. It has no guest_name:
 // selecting it made every session lookup here fail, so the guest's handle was
 // never found and cashback was credited under their phone/name instead of the
@@ -119,7 +120,7 @@ export async function settleAndVacateSession(body: any, supabase: any) {
   }
 
   const finalOrderId: string | null = resolvedOrder?.id || (IS_UUID(order_id) ? order_id : null);
-  const settledTotal = Number(
+  let settledTotal = Number(
     body?.grand_total || body?.subtotal || resolvedOrder?.grand_total || resolvedOrder?.total_amount || resolvedOrder?.subtotal || 0
   );
   // Precedence here MUST mirror how the guest reads their own wallet in
@@ -163,6 +164,14 @@ export async function settleAndVacateSession(body: any, supabase: any) {
     discount_type: body?.discount_type || 'flat',
     discount_value: Number(body?.discount_value) || 0,
   };
+
+  // GST only for a verified GSTIN (gst-policy.ts). A bill sent with GST by a venue that may not charge
+  // it is settled without it: the total drops by exactly that tax.
+  const gst = await loadGstStatus(supabase, businessId);
+  if (!gst.canCharge && billing.tax_amount > 0) {
+    settledTotal = stripTax({ taxAmount: billing.tax_amount, grandTotal: settledTotal }).grandTotal;
+    billing.tax_amount = 0;
+  }
 
   // ── Atomic settlement: billing fields, order status, session close, table vacate,
   // redemption and 7% cashback all happen inside one Postgres transaction. Any failure

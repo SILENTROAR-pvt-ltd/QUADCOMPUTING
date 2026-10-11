@@ -223,7 +223,9 @@ export function GuestProfileSheet({ isOpen, venueId, account, onClose, onSaved }
           onIntro={setIntro}
         />
 
-        {/* Security: change PIN. Its own action, so it never saves the profile fields. */}
+        {/* Security: change PIN. Its own action, so it never saves the profile fields. Only old @handle +
+            PIN accounts have one; a Vibers account signs in with its email and password. */}
+        {account.has_pin && (
         <section aria-label="Security" className="rounded-2xl border border-zinc-200 p-4">
           <div className="flex items-center justify-between gap-3">
             <div>
@@ -254,6 +256,7 @@ export function GuestProfileSheet({ isOpen, venueId, account, onClose, onSaved }
             <p role="status" className={`mt-3 text-xs font-medium ${pinMsg.ok ? 'text-emerald-700' : 'text-rose-600'}`}>{pinMsg.text}</p>
           )}
         </section>
+        )}
 
         {error && <p role="alert" className="text-xs text-rose-600 font-medium">{error}</p>}
 

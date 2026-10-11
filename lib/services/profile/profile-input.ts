@@ -46,6 +46,8 @@ export function parseProfile(b: any): Parsed<ProfileInput> {
     return { ok: false, error: 'Enter both the account number and IFSC, or neither.', field: 'banking.ifsc' };
   }
   const dob = /^\d{4}-\d{2}-\d{2}$/.test(String(o.dob || '')) ? String(o.dob) : null;
+  // GST is charged only on a GSTIN the host confirmed; the confirmation is tied to this exact number.
+  const gstConfirmed = Boolean(vals['venue.gstNumber']) && v.gstVerified === true;
   const stays = hasStays(businessModel(venueTypes));
 
   return {
@@ -55,7 +57,9 @@ export function parseProfile(b: any): Parsed<ProfileInput> {
         gender: ['male', 'female', 'other'].includes(o.gender) ? o.gender : 'prefer_not_to_say' },
       venue: {
         business_name: businessName, name: businessName, legal_name: text(v.legalName, 120) || null, registration_type: reg || null,
-        categories: venueTypes, gst_number: vals['venue.gstNumber'], pan_number: vals['venue.panNumber'], fssai_number: vals['venue.fssaiNumber'],
+        categories: venueTypes, gst_number: vals['venue.gstNumber'],
+        gst_verified_number: gstConfirmed ? vals['venue.gstNumber'] : null, gst_verified_at: gstConfirmed ? new Date().toISOString() : null,
+        pan_number: vals['venue.panNumber'], fssai_number: vals['venue.fssaiNumber'],
         contact_phone: vals['venue.contactPhone'], email: vals['venue.contactEmail'],
         checkin_time: stays ? vals['venue.checkinTime'] : null, checkout_time: stays ? vals['venue.checkoutTime'] : null,
         bank_name: text(k.bankName, 80) || null, bank_account_number: vals['banking.accountNumber'], bank_ifsc_code: vals['banking.ifsc'],

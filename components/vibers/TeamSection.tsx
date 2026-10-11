@@ -16,7 +16,7 @@ export function TeamSection() {
         <div className="grid items-end gap-8 lg:grid-cols-[1fr_1fr]">
           <div>
             <p className={KICKER}>The visionaries · Est. 2026</p>
-            <h2 id="team-title" className={`${DISPLAY} mt-4 text-[2.6rem] leading-[1.02] tracking-[-0.02em] text-[#1c1714] sm:text-[3.6rem]`}>
+            <h2 id="team-title" className={`${DISPLAY} mt-4 text-[2.6rem] leading-[1.02] tracking-[-0.02em] text-[#2a1250] sm:text-[3.6rem]`}>
               The people behind <em className={`font-normal ${AURA_TEXT}`}>the vibe.</em>
             </h2>
           </div>
@@ -29,22 +29,22 @@ export function TeamSection() {
         <ul className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {TEAM.map((m) => (
             <li key={m.name}
-              className={`rounded-[28px] p-7 ${m.backbone ? 'bg-[#1d1420] text-[#f7f2ea]' : 'border border-[#1c1714]/[0.08] bg-white/80 text-[#1c1714]'}`}>
+              className={`rounded-[28px] p-7 ${m.backbone ? 'bg-gradient-to-br from-[#5b21b6] via-[#7c3aed] to-[#db2777] text-white' : 'border border-[#2a1250]/[0.08] bg-white/80 text-[#2a1250]'}`}>
               <span aria-hidden="true"
-                className={`${DISPLAY} grid h-16 w-16 place-items-center rounded-full text-2xl italic text-white ${AURA} shadow-[0_14px_30px_-14px_rgba(240,80,138,0.8)]`}>
+                className={`${DISPLAY} grid h-16 w-16 place-items-center rounded-full text-2xl italic text-white ${AURA} shadow-[0_14px_30px_-14px_rgba(255,46,136,0.8)]`}>
                 {m.initials}
               </span>
               <h3 className={`${DISPLAY} mt-8 text-2xl`}>{m.name}</h3>
-              <p className={`mt-1 text-[13px] font-semibold ${m.backbone ? 'text-[#ffb59f]' : 'text-[#1c1714]/55'}`}>{m.role}</p>
+              <p className={`mt-1 text-[13px] font-semibold ${m.backbone ? 'text-[#ffb59f]' : 'text-[#2a1250]/55'}`}>{m.role}</p>
             </li>
           ))}
         </ul>
 
-        <figure className="mt-12 rounded-[32px] border border-[#1c1714]/[0.08] bg-white/60 p-8 sm:p-12">
-          <blockquote className={`${DISPLAY} text-2xl italic leading-snug text-[#1c1714] sm:text-[2.1rem]`}>
+        <figure className="mt-12 rounded-[32px] border border-[#2a1250]/[0.08] bg-white/60 p-8 sm:p-12">
+          <blockquote className={`${DISPLAY} text-2xl italic leading-snug text-[#2a1250] sm:text-[2.1rem]`}>
             &ldquo;We cater to the Vibers, empowering you to fly beyond limitations in a space tailored to your authentic energy.&rdquo;
           </blockquote>
-          <figcaption className="mt-5 text-[13px] font-semibold text-[#1c1714]/55">Vibers Connect Pvt. Ltd.</figcaption>
+          <figcaption className="mt-5 text-[13px] font-semibold text-[#2a1250]/55">Vibers Connect Pvt. Ltd.</figcaption>
         </figure>
       </div>
     </section>

@@ -1,6 +1,8 @@
 'use client';
 
 import { walletAuthHeaders } from '@/lib/utils/wallet-secret';
+import { createClient } from '@/lib/supabase/client';
+import { friendlyAuthError } from '@/lib/auth/auth-messages';
 
 export interface GuestAccountSummary {
   handle: string;
@@ -12,13 +14,15 @@ export interface GuestAccountSummary {
   avatar_url: string | null;
   traveller_type: string | null;
   intro: string | null;
+  /** True only for old @handle + PIN accounts. */
+  has_pin?: boolean;
 }
 
 export const GUEST_ACCOUNT_EVENT = 'guest-account:changed';
 
 type Outcome =
   | { ok: true; account: GuestAccountSummary }
-  | { ok: false; error: string; retryAfterSeconds?: number };
+  | { ok: false; error: string; retryAfterSeconds?: number; code?: string };
 
 async function post(url: string, body: unknown): Promise<Outcome> {
   try {
@@ -31,20 +35,60 @@ async function post(url: string, body: unknown): Promise<Outcome> {
     const data = await res.json().catch(() => ({}));
     if (res.ok && data?.success && data.account) return { ok: true, account: data.account };
     const retry = Number(res.headers.get('Retry-After') || 0) || undefined;
-    return { ok: false, error: data?.error || 'Something went wrong. Please try again.', retryAfterSeconds: retry };
+    return { ok: false, error: data?.error || 'Something went wrong. Please try again.', retryAfterSeconds: retry, code: data?.code };
   } catch {
     return { ok: false, error: 'Network problem. Check your connection and try again.' };
   }
 }
 
-export function signUpGuest(
-  venueId: string,
-  input: { name: string; phone: string; handle: string; pin: string; avatar?: string; traveller_type?: string | null; intro?: string }
-) {
-  return post('/api/guest/auth/signup', { venue_id: venueId, ...input });
+// ── One account for guests and hosts: the same Supabase email + password login as QC. ──
+
+/** Signs this browser in to the person's Vibers account (the same account hosts use for QC). */
+export async function signInVibers(email: string, password: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    const { error } = await createClient().auth.signInWithPassword({ email: email.trim(), password });
+    return error ? { ok: false, error: friendlyAuthError(error.message) } : { ok: true };
+  } catch (e: any) {
+    return { ok: false, error: friendlyAuthError(e?.message) };
+  }
 }
 
-/** Saves the signed-in guest's name, traveller type and intro. The server returns the saved account. */
+/** Creates the Vibers account. `confirmed` is false when the project asks for email confirmation first. */
+export async function signUpVibers(email: string, password: string): Promise<{ ok: true; confirmed: boolean } | { ok: false; error: string; exists?: boolean }> {
+  try {
+    const { data, error } = await createClient().auth.signUp({ email: email.trim(), password });
+    if (error) return { ok: false, error: friendlyAuthError(error.message), exists: /already|registered|exists/i.test(error.message) };
+    return { ok: true, confirmed: Boolean(data.session) };
+  } catch (e: any) {
+    return { ok: false, error: friendlyAuthError(e?.message) };
+  }
+}
+
+export type AfterSignIn =
+  | { kind: 'in'; account: GuestAccountSummary }
+  | { kind: 'profile' }
+  | { kind: 'error'; error: string };
+
+/** Once the browser holds a Vibers session: connect it to this venue, or ask for the profile first. */
+export async function connectAfterSignIn(venueId: string): Promise<AfterSignIn> {
+  const state = await fetchGuestAccountState(venueId);
+  if (state.status === 'in') {
+    applyGuestIdentity(state.account);
+    return { kind: 'in', account: state.account };
+  }
+  if (state.status === 'needs_profile') return { kind: 'profile' };
+  if (state.status === 'out' && state.notice) return { kind: 'error', error: state.notice };
+  return { kind: 'error', error: 'You are signed in, but this venue could not be reached. Please try again.' };
+}
+
+/** The signed-in person's Vibers profile (handle, name, phone), then their guest session at this venue. */
+export function createVibersProfile(
+  venueId: string,
+  input: { name: string; phone: string; handle: string; traveller_type?: string | null; intro?: string; legacy_pin?: string }
+) {
+  return post('/api/guest/auth/vibers-profile', { venue_id: venueId, ...input });
+}
+
 /**
  * Forgot PIN, self-service: the mobile number on the account, sent with this device's wallet secret.
  * The device must be the one that signed up. Success signs this device in with the new PIN.
@@ -117,6 +161,7 @@ export async function removeGuestPhoto(venueId: string): Promise<Outcome> {
   }
 }
 
+/** Saves the signed-in guest's name, traveller type and intro. The server returns the saved account. */
 export async function updateGuestProfile(
   venueId: string,
   input: { name?: string; traveller_type?: string | null; intro?: string; avatar?: string }
@@ -139,10 +184,6 @@ export async function updateGuestProfile(
   }
 }
 
-export function signInGuest(venueId: string, handle: string, pin: string) {
-  return post('/api/guest/auth/login', { venue_id: venueId, handle, pin });
-}
-
 /**
  * Who the server says is signed in. Only 'out' means signed out. 'unknown' means the check failed
  * (network, server error), and the device must keep what it knows: clearing identity on a failed
@@ -150,7 +191,9 @@ export function signInGuest(venueId: string, handle: string, pin: string) {
  */
 export type AccountState =
   | { status: 'in'; account: GuestAccountSummary }
-  | { status: 'out' }
+  /** Signed in to the Vibers account, but the profile (handle, name, phone) isn't made yet. */
+  | { status: 'needs_profile' }
+  | { status: 'out'; notice?: string | null }
   | { status: 'unknown' };
 
 export async function fetchGuestAccountState(venueId: string): Promise<AccountState> {
@@ -161,7 +204,8 @@ export async function fetchGuestAccountState(venueId: string): Promise<AccountSt
     const data = await res.json().catch(() => null);
     if (!data || typeof data.signedIn !== 'boolean') return { status: 'unknown' };
     if (data.signedIn && data.account) return { status: 'in', account: data.account };
-    return { status: 'out' };
+    if (data.needsProfile) return { status: 'needs_profile' };
+    return { status: 'out', notice: data.notice ?? null };
   } catch {
     return { status: 'unknown' };
   }
@@ -203,6 +247,9 @@ export function clearGuestIdentity() {
 export async function signOutGuest(): Promise<void> {
   try {
     await fetch('/api/guest/auth/logout', { method: 'POST', cache: 'no-store' });
+    // One account: signing out here also ends the Vibers account session on this browser, otherwise
+    // the next visit would sign the guest straight back in. 'local' keeps their other devices signed in.
+    await createClient().auth.signOut({ scope: 'local' }).catch(() => {});
   } finally {
     clearGuestIdentity();
     window.dispatchEvent(new CustomEvent(GUEST_ACCOUNT_EVENT, { detail: null }));

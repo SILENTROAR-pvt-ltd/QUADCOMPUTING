@@ -8,7 +8,7 @@ import {
 import { validateGuestAccess } from '@/lib/auth/guest-validate';
 import { withApiErrorBoundary } from '@/lib/middleware/error-handler';
 import { enforceRateLimit } from '@/lib/middleware/rate-limiter';
-import { accountForRequest } from '@/lib/services/guest-auth/guest-account.service';
+import { applyRequestIdentity } from '@/lib/services/guest-auth/request-identity';
 
 export const POST = withApiErrorBoundary(async function POST(request: Request) {
   try {
@@ -26,14 +26,9 @@ export const POST = withApiErrorBoundary(async function POST(request: Request) {
     body.table_number = tableNumber;
 
     const supabase = adminDb();
-    // A signed-in guest's identity comes from their session, never from the body,
-    // so cashback can only ever land in the wallet of the account that's signed in.
-    const signedIn = await accountForRequest(supabase, request, businessId);
-    if (signedIn) {
-      body.guest_handle = signedIn.handle;
-      body.guest_name = signedIn.display_name;
-      body.customer_phone = signedIn.phone || undefined;
-    }
+    // A guest's identity comes only from their sign-in session, never from the body, so cashback can
+    // only land in the signed-in account's wallet and an anonymous scan never shows anyone's wallet.
+    await applyRequestIdentity(supabase, request, businessId, body, { name: 'guest_name', phone: 'customer_phone' });
 
     const result = await initializeGuestSession(body, supabase);
     return NextResponse.json(result);

@@ -270,6 +270,7 @@ function GuestMenuContent() {
             billSettled={state.billSettled}
             settledTotal={state.settledTotal}
             cashbackCredited={state.cashbackCredited}
+            taxAmount={Number((state as any).masterOrder?.tax_amount) || 0}
             redeemSlot={<BillWalletRedeem cafeId={venueId} tableNumber={state.tableNumber} />}
           />
         )}

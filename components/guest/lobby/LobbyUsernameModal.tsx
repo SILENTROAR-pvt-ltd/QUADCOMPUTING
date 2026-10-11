@@ -12,7 +12,7 @@ interface LobbyUsernameModalProps {
 }
 
 /**
- * Joining the venue chat requires a guest account (handle + PIN). The sheet
+ * Joining the venue chat requires a Vibers account (email + password, then an @handle). The sheet
  * verifies the account on the server; the chat only ever shows that identity.
  */
 export function LobbyUsernameModal({ isOpen, currentUserTable, cafeId, onComplete, onSkip }: LobbyUsernameModalProps) {

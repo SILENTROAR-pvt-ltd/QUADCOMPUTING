@@ -3,7 +3,12 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { ArrowRight, Loader2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { friendlyAuthError } from '@/lib/auth/auth-messages';
+import { AuthShell } from '@/components/host/auth/AuthShell';
+import { PasswordInput } from '@/components/host/auth/PasswordInput';
+import { Field, input } from '@/components/host/workspaces/profile/ProfileFields';
 
 export default function HostAuthPage() {
   const router = useRouter();
@@ -18,85 +23,63 @@ export default function HostAuthPage() {
     setIsSubmitting(true);
     try {
       const supabase = createClient();
-      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+      const { error: signInError } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
       if (signInError) {
-        setError(signInError.message || 'Sign in failed. Check your email and password.');
+        setError(friendlyAuthError(signInError.message, 'Sign in failed. Check your email and password.'));
         return;
       }
       router.push('/host/control-center');
+    } catch (err: any) {
+      setError(friendlyAuthError(err?.message));
     } finally {
       setIsSubmitting(false);
     }
   }
 
   return (
-    <main className="light-shell flex min-h-screen flex-col items-center justify-center bg-white p-4 text-center text-black">
-      <div className="max-w-xl w-full">
-        <p className="mb-5 text-[10px] uppercase tracking-[0.3em] text-zinc-500">
-          Quad Computing
+    <AuthShell
+      aside={
+        <p className="text-sm text-neutral-600">
+          New here?{' '}
+          <Link href="/onboarding/host" className="font-semibold text-neutral-950 underline-offset-4 hover:underline">Create host profile</Link>
         </p>
-        <h1 className="font-serif text-3xl font-normal text-white md:text-4xl">
-          Host Authentication
-        </h1>
-        <p className="mt-6 text-sm leading-7 text-zinc-400">
-          Sign in to manage your enterprise portfolio, view analytics, and control your venues.
-        </p>
+      }
+    >
+      <div className="w-full max-w-md">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#8a6d3b]">Host sign in</p>
+        <h1 className="mt-3 font-serif text-4xl tracking-tight text-neutral-950">Welcome back</h1>
+        <p className="mt-2 text-sm text-neutral-500">Sign in to run service, manage your menu and see tonight&apos;s numbers.</p>
 
-        <form className="mt-10 space-y-4 text-left" onSubmit={handleSignIn}>
-          <div>
-            <label className="text-[10px] uppercase tracking-[0.2em] text-zinc-500" htmlFor="email">
-              Email
-            </label>
+        <form className="mt-8 space-y-5 rounded-3xl border border-neutral-200 bg-white p-6 shadow-[0_24px_60px_-40px_rgba(0,0,0,0.35)] sm:p-8" onSubmit={handleSignIn} noValidate>
+          <Field label="Email">
             <input
-              autoComplete="email"
-              className="mt-2 w-full rounded-xl border border-white/20 bg-transparent px-4 py-3 text-sm text-white outline-none focus:border-white/50"
-              id="email"
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              type="email"
-              value={email}
+              autoComplete="email" inputMode="email" required type="email" value={email}
+              onChange={(e) => setEmail(e.target.value)} placeholder="you@yourvenue.com"
+              className={input} aria-invalid={Boolean(error) || undefined}
             />
-          </div>
-          <div>
-            <label className="text-[10px] uppercase tracking-[0.2em] text-zinc-500" htmlFor="password">
-              Password
-            </label>
-            <input
-              autoComplete="current-password"
-              className="mt-2 w-full rounded-xl border border-white/20 bg-transparent px-4 py-3 text-sm text-white outline-none focus:border-white/50"
-              id="password"
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              type="password"
-              value={password}
+          </Field>
+          <Field label="Password">
+            <PasswordInput
+              autoComplete="current-password" required value={password}
+              onChange={(e) => setPassword(e.target.value)} placeholder="Your password"
+              aria-invalid={Boolean(error) || undefined}
             />
-          </div>
-          {error && <p className="text-xs text-rose-400">{error}</p>}
+          </Field>
 
-          <div className="mt-8 flex gap-4 justify-center">
-            <Link
-              className="inline-flex h-11 items-center justify-center border border-white/20 px-6 text-[10px] uppercase tracking-[0.2em] text-white transition-colors hover:border-white/50 hover:bg-zinc-900"
-              href="/quad-computing"
-            >
-              Back
-            </Link>
-            <button
-              className="inline-flex h-11 items-center justify-center bg-white px-6 text-[10px] uppercase tracking-[0.2em] text-black transition-colors hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-50"
-              disabled={isSubmitting}
-              type="submit"
-            >
-              {isSubmitting ? 'Signing In...' : 'Sign In'}
-            </button>
-          </div>
+          {error && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm text-rose-800">{error}</p>}
+
+          <button
+            type="submit" disabled={isSubmitting || !email || !password}
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-neutral-950 text-sm font-semibold text-white transition-colors hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
+          >
+            {isSubmitting ? <><Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" /> Signing in…</> : <>Sign in <ArrowRight aria-hidden="true" className="h-4 w-4" /></>}
+          </button>
         </form>
 
-        <p className="mt-8 text-sm text-zinc-400">
-          New host?{' '}
-          <Link className="text-white underline" href="/onboarding/host">
-            Create Host Profile
-          </Link>
+        <p className="mt-6 text-sm">
+          <Link href="/quad-computing" className="text-neutral-500 underline-offset-4 hover:text-neutral-950 hover:underline">← Back to Quad Computing</Link>
         </p>
       </div>
-    </main>
+    </AuthShell>
   );
 }
