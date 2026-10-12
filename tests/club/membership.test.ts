@@ -78,7 +78,7 @@ describe('Applying to Vibers Club (same login and @handle as QC)', () => {
 });
 
 describe('Reviewing applications', () => {
-  it('approval issues a unique Viber Pass and tells the member', async () => {
+  it('approval issues a unique Club Visa and tells the member', async () => {
     const m = member(USER, '@asha', { status: 'pending' });
     const d = db(seedMembers(m));
     const approved = await approveApplication(d, STAFF, USER);
@@ -98,9 +98,17 @@ describe('Reviewing applications', () => {
 });
 
 describe('What members see of each other', () => {
-  it('a masked member shows only their club name, never their Viber ID or real name', () => {
-    const p = member(USER, '@asha', { alias: 'Night Owl', alias_masked: true }).profile as any;
-    expect(toPublicMember(p, 'Asha Rao')).toMatchObject({ name: 'Night Owl', viber_id: null });
-    expect(toPublicMember({ ...p, alias_masked: false, alias: null }, 'Asha Rao')).toMatchObject({ name: 'Asha Rao', viber_id: '@asha' });
+  it('a masked member shows only their club name, never their handle or real name', () => {
+    const p = member(USER, '@asha', { alias: 'Night Owl', alias_masked: true, club_username: 'asha_goa' }).profile as any;
+    const shown = toPublicMember(p, 'Asha Rao');
+    expect(shown).toMatchObject({ name: 'Night Owl', handle: null });
+    expect(JSON.stringify(shown)).not.toContain('asha');
+  });
+
+  it('the public handle is the Club username when set, otherwise the Viber ID, without the @', () => {
+    const p = member(USER, '@asha', { club_username: 'asha_goa' }).profile as any;
+    expect(toPublicMember({ ...p, alias: null }, 'Asha Rao')).toMatchObject({ name: 'Asha Rao', handle: 'asha_goa' });
+    expect(toPublicMember({ ...p, club_username: null, alias: null }, 'Asha Rao')).toMatchObject({ handle: 'asha' });
+    expect(toPublicMember({ ...p, alias: null }, 'Asha Rao')).not.toHaveProperty('viber_id');
   });
 });

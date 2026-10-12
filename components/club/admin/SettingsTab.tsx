@@ -41,7 +41,7 @@ export function SettingsTab() {
             </label>
           ))}
           <label className="flex items-center gap-2 self-end text-sm">
-            <input type="checkbox" className="h-4 w-4 accent-[#7c3aed]" disabled={!superAdmin} checked={s.payout_requires_approval}
+            <input type="checkbox" className="h-4 w-4 accent-[#17301f]" disabled={!superAdmin} checked={s.payout_requires_approval}
               onChange={(e) => post('/admin/settings', { key: 'payout_requires_approval', value: e.target.checked }, 'Saved.')} />
             Staff approve verified-vendor payouts
           </label>
@@ -52,7 +52,7 @@ export function SettingsTab() {
         <div className="flex flex-wrap gap-2">
           {cats.map((c) => (
             <button key={c.slug} type="button" onClick={() => post('/admin/categories', { slug: c.slug, label: c.label, active: !c.active, sort: c.sort }, c.active ? 'Category retired.' : 'Category active.')}
-              className={`rounded-full border px-3 py-1 text-xs font-semibold ${c.active ? 'border-[#7c3aed] bg-[#7c3aed] text-white' : 'border-[#2a1250]/15 text-[#2a1250]/50 line-through'}`}>{c.label}</button>
+              className={`rounded-full border px-3 py-1 text-xs font-semibold ${c.active ? 'border-[#17301f] bg-[#c8da4a] text-[#14261b]' : 'border-[#14261b]/15 text-[#14261b]/60 line-through'}`}>{c.label}</button>
           ))}
         </div>
         <div className="flex gap-2"><input aria-label="New category" className={field} placeholder="e.g. Hostel" value={newCat} onChange={(e) => setNewCat(e.target.value)} />

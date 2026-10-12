@@ -8,7 +8,7 @@ import { Notice } from './ui';
 export interface Photo { path: string; url: string | null }
 
 /** Upload a gallery (plan covers or property photos). Keeps storage paths; shows previews. */
-export function PhotoUploader({ kind, photos, onChange, max = 8 }: { kind: 'events' | 'properties'; photos: Photo[]; onChange: (p: Photo[]) => void; max?: number }) {
+export function PhotoUploader({ kind, photos, onChange, max = 8 }: { kind: 'events' | 'meetups' | 'properties'; photos: Photo[]; onChange: (p: Photo[]) => void; max?: number }) {
   const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -31,16 +31,16 @@ export function PhotoUploader({ kind, photos, onChange, max = 8 }: { kind: 'even
     <div>
       <div className="flex flex-wrap gap-2">
         {photos.map((p, i) => (
-          <span key={p.path} className="relative h-20 w-28 overflow-hidden rounded-xl bg-[#f3ebff]">
+          <span key={p.path} className="relative h-20 w-28 overflow-hidden rounded-xl bg-[#14261b]/[0.05]">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             {p.url && <img src={p.url} alt={`Photo ${i + 1}`} className="h-full w-full object-cover" />}
             <button type="button" aria-label={`Remove photo ${i + 1}`} onClick={() => onChange(photos.filter((x) => x.path !== p.path))}
-              className="absolute right-1 top-1 grid h-6 w-6 place-items-center rounded-full bg-black/60 text-white"><X className="h-3.5 w-3.5" /></button>
+              className="absolute right-1 top-1 grid h-6 w-6 place-items-center rounded-full bg-black/60 text-[#14261b]"><X className="h-3.5 w-3.5" /></button>
           </span>
         ))}
         {photos.length < max && (
           <button type="button" onClick={() => input.current?.click()} disabled={busy}
-            className="grid h-20 w-28 place-items-center rounded-xl border border-dashed border-[#2a1250]/25 text-xs text-[#2a1250]/60 hover:bg-white">
+            className="grid h-20 w-28 place-items-center rounded-xl border border-dashed border-[#14261b]/25 text-xs text-[#14261b]/70 hover:bg-[#14261b]/[0.06]">
             <span className="flex flex-col items-center gap-1"><ImagePlus className="h-4 w-4" />{busy ? 'Uploading…' : 'Add photos'}</span>
           </button>
         )}

@@ -1,0 +1,6 @@
+/* Vibers Club pages sit on warm ivory. Paint the page behind them too, so overscroll and the area
+   under the phone's status bar match, without touching Quad Computing pages. */
+html:has(.club-theme),
+body:has(.club-theme) {
+  background: #f1efe6;
+}

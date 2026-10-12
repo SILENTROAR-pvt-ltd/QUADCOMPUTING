@@ -22,8 +22,8 @@ export function ApplicationsTab() {
           <Card key={a.user_id}>
             <div className="flex flex-wrap items-start justify-between gap-2">
               <div>
-                <p className="font-semibold">{a.display_name || '—'} <span className="font-normal text-[#2a1250]/55">{a.viber_id}</span></p>
-                <p className="text-xs text-[#2a1250]/55">Applied {shortDate(a.created_at)}{a.campaign_source ? ` · via ${a.campaign_source}` : ''}</p>
+                <p className="font-semibold">{a.display_name || '—'} <span className="font-normal text-[#14261b]/65">{a.viber_id}</span></p>
+                <p className="text-xs text-[#14261b]/65">Applied {shortDate(a.created_at)}{a.campaign_source ? ` · via ${a.campaign_source}` : ''}</p>
               </div>
               <div className="flex flex-wrap gap-1">
                 <Badge tone="aura">{GENERATION_LABEL[a.generation]}</Badge>
@@ -33,16 +33,16 @@ export function ApplicationsTab() {
               </div>
             </div>
             <dl className="mt-3 grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
-              <div><dt className="inline text-[#2a1250]/55">Phone </dt><dd className="inline">+{a.phone} ✓</dd></div>
-              <div><dt className="inline text-[#2a1250]/55">From </dt><dd className="inline">{a.city}, {a.state}, {a.country}</dd></div>
-              {a.account_type === 'business' && <div className="sm:col-span-2"><dt className="inline text-[#2a1250]/55">Business </dt><dd className="inline">{a.business_name} · {a.categories.join(', ')}</dd></div>}
-              {a.vibe_line && <div className="sm:col-span-2 italic text-[#2a1250]/75">“{a.vibe_line}”</div>}
-              {a.review_note && <div className="sm:col-span-2 text-[#2a1250]/60">Note: {a.review_note}</div>}
+              <div><dt className="inline text-[#14261b]/65">Phone </dt><dd className="inline">+{a.phone} ✓</dd></div>
+              <div><dt className="inline text-[#14261b]/65">From </dt><dd className="inline">{a.city}, {a.state}, {a.country}</dd></div>
+              {a.account_type === 'business' && <div className="sm:col-span-2"><dt className="inline text-[#14261b]/65">Business </dt><dd className="inline">{a.business_name} · {a.categories.join(', ')}</dd></div>}
+              {a.vibe_line && <div className="sm:col-span-2 italic text-[#14261b]/80">“{a.vibe_line}”</div>}
+              {a.review_note && <div className="sm:col-span-2 text-[#14261b]/70">Note: {a.review_note}</div>}
             </dl>
             {status === 'pending' && (
               <DecisionRow id={a.user_id} busy={busy}
                 onApprove={() => decide(a.user_id, { user_id: a.user_id, decision: 'approve' })}
-                onReject={(note) => decide(a.user_id, { user_id: a.user_id, decision: 'reject', note })} approveLabel="Approve & issue pass" />
+                onReject={(note) => decide(a.user_id, { user_id: a.user_id, decision: 'reject', note })} approveLabel="Approve & issue visa" />
             )}
           </Card>
         ))}

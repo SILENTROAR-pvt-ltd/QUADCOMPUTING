@@ -31,7 +31,7 @@ export async function onlineMembers(db: any, viewerId: string, filter: PresenceF
   const list = members.filter((m) =>
     (!filter.generation || m.generation === filter.generation) &&
     (!city || m.city.toLowerCase().includes(city)) &&
-    (!q || m.name.toLowerCase().includes(q) || (m.viber_id || '').toLowerCase().includes(q)),
+    (!q || m.name.toLowerCase().includes(q) || (m.handle || '').toLowerCase().includes(q)),
   );
   const urls = await signMedia(db, list.map((m) => m.avatar_url));
   return list.map((m) => ({ ...m, avatar_url: m.avatar_url ? urls.get(m.avatar_url) ?? null : null }));

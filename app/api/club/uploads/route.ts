@@ -7,11 +7,11 @@ import { readUpload, signMedia, storeMedia } from '@/lib/club/media';
 export const dynamic = 'force-dynamic';
 
 const FOLDERS: Record<string, Array<'image' | 'video'>> = {
-  chat: ['image'], stories: ['image', 'video'], events: ['image'], properties: ['image'], avatars: ['image'],
+  chat: ['image'], stories: ['image', 'video'], events: ['image'], meetups: ['image'], properties: ['image'], avatars: ['image'],
 };
 
 /**
- * POST /api/club/uploads?kind=chat|stories|events|properties|avatars — the raw file as the body.
+ * POST /api/club/uploads?kind=chat|stories|events|meetups|properties|avatars — the raw file as the body.
  * Returns its storage path (to attach to a message, story, plan or listing) and a preview URL.
  */
 export const POST = clubApi('Upload', async (request) => {

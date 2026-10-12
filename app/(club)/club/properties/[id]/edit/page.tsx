@@ -2,7 +2,9 @@
 
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
+import { Pencil } from 'lucide-react';
 import { ClubShell } from '@/components/club/ClubShell';
+import { Screen } from '@/components/club/nav/Screen';
 import { Heading, Notice, Spinner } from '@/components/club/ui';
 import { clubFetch } from '@/components/club/api';
 import { PropertyForm } from '@/components/club/properties/PropertyForm';
@@ -26,10 +28,12 @@ export default function EditPropertyPage() {
   const { id } = useParams<{ id: string }>();
   return (
     <ClubShell>
-      <div className="mx-auto max-w-3xl">
-        <Heading kicker="Edit listing" title="Update your property">Saving sends the listing back to staff for a quick re-check.</Heading>
-        <Edit id={id} />
-      </div>
+      <Screen title="Edit listing" icon={Pencil} back={`/club/properties/${id}`}>
+        <div className="mx-auto max-w-3xl">
+          <Heading kicker="Edit listing" title="Update your property">Saving sends the listing back to staff for a quick re-check.</Heading>
+          <Edit id={id} />
+        </div>
+      </Screen>
     </ClubShell>
   );
 }

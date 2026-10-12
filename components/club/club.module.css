@@ -7,13 +7,53 @@
   to { transform: translate3d(var(--dx, 10px), var(--dy, -18px), 0); }
 }
 
-/* The Viber Pass: a slow holographic sheen across the card. */
+/* Live photos: a slow Ken Burns drift, so travel photography never sits still. */
+.kenburns {
+  transform-origin: var(--origin, 50% 50%);
+  animation: kenburns 18s ease-in-out infinite alternate;
+  will-change: transform;
+}
+@keyframes kenburns {
+  from { transform: scale(1.02) translate3d(0, 0, 0); }
+  to { transform: scale(1.14) translate3d(-1.5%, -1%, 0); }
+}
+
+/* Story progress: a bar that fills left to right; the viewer moves on when it finishes. */
+.storyFill {
+  transform-origin: left center;
+  animation-name: storyFill;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+@keyframes storyFill {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+/* Captions over live photos rise in as their photo fades in. */
+.captionIn {
+  animation: captionIn 1100ms ease-out both;
+}
+@keyframes captionIn {
+  0%, 25% { opacity: 0; transform: translate3d(0, 10px, 0); }
+  100% { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+/* The Club Visa: a slow sheen across a chartreuse, mint and ivory card edge. */
 .holo {
   background:
-    linear-gradient(115deg, rgba(255, 255, 255, 0) 30%, rgba(255, 255, 255, 0.55) 45%, rgba(255, 255, 255, 0) 60%),
-    conic-gradient(from 180deg at 50% 50%, #ff6a3d, #ff2e88, #7c3aed, #5ec8e5, #9be7a8, #ffd36e, #ff6a3d);
+    linear-gradient(115deg, rgba(255, 255, 255, 0) 30%, rgba(255, 255, 255, 0.7) 45%, rgba(255, 255, 255, 0) 60%),
+    conic-gradient(from 180deg at 50% 50%, #c8da4a, #e1efe3, #f6f1d9, #9fbf7a, #c8da4a, #e9e2c2, #c8da4a);
   background-size: 250% 250%, 100% 100%;
   animation: sheen 6s ease-in-out infinite;
+}
+/* The Club Visa edge: the same slow sheen across antique gold, champagne and cream. */
+.visaEdge {
+  background:
+    linear-gradient(115deg, rgba(255, 252, 240, 0) 30%, rgba(255, 252, 240, 0.75) 45%, rgba(255, 252, 240, 0) 60%),
+    conic-gradient(from 180deg at 50% 50%, #d9bf7a, #f6efe0, #b8964a, #efe0b4, #d9bf7a, #f3e9d2, #c9a85c);
+  background-size: 250% 250%, 100% 100%;
+  animation: sheen 7s ease-in-out infinite;
 }
 @keyframes sheen {
   0% { background-position: 120% 0, 0 0; }
@@ -30,6 +70,15 @@
   40% { opacity: 1; }
 }
 
+/* Landing: phone mock-ups float gently. */
+.float {
+  animation: float 7s ease-in-out infinite alternate;
+}
+@keyframes float {
+  from { transform: translate3d(0, 0, 0) rotate(var(--tilt, 0deg)); }
+  to { transform: translate3d(0, -10px, 0) rotate(var(--tilt, 0deg)); }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .bubble, .holo, .typing span { animation: none; }
+  .bubble, .holo, .typing span, .float, .kenburns, .captionIn { animation: none; }
 }

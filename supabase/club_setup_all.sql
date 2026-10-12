@@ -1,5 +1,5 @@
 -- Vibers Club: complete database setup in one paste (Supabase → SQL Editor → Run).
--- Generated from supabase/migrations/2026101100000{1..4}_club_*.sql; do not edit by hand.
+-- Generated from supabase/migrations/2026101{1,2}*_club_*.sql; do not edit by hand.
 -- Safe to run more than once. It only creates Club tables (and the shared vibers_accounts table if it
 -- is missing); Quad Computing tables are not changed.
 
@@ -657,5 +657,340 @@ REVOKE ALL ON public.club_account_balances FROM anon, authenticated;
 REVOKE ALL ON FUNCTION public.club_post_journal(text, text, uuid, text, uuid, jsonb) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.club_post_journal(text, text, uuid, text, uuid, jsonb) TO service_role;
 REVOKE ALL ON FUNCTION public.club_ledger_immutable() FROM PUBLIC, anon, authenticated;
+
+COMMIT;
+
+-- ===== 20261011000005_club_common_room.sql =====
+-- Vibers Club, part 5: the Common Room. Members post their plans and questions, tag a place and a
+-- region, optionally attach an approved plan, and like and comment on each other's posts. Reports
+-- can now point at posts and comments. Server-only tables. Idempotent.
+
+BEGIN;
+
+DO $$
+BEGIN
+    IF to_regclass('public.club_events') IS NULL OR to_regclass('public.club_reports') IS NULL THEN
+        RAISE EXCEPTION 'Run 20261011000001-3 first (or paste supabase/club_setup_all.sql, which runs all five in order).';
+    END IF;
+END $$;
+
+CREATE TABLE IF NOT EXISTS public.club_posts (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    author_id uuid NOT NULL REFERENCES public.viber_profiles(user_id) ON DELETE CASCADE,
+    body text NOT NULL CHECK (length(body) BETWEEN 1 AND 1000),
+    place text CHECK (place IS NULL OR length(place) BETWEEN 2 AND 60),
+    region text CHECK (region IS NULL OR region IN ('india', 'asia', 'europe', 'americas', 'africa', 'oceania')),
+    event_id uuid REFERENCES public.club_events(id) ON DELETE SET NULL,
+    -- Hidden posts are seen only by their author (shadow-ban) and by staff.
+    hidden boolean NOT NULL DEFAULT false,
+    deleted_at timestamptz,
+    created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_club_posts_feed ON public.club_posts (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_club_posts_author ON public.club_posts (author_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS public.club_post_likes (
+    post_id uuid NOT NULL REFERENCES public.club_posts(id) ON DELETE CASCADE,
+    user_id uuid NOT NULL REFERENCES public.viber_profiles(user_id) ON DELETE CASCADE,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (post_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS public.club_post_comments (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    post_id uuid NOT NULL REFERENCES public.club_posts(id) ON DELETE CASCADE,
+    author_id uuid NOT NULL REFERENCES public.viber_profiles(user_id) ON DELETE CASCADE,
+    body text NOT NULL CHECK (length(body) BETWEEN 1 AND 500),
+    hidden boolean NOT NULL DEFAULT false,
+    deleted_at timestamptz,
+    created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_club_post_comments_post ON public.club_post_comments (post_id, created_at);
+
+-- Red Flag reports can now point at Common Room posts and comments.
+ALTER TABLE public.club_reports DROP CONSTRAINT IF EXISTS club_reports_target_type_check;
+ALTER TABLE public.club_reports ADD CONSTRAINT club_reports_target_type_check
+    CHECK (target_type IN ('user', 'message', 'story', 'event', 'property', 'post', 'comment'));
+
+DO $$
+DECLARE t text;
+BEGIN
+    FOREACH t IN ARRAY ARRAY['club_posts', 'club_post_likes', 'club_post_comments'] LOOP
+        EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY', t);
+        EXECUTE format('REVOKE ALL ON public.%I FROM anon, authenticated', t);
+    END LOOP;
+END $$;
+
+COMMIT;
+
+-- ===== 20261012000001_club_places_social.sql =====
+-- Vibers Club, part 6: places, the follow graph and story receipts. Members follow each other,
+-- follow places they plan to visit, tag stories and posts with a place, and see who viewed their
+-- stories. Server-only tables. Idempotent.
+
+BEGIN;
+
+DO $$
+BEGIN
+    IF to_regclass('public.club_stories') IS NULL OR to_regclass('public.club_posts') IS NULL THEN
+        RAISE EXCEPTION 'Run 20261011000001-5 first (or paste supabase/club_setup_all.sql, which runs all of them in order).';
+    END IF;
+END $$;
+
+CREATE TABLE IF NOT EXISTS public.club_places (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    slug text NOT NULL UNIQUE,
+    name text NOT NULL CHECK (length(name) BETWEEN 2 AND 60),
+    region text NOT NULL CHECK (region IN ('india', 'asia', 'europe', 'americas', 'africa', 'oceania')),
+    country text NOT NULL CHECK (length(country) BETWEEN 2 AND 60),
+    kinds text[] NOT NULL DEFAULT '{}',
+    blurb text CHECK (blurb IS NULL OR length(blurb) <= 240),
+    cover_path text,
+    active boolean NOT NULL DEFAULT true,
+    created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_club_places_region ON public.club_places (region, active);
+
+CREATE TABLE IF NOT EXISTS public.club_place_follows (
+    place_id uuid NOT NULL REFERENCES public.club_places(id) ON DELETE CASCADE,
+    user_id uuid NOT NULL REFERENCES public.viber_profiles(user_id) ON DELETE CASCADE,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (place_id, user_id)
+);
+CREATE INDEX IF NOT EXISTS idx_club_place_follows_user ON public.club_place_follows (user_id);
+
+CREATE TABLE IF NOT EXISTS public.club_follows (
+    follower_id uuid NOT NULL REFERENCES public.viber_profiles(user_id) ON DELETE CASCADE,
+    followee_id uuid NOT NULL REFERENCES public.viber_profiles(user_id) ON DELETE CASCADE,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (follower_id, followee_id),
+    CONSTRAINT club_follows_not_self CHECK (follower_id <> followee_id)
+);
+CREATE INDEX IF NOT EXISTS idx_club_follows_followee ON public.club_follows (followee_id);
+
+CREATE TABLE IF NOT EXISTS public.club_story_views (
+    story_id uuid NOT NULL REFERENCES public.club_stories(id) ON DELETE CASCADE,
+    viewer_id uuid NOT NULL REFERENCES public.viber_profiles(user_id) ON DELETE CASCADE,
+    viewed_at timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (story_id, viewer_id)
+);
+CREATE INDEX IF NOT EXISTS idx_club_story_views_viewer ON public.club_story_views (viewer_id);
+
+ALTER TABLE public.club_stories ADD COLUMN IF NOT EXISTS place_id uuid REFERENCES public.club_places(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_club_stories_place ON public.club_stories (place_id, expires_at DESC);
+
+ALTER TABLE public.club_posts ADD COLUMN IF NOT EXISTS place_id uuid REFERENCES public.club_places(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_club_posts_place ON public.club_posts (place_id, created_at DESC);
+
+INSERT INTO public.club_places (slug, name, region, country, kinds, blurb) VALUES
+    ('goa', 'Goa', 'india', 'India', ARRAY['beach', 'nightlife', 'food'], 'Beach shacks, sunset cruises on the Mandovi and late-night music.'),
+    ('manali', 'Manali', 'india', 'India', ARRAY['mountains', 'adventure'], 'Himalayan base for treks, paragliding and mountain roads.'),
+    ('old-manali', 'Old Manali', 'india', 'India', ARRAY['mountains', 'nature', 'food'], 'Riverside cafés, pine forests and quieter trails above the town.'),
+    ('leh-ladakh', 'Leh-Ladakh', 'india', 'India', ARRAY['mountains', 'adventure'], 'High passes, monasteries and the bike routes everyone talks about.'),
+    ('rishikesh', 'Rishikesh', 'india', 'India', ARRAY['adventure', 'spiritual'], 'River rafting, yoga ashrams and the Ganga at dusk.'),
+    ('jaipur', 'Jaipur', 'india', 'India', ARRAY['heritage', 'food'], 'Pink-city palaces, bazaars and rooftop thalis.'),
+    ('udaipur', 'Udaipur', 'india', 'India', ARRAY['heritage'], 'Lake palaces and old havelis by the water.'),
+    ('hampi', 'Hampi', 'india', 'India', ARRAY['heritage', 'adventure'], 'Boulders, ruins and sunsets over the Tungabhadra.'),
+    ('alleppey', 'Alleppey', 'india', 'India', ARRAY['nature', 'beach'], 'Houseboats, backwaters and coconut-lined canals.'),
+    ('varanasi', 'Varanasi', 'india', 'India', ARRAY['spiritual', 'heritage'], 'Ghats, morning boat rides and evening aarti.'),
+    ('mumbai', 'Mumbai', 'india', 'India', ARRAY['city', 'food', 'nightlife'], 'Marine Drive, street food and a city that never stops.'),
+    ('ooty', 'Ooty', 'india', 'India', ARRAY['nature', 'mountains'], 'Tea estates, toy trains and cool hill air.'),
+    ('ha-long-bay', 'Ha Long Bay', 'asia', 'Vietnam', ARRAY['nature', 'beach'], 'Limestone karsts and overnight junk boats.'),
+    ('ubud', 'Ubud', 'asia', 'Indonesia', ARRAY['spiritual', 'nature', 'food'], 'Rice terraces, yoga retreats and temple walks in Bali.'),
+    ('chiang-mai', 'Chiang Mai', 'asia', 'Thailand', ARRAY['food', 'heritage', 'city'], 'Old temples, night markets and mountain cafés.'),
+    ('phuket', 'Phuket', 'asia', 'Thailand', ARRAY['beach', 'nightlife'], 'White-sand beaches and island day trips.'),
+    ('kyoto', 'Kyoto', 'asia', 'Japan', ARRAY['heritage', 'food'], 'Temples, tea houses and lantern-lit lanes.'),
+    ('santorini', 'Santorini', 'europe', 'Greece', ARRAY['beach', 'city'], 'Whitewashed villages and caldera sunsets.'),
+    ('paris', 'Paris', 'europe', 'France', ARRAY['city', 'food'], 'Cafés, museums and the riverbanks.'),
+    ('interlaken', 'Interlaken', 'europe', 'Switzerland', ARRAY['mountains', 'adventure'], 'Alpine lakes, paragliding and cable-car summits.'),
+    ('lisbon', 'Lisbon', 'europe', 'Portugal', ARRAY['city', 'food', 'nightlife'], 'Tram rides, fado nights and pastel de nata.'),
+    ('banff', 'Banff', 'americas', 'Canada', ARRAY['mountains', 'nature'], 'Turquoise lakes and the Rockies in every direction.'),
+    ('new-york', 'New York', 'americas', 'USA', ARRAY['city', 'nightlife', 'food'], 'Neighbourhoods, rooftops and a restless skyline.'),
+    ('marrakech', 'Marrakech', 'africa', 'Morocco', ARRAY['heritage', 'food'], 'Medina souks, riads and rooftop mint tea.'),
+    ('serengeti', 'Serengeti', 'africa', 'Tanzania', ARRAY['nature', 'adventure'], 'Open plains, big skies and safari drives.'),
+    ('sydney', 'Sydney', 'oceania', 'Australia', ARRAY['city', 'beach'], 'Harbour views, coastal walks and bondi mornings.'),
+    ('queenstown', 'Queenstown', 'oceania', 'New Zealand', ARRAY['adventure', 'mountains'], 'Adrenaline capital of the south, with lakes and peaks.')
+ON CONFLICT (slug) DO NOTHING;
+
+DO $$
+DECLARE t text;
+BEGIN
+    FOREACH t IN ARRAY ARRAY['club_places', 'club_place_follows', 'club_follows', 'club_story_views'] LOOP
+        EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY', t);
+        EXECUTE format('REVOKE ALL ON public.%I FROM anon, authenticated', t);
+    END LOOP;
+END $$;
+
+COMMIT;
+
+-- ===== 20261012000002_club_profile_details.sql =====
+-- Vibers Club, part 7: richer profiles. Members pick the kinds of traveller they are (solo, volunteer,
+-- influencer ...), and add the social accounts they want shown as logos. Both columns are checked in
+-- the database as well as by the server. Idempotent.
+
+BEGIN;
+
+DO $$
+BEGIN
+    IF to_regclass('public.viber_profiles') IS NULL THEN
+        RAISE EXCEPTION 'Run 20261011000001 first (or paste supabase/club_setup_all.sql, which runs all of them in order).';
+    END IF;
+END $$;
+
+ALTER TABLE public.viber_profiles ADD COLUMN IF NOT EXISTS traveler_kinds text[] NOT NULL DEFAULT '{}';
+ALTER TABLE public.viber_profiles ADD COLUMN IF NOT EXISTS social_links jsonb NOT NULL DEFAULT '{}'::jsonb;
+
+DO $$
+BEGIN
+    ALTER TABLE public.viber_profiles ADD CONSTRAINT viber_profiles_traveler_kinds_check CHECK (
+        cardinality(traveler_kinds) <= 5
+        AND traveler_kinds <@ ARRAY['solo', 'nomad', 'volunteer', 'influencer', 'creator', 'photographer', 'foodie',
+            'adventure', 'backpacker', 'luxury', 'slow', 'wellness', 'culture', 'business', 'festival']::text[]
+    );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$
+BEGIN
+    ALTER TABLE public.viber_profiles ADD CONSTRAINT viber_profiles_social_links_check CHECK (jsonb_typeof(social_links) = 'object');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+COMMIT;
+
+-- ===== 20261012000003_club_username.sql =====
+-- Vibers Club, part 8: a Club username. It is a public handle chosen inside the Club and changeable
+-- (with a cooldown). It is separate from the shared Viber ID, which stays private to the member and
+-- staff. Quad Computing tables are not touched. Idempotent.
+
+BEGIN;
+
+DO $$
+BEGIN
+    IF to_regclass('public.viber_profiles') IS NULL THEN
+        RAISE EXCEPTION 'Run 20261011000001 first (or paste supabase/club_setup_all.sql, which runs all of them in order).';
+    END IF;
+END $$;
+
+ALTER TABLE public.viber_profiles ADD COLUMN IF NOT EXISTS club_username text;
+ALTER TABLE public.viber_profiles ADD COLUMN IF NOT EXISTS username_changed_at timestamptz;
+
+DO $$
+BEGIN
+    ALTER TABLE public.viber_profiles ADD CONSTRAINT viber_profiles_club_username_check
+        CHECK (club_username IS NULL OR club_username ~ '^[a-z0-9_]{3,20}$');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_viber_profiles_club_username ON public.viber_profiles (lower(club_username))
+    WHERE club_username IS NOT NULL;
+
+COMMIT;
+
+-- ===== 20261012000004_club_bio.sql =====
+-- Vibers Club, part 9: a short bio. A few lines the member writes about themself (no preset text).
+-- Checked in the database as well as by the server. Quad Computing tables are not touched. Idempotent.
+
+BEGIN;
+
+DO $$
+BEGIN
+    IF to_regclass('public.viber_profiles') IS NULL THEN
+        RAISE EXCEPTION 'Run 20261011000001 first (or paste supabase/club_setup_all.sql, which runs all of them in order).';
+    END IF;
+END $$;
+
+ALTER TABLE public.viber_profiles ADD COLUMN IF NOT EXISTS bio text;
+
+DO $$
+BEGIN
+    ALTER TABLE public.viber_profiles ADD CONSTRAINT viber_profiles_bio_check
+        CHECK (bio IS NULL OR char_length(bio) BETWEEN 1 AND 300);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+COMMIT;
+
+-- ===== 20261012000005_club_meetups.sql =====
+-- Vibers Club, part 10: instant meetups. A quick coffee, a walk-around, a party, a developer meet: free,
+-- posted in seconds, live straight away (only trips and ticketed events are reviewed). Members RSVP
+-- with "I'm in". Server-only tables like the rest of the Club. Quad Computing tables are not touched.
+-- Idempotent.
+
+BEGIN;
+
+DO $$
+BEGIN
+    IF to_regclass('public.club_places') IS NULL OR to_regclass('public.club_reports') IS NULL THEN
+        RAISE EXCEPTION 'Run 20261011000001-5 and 20261012000001 first (or paste supabase/club_setup_all.sql, which runs all of them in order).';
+    END IF;
+END $$;
+
+CREATE TABLE IF NOT EXISTS public.club_meetups (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    host_id uuid NOT NULL REFERENCES public.viber_profiles(user_id) ON DELETE CASCADE,
+    kind text NOT NULL CHECK (kind IN ('coffee', 'food', 'walk', 'party', 'music', 'sports', 'dev', 'creative', 'wellness', 'together')),
+    title text NOT NULL CHECK (char_length(title) BETWEEN 3 AND 80),
+    note text CHECK (note IS NULL OR char_length(note) <= 280),
+    venue text CHECK (venue IS NULL OR char_length(venue) <= 120),
+    city text NOT NULL CHECK (char_length(city) BETWEEN 2 AND 60),
+    place_id uuid REFERENCES public.club_places(id) ON DELETE SET NULL,
+    starts_at timestamptz NOT NULL,
+    ends_at timestamptz NOT NULL,
+    capacity integer CHECK (capacity IS NULL OR capacity BETWEEN 2 AND 500),
+    status text NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'cancelled')),
+    hidden boolean NOT NULL DEFAULT false,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now(),
+    CONSTRAINT club_meetups_dates CHECK (ends_at > starts_at)
+);
+CREATE INDEX IF NOT EXISTS idx_club_meetups_live ON public.club_meetups (status, ends_at);
+CREATE INDEX IF NOT EXISTS idx_club_meetups_host ON public.club_meetups (host_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_club_meetups_city ON public.club_meetups (lower(city));
+
+CREATE TABLE IF NOT EXISTS public.club_meetup_members (
+    meetup_id uuid NOT NULL REFERENCES public.club_meetups(id) ON DELETE CASCADE,
+    user_id uuid NOT NULL REFERENCES public.viber_profiles(user_id) ON DELETE CASCADE,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (meetup_id, user_id)
+);
+CREATE INDEX IF NOT EXISTS idx_club_meetup_members_user ON public.club_meetup_members (user_id);
+
+-- Meetups can be reported like plans and posts.
+ALTER TABLE public.club_reports DROP CONSTRAINT IF EXISTS club_reports_target_type_check;
+ALTER TABLE public.club_reports ADD CONSTRAINT club_reports_target_type_check
+    CHECK (target_type IN ('user', 'message', 'story', 'event', 'property', 'post', 'comment', 'meetup'));
+
+DO $$
+DECLARE t text;
+BEGIN
+    FOREACH t IN ARRAY ARRAY['club_meetups', 'club_meetup_members'] LOOP
+        EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY', t);
+        EXECUTE format('REVOKE ALL ON public.%I FROM anon, authenticated', t);
+    END LOOP;
+END $$;
+
+COMMIT;
+
+-- ===== 20261012000006_club_meetup_photos.sql =====
+-- Vibers Club, part 11: photos on meetups. A host can add up to four pictures, kept in the private
+-- club media bucket like plan covers. Quad Computing tables are not touched. Idempotent.
+
+BEGIN;
+
+DO $$
+BEGIN
+    IF to_regclass('public.club_meetups') IS NULL THEN
+        RAISE EXCEPTION 'Run 20261012000005_club_meetups.sql first (or paste supabase/club_setup_all.sql, which runs all of them in order).';
+    END IF;
+END $$;
+
+ALTER TABLE public.club_meetups ADD COLUMN IF NOT EXISTS cover_paths text[] NOT NULL DEFAULT '{}';
+
+DO $$
+BEGIN
+    ALTER TABLE public.club_meetups ADD CONSTRAINT club_meetups_cover_paths_check CHECK (cardinality(cover_paths) <= 4);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 COMMIT;

@@ -59,6 +59,23 @@ export function checkAlias(raw: unknown): { ok: true; alias: string | null } | {
   return { ok: true, alias };
 }
 
+/** A member can change their Club username once in this many days. */
+export const USERNAME_COOLDOWN_DAYS = 30;
+
+/**
+ * The public Club username: 3–20 lowercase letters, digits or underscores, chosen inside the Club. It is
+ * not the Viber ID. Empty clears it. Nothing reserved, rude, or equal to a Viber handle may be used, so
+ * nobody can pose as another member's Viber account.
+ */
+export function checkClubUsername(raw: unknown): { ok: true; username: string | null } | { ok: false; error: string } {
+  if (raw == null || String(raw).trim().replace(/^@+/, '') === '') return { ok: true, username: null };
+  const name = String(raw).trim().replace(/^@+/, '').toLowerCase();
+  if (!/^[a-z0-9_]{3,20}$/.test(name)) return { ok: false, error: 'Use 3–20 letters, numbers or underscores for your username.' };
+  if (RESERVED.has(name) || RESERVED.has(name.replace(/_/g, ''))) return { ok: false, error: 'That username is reserved. Please choose another.' };
+  if (containsProfanity(name)) return { ok: false, error: 'Please choose a different username.' };
+  return { ok: true, username: name };
+}
+
 export function cleanText(raw: unknown, max: number): string | null {
   if (typeof raw !== 'string') return null;
   const text = raw.replace(/[\u0000-\u0008\u000b-\u001f<>]/g, '').trim().slice(0, max);

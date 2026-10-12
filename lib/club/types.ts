@@ -19,6 +19,9 @@ export interface ViberProfile {
   phone_verified_at: string;
   vibe_line: string | null;
   avatar_url: string | null;
+  club_username: string | null;
+  username_changed_at: string | null;
+  bio: string | null;
   status: MemberStatus;
   pass_number: string | null;
   campaign_source: string | null;
@@ -29,11 +32,14 @@ export interface ViberProfile {
   created_at: string;
 }
 
-/** What another member may see. Real identity stays hidden behind a masked alias. */
+/**
+ * What another member may see. Real identity stays hidden behind a masked alias. `handle` is the public
+ * @handle without the @: the Club username if the member chose one, otherwise their Viber ID.
+ */
 export interface PublicMember {
   user_id: string;
   name: string;
-  viber_id: string | null;
+  handle: string | null;
   generation: Generation;
   city: string;
   vibe_line: string | null;

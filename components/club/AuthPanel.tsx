@@ -5,7 +5,7 @@ import { Eye, EyeOff, MailCheck } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { friendlyAuthError } from '@/lib/auth/auth-messages';
 import { Button, Card, Label, Notice, field } from './ui';
-import { DISPLAY } from '@/components/vibers/vibers-fonts';
+import { CLUB_DISPLAY } from './fonts';
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -50,9 +50,9 @@ export function AuthPanel({ onDone, intro }: { onDone: () => void; intro?: strin
   if (sent) {
     return (
       <Card className="mx-auto max-w-md text-center">
-        <MailCheck aria-hidden="true" className="mx-auto h-8 w-8 text-emerald-600" />
-        <p className={`${DISPLAY} mt-3 text-2xl`}>Check your email</p>
-        <p className="mt-2 text-sm text-[#2a1250]/60">Open the link we sent to {email}, then come back and sign in.</p>
+        <MailCheck aria-hidden="true" className="mx-auto h-8 w-8 text-[#3c6b2b]" />
+        <p className={`${CLUB_DISPLAY} mt-3 text-3xl font-semibold`}>Check your <em className="font-medium text-[#3c6b2b]">email</em></p>
+        <p className="mt-2 text-sm text-[#14261b]/70">Open the link we sent to {email}, then come back and sign in.</p>
         <Button tone="quiet" className="mt-5" onClick={() => { setSent(false); setMode('signin'); }}>I have confirmed it</Button>
       </Card>
     );
@@ -60,12 +60,12 @@ export function AuthPanel({ onDone, intro }: { onDone: () => void; intro?: strin
 
   return (
     <Card className="mx-auto max-w-md">
-      <p className={`${DISPLAY} text-2xl`}>{mode === 'signin' ? 'Sign in' : 'Create your Vibers account'}</p>
-      <p className="mt-1 text-sm text-[#2a1250]/60">{intro || 'One account for Vibers Club, every Vibers property and Quad Computing.'}</p>
-      <div role="tablist" className="mt-4 flex gap-1 rounded-full bg-[#2a1250]/[0.05] p-1">
+      <p className={`${CLUB_DISPLAY} text-[36px] font-semibold leading-[1.05] tracking-tight`}>{mode === 'signin' ? <>Welcome <em className="font-medium text-[#3c6b2b]">back</em></> : <>Create your <em className="font-medium text-[#3c6b2b]">Vibers</em> account</>}</p>
+      <p className="mt-2 text-sm text-[#14261b]/70">{intro || 'One account for Vibers Club, every Vibers property and Quad Computing.'}</p>
+      <div role="tablist" aria-label="Account" className="mt-5 flex gap-1 rounded-full bg-[#f2f0e8] p-1">
         {(['signin', 'create'] as const).map((m) => (
           <button key={m} type="button" role="tab" aria-selected={mode === m} onClick={() => { setMode(m); setError(''); }}
-            className={`flex-1 rounded-full py-2 text-xs font-semibold transition ${mode === m ? 'bg-white text-[#2a1250] shadow-sm' : 'text-[#2a1250]/55'}`}>
+            className={`flex-1 rounded-full py-2.5 text-xs font-semibold transition ${mode === m ? 'bg-[#17301f] text-[#f6f4ec] shadow-sm' : 'text-[#14261b]/70 hover:text-[#14261b]'}`}>
             {m === 'signin' ? 'I have an account' : 'New here'}
           </button>
         ))}
@@ -76,15 +76,15 @@ export function AuthPanel({ onDone, intro }: { onDone: () => void; intro?: strin
           <span className="relative block">
             <input className={`${field} pr-11`} type={show ? 'text' : 'password'} autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
               value={password} onChange={(e) => setPassword(e.target.value)} />
-            <button type="button" onClick={() => setShow((v) => !v)} aria-label={show ? 'Hide password' : 'Show password'} className="absolute inset-y-0 right-0 grid w-11 place-items-center text-[#2a1250]/45 hover:text-[#2a1250]">
+            <button type="button" onClick={() => setShow((v) => !v)} aria-label={show ? 'Hide password' : 'Show password'} className="absolute inset-y-0 right-0 grid w-11 place-items-center text-[#14261b]/60 hover:text-[#14261b]">
               {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
           </span>
         </Label>
         {mode === 'create' && password && (
           <div aria-live="polite">
-            <div className="flex gap-1">{[0, 1, 2, 3].map((i) => <span key={i} className={`h-1.5 flex-1 rounded-full ${i < score ? (score >= 3 ? 'bg-emerald-500' : 'bg-amber-500') : 'bg-[#2a1250]/10'}`} />)}</div>
-            <p className="mt-1 text-[11px] text-[#2a1250]/55">Password strength: {STRENGTH[score]}</p>
+            <div className="flex gap-1">{[0, 1, 2, 3].map((i) => <span key={i} className={`h-1.5 flex-1 rounded-full ${i < score ? (score >= 3 ? 'bg-[#c8da4a]' : 'bg-amber-400') : 'bg-[#14261b]/10'}`} />)}</div>
+            <p className="mt-1 text-[11px] text-[#14261b]/65">Password strength: {STRENGTH[score]}</p>
           </div>
         )}
         <Notice>{error}</Notice>

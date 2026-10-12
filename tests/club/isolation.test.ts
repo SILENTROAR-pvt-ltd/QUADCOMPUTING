@@ -50,7 +50,7 @@ describe('Club ↔ QC isolation', () => {
 
   it('Club migrations only create Club objects (plus one read-only index on vibers_accounts)', () => {
     const dir = join(ROOT, 'supabase', 'migrations');
-    const club = readdirSync(dir).filter((f) => /^20261011\d+_club_/.test(f));
+    const club = readdirSync(dir).filter((f) => /^2026101[12]\d+_club_/.test(f));
     expect(club.length).toBeGreaterThanOrEqual(4);
     // vibers_accounts is the shared identity table: Club may create it if missing (same definition as
     // QC migration 20261010000019) and switch on its row-level security, nothing more.

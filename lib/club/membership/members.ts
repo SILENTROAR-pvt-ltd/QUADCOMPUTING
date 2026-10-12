@@ -1,16 +1,18 @@
-// What members see of each other. A masked member shows only their club name (alias); their Viber ID
-// and real name stay hidden from everyone but staff.
+// What members see of each other. A masked member shows only their club name (alias); their real name
+// and handle stay hidden from everyone but staff. The public handle is the Club username when the member
+// chose one, otherwise their Viber ID.
 import { must } from '../http';
 import type { PublicMember, ViberProfile } from '../types';
 
-export const MEMBER_COLUMNS = 'user_id, viber_id, alias, alias_masked, generation, city, vibe_line, avatar_url, account_type, status, shadow_banned';
+export const MEMBER_COLUMNS = 'user_id, viber_id, club_username, alias, alias_masked, generation, city, vibe_line, avatar_url, account_type, status, shadow_banned';
 
-export function toPublicMember(p: Pick<ViberProfile, 'user_id' | 'viber_id' | 'alias' | 'alias_masked' | 'generation' | 'city' | 'vibe_line' | 'avatar_url' | 'account_type'>, displayName: string | null): PublicMember {
+export function toPublicMember(p: Pick<ViberProfile, 'user_id' | 'viber_id' | 'club_username' | 'alias' | 'alias_masked' | 'generation' | 'city' | 'vibe_line' | 'avatar_url' | 'account_type'>, displayName: string | null): PublicMember {
   const masked = Boolean(p.alias_masked && p.alias);
+  const handle = p.club_username || (p.viber_id ? p.viber_id.replace(/^@/, '') : null);
   return {
     user_id: p.user_id,
-    name: masked ? (p.alias as string) : p.alias || displayName || p.viber_id,
-    viber_id: masked ? null : p.viber_id,
+    name: masked ? (p.alias as string) : p.alias || displayName || handle || 'Member',
+    handle: masked ? null : handle,
     generation: p.generation,
     city: p.city,
     vibe_line: p.vibe_line,

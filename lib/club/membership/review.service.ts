@@ -1,4 +1,4 @@
-// Staff review of applications. Approval issues the Viber Pass (a unique pass number); rejection
+// Staff review of applications. Approval issues the Club Visa (a unique visa number); rejection
 // needs a reason the applicant can read. Every decision is written to the moderation log.
 import { randomInt } from 'node:crypto';
 import { fail, must } from '../http';
@@ -34,10 +34,10 @@ export async function approveApplication(db: any, staffId: string, userId: strin
     const rows = must(res) as any[];
     if (rows.length === 0) fail(409, 'This application was just reviewed by someone else.');
     await logModeration(db, { actorId: staffId, action: 'approve_application', targetUserId: userId });
-    await notify(db, [userId], { kind: 'membership', title: 'Welcome to Vibers Club', body: 'Your Viber Pass is ready.', link: '/club/pass' });
+    await notify(db, [userId], { kind: 'membership', title: 'Welcome to Vibers Club', body: 'Your Club Visa is ready.', link: '/club/pass' });
     return rows[0];
   }
-  fail(500, 'Could not issue a pass number. Please try again.');
+  fail(500, 'Could not issue a visa number. Please try again.');
 }
 
 export async function rejectApplication(db: any, staffId: string, userId: string, rawNote: unknown) {

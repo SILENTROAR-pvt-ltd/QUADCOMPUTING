@@ -2,7 +2,9 @@
 
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
+import { Pencil } from 'lucide-react';
 import { ClubShell } from '@/components/club/ClubShell';
+import { Screen } from '@/components/club/nav/Screen';
 import { Heading, Notice, Spinner } from '@/components/club/ui';
 import { clubFetch } from '@/components/club/api';
 import { EventForm } from '@/components/club/events/EventForm';
@@ -27,10 +29,12 @@ export default function EditPlanPage() {
   const { id } = useParams<{ id: string }>();
   return (
     <ClubShell>
-      <div className="mx-auto max-w-3xl">
-        <Heading kicker="Edit plan" title="Make it right">Saving returns the plan to draft; submit it again from the plan page.</Heading>
-        <Edit id={id} />
-      </div>
+      <Screen title="Edit plan" icon={Pencil} back={`/club/events/${id}`}>
+        <div className="mx-auto max-w-3xl">
+          <Heading kicker="Edit plan" title="Make it right">Saving returns the plan to draft; submit it again from the plan page.</Heading>
+          <Edit id={id} />
+        </div>
+      </Screen>
     </ClubShell>
   );
 }

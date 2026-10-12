@@ -50,7 +50,7 @@ export function StatusTabs({ value, options, onChange }: { value: string; option
     <div className="mb-4 flex flex-wrap gap-1">
       {options.map((o) => (
         <button key={o} type="button" aria-pressed={value === o} onClick={() => onChange(o)}
-          className={`rounded-full px-3 py-1 text-xs font-semibold ${value === o ? 'bg-[#7c3aed] text-white' : 'bg-white text-[#2a1250]/65'}`}>{o.replace('_', ' ')}</button>
+          className={`rounded-full px-3 py-1 text-xs font-semibold ${value === o ? 'bg-[#c8da4a] text-[#14261b]' : 'bg-[#14261b]/[0.06] text-[#14261b]/70 hover:text-[#14261b]'}`}>{o.replace('_', ' ')}</button>
       ))}
     </div>
   );
@@ -58,6 +58,6 @@ export function StatusTabs({ value, options, onChange }: { value: string; option
 
 export function ListState({ rows, error, empty }: { rows: unknown[] | null; error: string; empty: string }) {
   if (error) return <Notice>{error}</Notice>;
-  if (rows && rows.length === 0) return <p className="rounded-2xl border border-dashed border-[#2a1250]/15 p-6 text-center text-sm text-[#2a1250]/55">{empty}</p>;
+  if (rows && rows.length === 0) return <p className="rounded-2xl border border-dashed border-[#14261b]/15 p-6 text-center text-sm text-[#14261b]/65">{empty}</p>;
   return null;
 }

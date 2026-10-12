@@ -28,7 +28,7 @@ export function PropertiesTab() {
             <div className="mt-3 flex flex-wrap items-start justify-between gap-2">
               <div>
                 <Link href={`/club/properties/${p.id}`} className="font-semibold underline-offset-4 hover:underline">{p.name}</Link>
-                <p className="text-xs text-[#2a1250]/55">{p.address}, {p.city}, {p.state} · up to {p.capacity} · {rupees(p.price_min)}–{rupees(p.price_max)}/night</p>
+                <p className="text-xs text-[#14261b]/65">{p.address}, {p.city}, {p.state} · up to {p.capacity} · {rupees(p.price_min)}–{rupees(p.price_max)}/night</p>
               </div>
               <div className="flex flex-wrap gap-1">{p.categories.map((c: string) => <Badge key={c}>{c}</Badge>)}{p.business_id && <Badge tone="good">linked QC venue</Badge>}</div>
             </div>

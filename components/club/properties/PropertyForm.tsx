@@ -9,7 +9,7 @@ import { PhotoUploader } from '../PhotoUploader';
 import { RateRange } from './RateRange';
 import { AMENITY_LABEL, EMPTY_PROPERTY, toPropertyPayload, type PropertyForm as Form } from './property-form';
 
-const chip = (on: boolean) => `rounded-full border px-3 py-1.5 text-xs font-semibold ${on ? 'border-[#7c3aed] bg-[#7c3aed] text-white' : 'border-[#2a1250]/15 bg-white'}`;
+const chip = (on: boolean) => `rounded-full border px-3 py-1.5 text-xs font-semibold ${on ? 'border-[#17301f] bg-[#c8da4a] text-[#14261b]' : 'border-[#14261b]/15 bg-[#14261b]/[0.04] text-[#14261b]/85 hover:bg-[#14261b]/[0.08]'}`;
 
 /** List or edit a property. Saving sends it to staff for verification before it appears in search. */
 export function PropertyForm({ initial, propertyId }: { initial?: Form; propertyId?: string }) {
@@ -44,7 +44,7 @@ export function PropertyForm({ initial, propertyId }: { initial?: Form; property
     <form onSubmit={save} className="space-y-5" noValidate>
       <Card className="space-y-4">
         <Label text="Property name"><input className={field} maxLength={120} {...text('name')} /></Label>
-        <fieldset><legend className="text-xs font-semibold text-[#2a1250]/80">Categories</legend>
+        <fieldset><legend className="text-xs font-semibold text-[#14261b]/80">Categories</legend>
           <div className="mt-1.5 flex flex-wrap gap-2">{categories.map((c) => <button key={c.slug} type="button" aria-pressed={f.categories.includes(c.slug)} className={chip(f.categories.includes(c.slug))} onClick={() => toggle('categories', c.slug)}>{c.label}</button>)}</div>
         </fieldset>
         <Label text="Description"><textarea className={`${field} min-h-24`} maxLength={2000} {...text('description')} /></Label>
@@ -53,7 +53,7 @@ export function PropertyForm({ initial, propertyId }: { initial?: Form; property
       <Card className="grid gap-5 sm:grid-cols-2">
         <Label text="Group capacity" hint="guests"><input className={field} inputMode="numeric" {...text('capacity')} /></Label>
         <Label text="Nightly rate range"><RateRange min={f.price_min} max={f.price_max} onChange={(price_min, price_max) => set({ price_min, price_max })} /></Label>
-        <fieldset className="sm:col-span-2"><legend className="text-xs font-semibold text-[#2a1250]/80">Amenities</legend>
+        <fieldset className="sm:col-span-2"><legend className="text-xs font-semibold text-[#14261b]/80">Amenities</legend>
           <div className="mt-1.5 flex flex-wrap gap-2">{Object.entries(AMENITY_LABEL).map(([k, v]) => <button key={k} type="button" aria-pressed={f.amenities.includes(k)} className={chip(f.amenities.includes(k))} onClick={() => toggle('amenities', k)}>{v}</button>)}</div>
         </fieldset>
       </Card>

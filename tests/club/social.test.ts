@@ -16,7 +16,7 @@ const STAFF = '44444444-aaaa-4bbb-8ccc-0000000000ff';
 const GLOBAL = 'room-global-0001';
 
 function db(cOver: Record<string, unknown> = {}) {
-  const a = member(A, '@asha'), b = member(B, '@bilal', { generation: 'gen_z', city: 'Pune' }), c = member(C, '@chet', cOver);
+  const a = member(A, '@asha'), b = member(B, '@bilal', { generation: 'gen_z', city: 'Pune' }), c = member(C, '@chet', { club_username: 'chet_goa', ...cOver });
   return {
     d: clubDb({
       ...seedMembers(a, b, c), club_presence: [], club_rooms: [{ id: GLOBAL, kind: 'global', slug: 'global', dm_key: null, event_id: null }],
@@ -37,13 +37,13 @@ describe('Live presence', () => {
     expect(await onlineMembers(d, C, {}, now)).toEqual([]);
   });
 
-  it('filters by generation, city and Viber ID', async () => {
+  it('filters by generation, city and username (never by Viber ID)', async () => {
     const { d } = db();
     const now = new Date();
     for (const id of [A, B, C]) await heartbeat(d, id, now);
     expect((await onlineMembers(d, A, { generation: 'gen_z' }, now)).map((m) => m.user_id)).toEqual([B]);
     expect((await onlineMembers(d, A, { city: 'pun' }, now)).map((m) => m.user_id)).toEqual([B]);
-    expect((await onlineMembers(d, A, { q: '@chet' }, now)).map((m) => m.user_id)).toEqual([C]);
+    expect((await onlineMembers(d, A, { q: '@chet_g' }, now)).map((m) => m.user_id)).toEqual([C]);
   });
 
   it('a shadow-banned member sees themself online; nobody else does', async () => {
@@ -114,7 +114,7 @@ describe('Red Flag Protocol actions', () => {
     await expect(fileReport(d, A, { target_type: 'user', target_id: A, reason: 'me' })).rejects.toMatchObject({ status: 400 });
   });
 
-  it('mute sets a time limit; revoking a pass takes the member offline; every action is logged', async () => {
+  it('mute sets a time limit; revoking a visa takes the member offline; every action is logged', async () => {
     const { d } = db();
     const now = new Date('2026-10-11T10:00:00Z');
     const muted = await actOnMember(d, STAFF, B, { action: 'mute', minutes: 30 }, now);

@@ -1,19 +1,28 @@
 import { adminDb } from '@/lib/supabase/admin';
 import { enforceRateLimit } from '@/lib/middleware/rate-limiter';
-import { clubApi, ok, readBody } from '@/lib/club/http';
+import { clubApi, ok, query, readBody } from '@/lib/club/http';
 import { requireMember } from '@/lib/club/auth';
-import { liveStories, postStory } from '@/lib/club/stories.service';
+import { homePlaceIdFor, resolvePlace } from '@/lib/club/social/places.service';
+import { placeStories, postStory, storyTray } from '@/lib/club/stories.service';
 
 export const dynamic = 'force-dynamic';
 
-/** GET /api/club/stories — live (24 h) stories grouped by member. */
-export const GET = clubApi('Stories', async () => {
+/**
+ * GET /api/club/stories — your ranked story tray: { mine, groups }.
+ * GET /api/club/stories?place=<id> — the live stories at one place, ranked for you: { groups }.
+ */
+export const GET = clubApi('Stories', async (request) => {
   const db = adminDb();
-  const { user } = await requireMember(db);
-  return ok({ groups: await liveStories(db, user.id) });
+  const { user, profile } = await requireMember(db);
+  const placeParam = query(request).get('place');
+  if (placeParam) {
+    const place = await resolvePlace(db, placeParam);
+    return ok({ place: { id: place.id, name: place.name }, groups: await placeStories(db, place.id, user.id, await homePlaceIdFor(db, profile.city)) });
+  }
+  return ok(await storyTray(db, user.id, await homePlaceIdFor(db, profile.city)));
 });
 
-/** POST /api/club/stories { media_path, caption? } — after uploading with kind=stories. */
+/** POST /api/club/stories { media_path, caption?, place_id? } — after uploading with kind=stories. */
 export const POST = clubApi('PostStory', async (request) => {
   const db = adminDb();
   const { user, profile } = await requireMember(db, { speak: true });

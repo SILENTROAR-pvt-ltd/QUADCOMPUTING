@@ -1,20 +1,24 @@
-import type { Metadata } from 'next';
-import { BODY } from '@/components/vibers/vibers-fonts';
+import type { Metadata, Viewport } from 'next';
+import { CLUB_BODY } from '@/components/club/fonts';
+import { ClubSessionProvider } from '@/components/club/club-context';
+import './club.css';
 
 export const metadata: Metadata = {
   title: 'Vibers Club',
   description: 'An application-only, verified club for travellers, nomads and creators. By Vibers Connect.',
 };
 
+export const viewport: Viewport = { themeColor: '#f1efe6' };
+
 /**
- * Vibers Club look: Vibers Connect fonts, bright colours. A warm cream page with soft sunset, violet
- * and mint glows behind everything, deep violet text, vivid violet actions.
+ * Vibers Club look: soft luxury. Warm ivory page, white cards, forest-green ink, chartreuse
+ * highlights and real travel photography. One session provider for every Club page, so moving
+ * between tabs never reloads the member.
  */
 export default function ClubLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className={`${BODY} relative min-h-dvh bg-[#fff7f0] text-[#2a1250] antialiased`}>
-      <div aria-hidden="true" className="pointer-events-none fixed inset-0 -z-0 bg-[radial-gradient(48rem_32rem_at_0%_0%,rgba(255,106,61,0.20),transparent_70%),radial-gradient(44rem_34rem_at_100%_8%,rgba(124,58,237,0.18),transparent_70%),radial-gradient(40rem_30rem_at_85%_100%,rgba(45,212,191,0.16),transparent_70%),radial-gradient(36rem_26rem_at_10%_95%,rgba(255,46,136,0.12),transparent_70%)]" />
-      <div className="relative">{children}</div>
+    <div className={`club-theme ${CLUB_BODY} relative min-h-dvh bg-[#f1efe6] text-[#14261b] antialiased [color-scheme:light] selection:bg-[#c8da4a] selection:text-[#14261b]`}>
+      <ClubSessionProvider>{children}</ClubSessionProvider>
     </div>
   );
 }

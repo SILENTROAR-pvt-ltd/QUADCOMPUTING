@@ -27,7 +27,7 @@ export function errorResponse(e: unknown): NextResponse {
   }
   if (MISSING.has((e as any)?.code)) {
     return NextResponse.json(
-      { success: false, error: 'Vibers Club is not set up yet. Apply the Club migrations (20261011000001–4).', code: 'not_ready' },
+      { success: false, error: 'Vibers Club is not set up yet. Apply the Club migrations (20261011000001–20261012000006), or paste supabase/club_setup_all.sql.', code: 'not_ready' },
       { status: 503, headers: NO_STORE },
     );
   }

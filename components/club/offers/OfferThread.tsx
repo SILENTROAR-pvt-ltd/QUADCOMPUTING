@@ -4,7 +4,6 @@ import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Badge, Card, Notice, Spinner } from '../ui';
 import { clubFetch, rupees, shortDate } from '../api';
-import { DISPLAY } from '@/components/vibers/vibers-fonts';
 import { OfferActions } from './OfferActions';
 
 const VERB: Record<string, string> = { offer: 'offered', counter: 'countered', accept: 'accepted', reject: 'rejected', withdraw: 'withdrew' };
@@ -28,16 +27,16 @@ export function OfferThread({ id }: { id: string }) {
   return (
     <div className="mx-auto max-w-3xl space-y-5">
       <div>
-        <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#be185d]">Group deal</p>
-        <h1 className={`${DISPLAY} mt-1 text-3xl`}>{property.name} × <Link href={`/club/events/${event.id}`} className="underline-offset-4 hover:underline">{event.title}</Link></h1>
-        <div className="mt-2 flex items-center gap-2"><Badge tone={offer.status === 'accepted' ? 'good' : offer.status === 'rejected' || offer.status === 'withdrawn' ? 'bad' : 'warn'}>{offer.status}</Badge><span className="text-xs text-[#2a1250]/55">You are the {role}</span></div>
+        <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#3c6b2b]">Group deal</p>
+        <h2 className="mt-1 text-[28px] font-bold leading-tight tracking-tight">{property.name} <span className="text-[#3c6b2b]">×</span> <Link href={`/club/events/${event.id}`} className="underline-offset-4 hover:underline">{event.title}</Link></h2>
+        <div className="mt-2 flex items-center gap-2"><Badge tone={offer.status === 'accepted' ? 'good' : offer.status === 'rejected' || offer.status === 'withdrawn' ? 'bad' : 'warn'}>{offer.status}</Badge><span className="text-xs text-[#14261b]/65">You are the {role}</span></div>
       </div>
       <Card className="grid gap-3 sm:grid-cols-4">
-        <div><p className="text-xs text-[#2a1250]/55">Stay total</p><p className="font-semibold">{rupees(offer.rate)}</p></div>
-        <div><p className="text-xs text-[#2a1250]/55">Guests</p><p className="font-semibold">{offer.guests}</p></div>
-        <div><p className="text-xs text-[#2a1250]/55">Dates</p><p className="font-semibold">{offer.check_in} → {offer.check_out}</p></div>
-        <div><p className="text-xs text-[#2a1250]/55">With add-ons</p><p className="font-semibold">{rupees(offer.rate + addOnTotal)}</p></div>
-        <p className="text-xs text-[#2a1250]/50 sm:col-span-4">Listed rate {rupees(property.price_min)} – {rupees(property.price_max)} per night</p>
+        <div><p className="text-xs text-[#14261b]/65">Stay total</p><p className="font-semibold">{rupees(offer.rate)}</p></div>
+        <div><p className="text-xs text-[#14261b]/65">Guests</p><p className="font-semibold">{offer.guests}</p></div>
+        <div><p className="text-xs text-[#14261b]/65">Dates</p><p className="font-semibold">{offer.check_in} → {offer.check_out}</p></div>
+        <div><p className="text-xs text-[#14261b]/65">With add-ons</p><p className="font-semibold">{rupees(offer.rate + addOnTotal)}</p></div>
+        <p className="text-xs text-[#14261b]/60 sm:col-span-4">Listed rate {rupees(property.price_min)} – {rupees(property.price_max)} per night</p>
       </Card>
       {agreement && (
         <Notice tone="good">
@@ -50,10 +49,10 @@ export function OfferThread({ id }: { id: string }) {
         <p className="mb-3 font-semibold">History</p>
         <ol className="space-y-3">
           {[...thread].reverse().map((r: any) => (
-            <li key={r.id} className="border-l-2 border-[#2a1250]/10 pl-3 text-sm">
-              <p><span className="font-semibold">{nameOf(r.actor_id)}</span> {VERB[r.action]}{r.rate ? ` ${rupees(r.rate)} for ${r.guests} guests, ${r.check_in} → ${r.check_out}` : ''}<span className="text-xs text-[#2a1250]/45"> · {shortDate(r.created_at)}</span></p>
-              {r.add_ons?.length > 0 && <p className="text-xs text-[#2a1250]/60">Add-ons: {r.add_ons.map((a: any) => `${a.label} ${rupees(a.amount)}`).join(', ')}</p>}
-              {r.note && <p className="mt-1 rounded-xl bg-[#f3ebff]/50 px-3 py-2 text-[#2a1250]/80">{r.note}</p>}
+            <li key={r.id} className="border-l-2 border-[#14261b]/10 pl-3 text-sm">
+              <p><span className="font-semibold">{nameOf(r.actor_id)}</span> {VERB[r.action]}{r.rate ? ` ${rupees(r.rate)} for ${r.guests} guests, ${r.check_in} → ${r.check_out}` : ''}<span className="text-xs text-[#14261b]/60"> · {shortDate(r.created_at)}</span></p>
+              {r.add_ons?.length > 0 && <p className="text-xs text-[#14261b]/70">Add-ons: {r.add_ons.map((a: any) => `${a.label} ${rupees(a.amount)}`).join(', ')}</p>}
+              {r.note && <p className="mt-1 rounded-xl bg-[#14261b]/[0.05] px-3 py-2 text-[#14261b]/80">{r.note}</p>}
             </li>
           ))}
         </ol>

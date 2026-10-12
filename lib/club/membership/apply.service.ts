@@ -23,7 +23,7 @@ export async function applyToClub(db: any, userId: string, body: Record<string, 
   const input = parsed.input;
 
   const existing = await loadProfile(db, userId);
-  if (existing?.status === 'revoked') fail(403, 'Your Viber Pass was revoked. Contact Vibers Club support.', 'revoked');
+  if (existing?.status === 'revoked') fail(403, 'Your Club Visa was revoked. Contact Vibers Club support.', 'revoked');
   if (existing && existing.status !== 'rejected') fail(409, 'You have already applied.', 'already_applied');
 
   const isDev = process.env.NODE_ENV === 'development';

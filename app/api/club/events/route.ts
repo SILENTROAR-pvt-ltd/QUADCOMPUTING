@@ -3,24 +3,23 @@ import { enforceRateLimit } from '@/lib/middleware/rate-limiter';
 import { clubApi, ok, query, readBody } from '@/lib/club/http';
 import { requireMember } from '@/lib/club/auth';
 import { createEvent, listEvents } from '@/lib/club/events/events.service';
-import { signMedia } from '@/lib/club/media';
+import { eventCards, joinedEventIds } from '@/lib/club/events/event-cards.service';
 
 export const dynamic = 'force-dynamic';
 
-/** GET /api/club/events?mine=1 — upcoming approved plans, or the member's own plans in any state. */
+/**
+ * GET /api/club/events — upcoming approved plans; ?mine=1 the member's own plans in any state;
+ * ?joined=1 upcoming plans they have a spot in or are interested in. Each card says who is going.
+ */
 export const GET = clubApi('Events', async (request) => {
   const db = adminDb();
   const { user } = await requireMember(db);
-  const mine = query(request).get('mine') === '1';
-  const events = await listEvents(db, mine ? { mine: user.id } : {});
+  const params = query(request);
+  const mine = params.get('mine') === '1';
+  const joined = !mine && params.get('joined') === '1';
+  const events = await listEvents(db, mine ? { mine: user.id } : joined ? { ids: await joinedEventIds(db, user.id) } : {});
   const upcoming = mine ? events : events.filter((e) => Date.parse(e.ends_at) > Date.now());
-  const urls = await signMedia(db, upcoming.map((e) => e.cover_paths[0]));
-  return ok({
-    events: upcoming.map((e) => ({
-      id: e.id, title: e.title, kind: e.kind, starts_at: e.starts_at, ends_at: e.ends_at, venue: e.venue, status: e.status, verified: e.verified,
-      ticket_price: e.ticket_price, capacity: e.capacity, cover: e.cover_paths[0] ? urls.get(e.cover_paths[0]) ?? null : null,
-    })),
-  });
+  return ok({ events: await eventCards(db, upcoming, user.id) });
 });
 
 /** POST /api/club/events — a new draft plan (any approved member). */

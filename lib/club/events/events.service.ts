@@ -59,9 +59,11 @@ export async function submitEvent(db: any, creator: ViberProfile, id: string, bo
   return rows[0];
 }
 
-export async function listEvents(db: any, opts: { mine?: string; status?: string; limit?: number } = {}) {
+export async function listEvents(db: any, opts: { mine?: string; status?: string; limit?: number; ids?: string[] } = {}) {
+  if (opts.ids && opts.ids.length === 0) return [];
   let q = db.from('club_events').select(EVENT_COLUMNS);
   if (opts.mine) q = q.eq('creator_id', opts.mine);
+  else if (opts.ids) q = q.in('id', opts.ids).in('status', ['approved', 'completed']);
   else q = q.eq('status', opts.status || 'approved');
   return must(await q.order('starts_at', { ascending: true }).limit(opts.limit ?? 50)) as ClubEvent[];
 }

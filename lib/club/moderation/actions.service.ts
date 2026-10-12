@@ -1,5 +1,5 @@
-// Staff actions against members and content: mute, shadow-ban, revoke or reinstate a pass, hide a
-// message or story. Each one is logged with the staff member who took it.
+// Staff actions against members and content: mute, shadow-ban, revoke or reinstate a visa, hide a
+// message, story, Common Room post or comment. Each one is logged with the staff member who took it.
 import { fail, must } from '../http';
 import { cleanText } from '../identity/identity-rules';
 import { logModeration } from './moderation-log';
@@ -29,17 +29,26 @@ export async function actOnMember(db: any, staffId: string, userId: string, body
   if (action === 'reinstate') q = q.eq('status', 'revoked');
   if (action === 'revoke') q = q.eq('status', 'approved');
   const rows = must(await q.select('user_id, status, muted_until, shadow_banned')) as any[];
-  if (rows.length === 0) fail(409, action === 'reinstate' ? 'Only a revoked pass can be reinstated.' : 'That member cannot take this action now.');
+  if (rows.length === 0) fail(409, action === 'reinstate' ? 'Only a revoked visa can be reinstated.' : 'That member cannot take this action now.');
 
   if (action === 'revoke') must(await db.from('club_presence').delete().eq('user_id', userId));
-  if (action === 'shadow_ban') must(await db.from('club_stories').update({ hidden: true }).eq('user_id', userId).gt('expires_at', now.toISOString()));
+  if (action === 'shadow_ban') {
+    must(await db.from('club_stories').update({ hidden: true }).eq('user_id', userId).gt('expires_at', now.toISOString()));
+    // Common Room posts too; a database without the Common Room yet simply has none to hide.
+    const posts = await db.from('club_posts').update({ hidden: true }).eq('author_id', userId).is('deleted_at', null);
+    if (posts.error && !['42P01', 'PGRST205'].includes(posts.error.code)) throw posts.error;
+    const meetups = await db.from('club_meetups').update({ hidden: true }).eq('host_id', userId);
+    if (meetups.error && !['42P01', 'PGRST205'].includes(meetups.error.code)) throw meetups.error;
+  }
   await logModeration(db, { actorId: staffId, action, targetUserId: userId, note: cleanText(body.note, 500) });
   return rows[0];
 }
 
+const HIDEABLE: Record<string, string> = { message: 'club_messages', story: 'club_stories', post: 'club_posts', comment: 'club_post_comments', meetup: 'club_meetups' };
+
 export async function hideContent(db: any, staffId: string, kind: unknown, id: string, hidden = true) {
-  const table = kind === 'message' ? 'club_messages' : kind === 'story' ? 'club_stories' : null;
-  if (!table) fail(400, 'Only messages and stories can be hidden.');
+  const table = typeof kind === 'string' ? HIDEABLE[kind] : undefined;
+  if (!table) fail(400, 'Only messages, stories, posts, comments and meetups can be hidden.');
   const rows = must(await db.from(table).update({ hidden }).eq('id', id).select('id')) as any[];
   if (rows.length === 0) fail(404, 'Not found.');
   await logModeration(db, { actorId: staffId, action: hidden ? `hide_${kind}` : `unhide_${kind}`, targetType: String(kind), targetId: id });

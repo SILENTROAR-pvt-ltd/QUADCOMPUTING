@@ -31,7 +31,7 @@ export async function payWithRazorpay(started: StartedPayment, prefill: { email?
       name: 'Vibers Club',
       description: started.payment.label,
       prefill: { email: prefill.email || undefined },
-      theme: { color: '#2a1250' },
+      theme: { color: '#17301f' },
       handler: async (r: any) => {
         const res = await clubFetch('/payments/verify', { body: { order_id: r.razorpay_order_id, payment_id: r.razorpay_payment_id, signature: r.razorpay_signature } });
         resolve(res.ok ? { ok: true } : { ok: false, error: res.error });

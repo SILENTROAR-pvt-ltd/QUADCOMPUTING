@@ -5,7 +5,7 @@ import { newPassNumber } from '@/lib/club/membership/review.service';
 
 export const dynamic = 'force-dynamic';
 
-/** POST /api/club/dev-bypass — for local development: immediately issues an approved Viber Pass for the current user. */
+/** POST /api/club/dev-bypass — for local development: immediately issues an approved Club Visa for the current user. */
 export const POST = clubApi('DevBypass', async () => {
   if (process.env.NODE_ENV === 'production') {
     fail(403, 'Dev bypass is only available in development.');

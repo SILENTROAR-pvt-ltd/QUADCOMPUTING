@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useClub } from '../club-context';
-import { Heading, Notice } from '../ui';
+import { Notice } from '../ui';
 import { clubFetch } from '../api';
 import { ApplicationsTab } from './ApplicationsTab';
 import { EventsTab } from './EventsTab';
@@ -31,12 +31,14 @@ export function AdminConsole() {
   const Active = TABS.find(([k]) => k === tab)![2];
   return (
     <div>
-      <Heading kicker={me.staffRole === 'super_admin' ? 'Super admin' : 'Club admin'} title="Back office">Every decision here is logged with your name.</Heading>
+      <p className="mb-5 text-sm text-[#14261b]/70">
+        <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#3c6b2b]">{me.staffRole === 'super_admin' ? 'Super admin' : 'Club admin'}</span> · Every decision here is logged with your name.
+      </p>
       <div role="tablist" className="mb-6 flex gap-1 overflow-x-auto pb-1">
         {TABS.map(([key, label]) => (
           <button key={key} type="button" role="tab" aria-selected={tab === key} onClick={() => setTab(key)}
-            className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-xs font-semibold ${tab === key ? 'bg-[#7c3aed] text-white' : 'bg-white text-[#2a1250]/65'}`}>
-            {label}{waiting[key] ? <span className="rounded-full bg-[#ff2e88] px-1.5 text-[10px] text-white">{waiting[key]}</span> : null}
+            className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-xs font-semibold ${tab === key ? 'bg-[#c8da4a] text-[#14261b]' : 'bg-[#14261b]/[0.06] text-[#14261b]/70 hover:text-[#14261b]'}`}>
+            {label}{waiting[key] ? <span className={`rounded-full px-1.5 text-[10px] font-bold ${tab === key ? 'bg-[#17301f] text-[#c8da4a]' : 'bg-[#c8da4a] text-[#14261b]'}`}>{waiting[key]}</span> : null}
           </button>
         ))}
       </div>

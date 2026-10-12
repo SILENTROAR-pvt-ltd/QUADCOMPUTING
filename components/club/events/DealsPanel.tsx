@@ -36,14 +36,14 @@ export function DealsPanel({ view, onChanged }: { view: any; onChanged: () => vo
         )}
       </div>
       {view.agreements.map((a: any) => (
-        <div key={a.id} className="rounded-2xl border border-[#2a1250]/10 p-4">
+        <div key={a.id} className="rounded-2xl border border-[#14261b]/10 p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-sm font-semibold">Invoice {a.invoice_number}</p>
             {a.status === 'deposit_paid' ? <Badge tone="good"><BadgeCheck className="h-3 w-3" /> Deposit paid</Badge> : <Badge tone="warn">Awaiting deposit</Badge>}
           </div>
           <ul className="mt-2 space-y-1 text-sm">
-            {a.items.map((it: any, i: number) => <li key={i} className="flex justify-between gap-3"><span className="text-[#2a1250]/70">{it.label}</span><span>{rupees(it.amount)}</span></li>)}
-            <li className="flex justify-between border-t border-[#2a1250]/10 pt-1 font-semibold"><span>Total</span><span>{rupees(a.total)}</span></li>
+            {a.items.map((it: any, i: number) => <li key={i} className="flex justify-between gap-3"><span className="text-[#14261b]/75">{it.label}</span><span>{rupees(it.amount)}</span></li>)}
+            <li className="flex justify-between border-t border-[#14261b]/10 pt-1 font-semibold"><span>Total</span><span>{rupees(a.total)}</span></li>
           </ul>
           {a.status === 'awaiting_deposit' && view.me.isCreator && (
             <Button tone="aura" className="mt-3" busy={busy === a.id} onClick={() => deposit(a.id)}>Pay non-refundable deposit · {rupees(a.deposit_amount)}</Button>
@@ -51,12 +51,12 @@ export function DealsPanel({ view, onChanged }: { view: any; onChanged: () => vo
         </div>
       ))}
       {view.offers.filter((o: any) => o.status !== 'accepted').map((o: any) => (
-        <Link key={o.id} href={`/club/offers/${o.id}`} className="flex items-center justify-between gap-2 rounded-2xl bg-[#f3ebff]/50 px-4 py-3 text-sm hover:bg-[#f3ebff]">
+        <Link key={o.id} href={`/club/offers/${o.id}`} className="flex items-center justify-between gap-2 rounded-2xl bg-[#14261b]/[0.05] px-4 py-3 text-sm hover:bg-[#14261b]/[0.08]">
           <span>Offer {rupees(o.rate)} · {o.guests} guests · {o.check_in}</span>
-          <span className="flex items-center gap-2"><Badge tone={OFFER_TONE[o.status]}>{o.status}</Badge><span className="text-xs text-[#2a1250]/50">{shortDate(o.updated_at)}</span></span>
+          <span className="flex items-center gap-2"><Badge tone={OFFER_TONE[o.status]}>{o.status}</Badge><span className="text-xs text-[#14261b]/60">{shortDate(o.updated_at)}</span></span>
         </Link>
       ))}
-      {view.agreements.length === 0 && view.offers.length === 0 && <p className="text-sm text-[#2a1250]/55">No deals yet. Offers you make to verified properties appear here.</p>}
+      {view.agreements.length === 0 && view.offers.length === 0 && <p className="text-sm text-[#14261b]/65">No deals yet. Offers you make to verified properties appear here.</p>}
       <Notice>{error}</Notice>
     </Card>
   );

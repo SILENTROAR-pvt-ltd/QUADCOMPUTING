@@ -29,7 +29,7 @@ export function PayoutsTab() {
           <Card key={p.id} className="!p-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-sm"><span className="font-semibold">{rupees(p.amount)}</span> to {p.payee_label} {p.third_party && <Badge tone="warn">third party · unverified</Badge>}</p>
-              <span className="text-xs text-[#2a1250]/50">{shortDate(p.created_at)}{p.paid_reference ? ` · ref ${p.paid_reference}` : ''}</span>
+              <span className="text-xs text-[#14261b]/60">{shortDate(p.created_at)}{p.paid_reference ? ` · ref ${p.paid_reference}` : ''}</span>
             </div>
             <div className="mt-2 flex flex-wrap gap-2">
               <Link href={`/club/events/${p.event_id}`} className="text-xs font-semibold underline">Plan</Link>
@@ -49,7 +49,7 @@ export function PayoutsTab() {
         <Card className="mt-4 space-y-1 text-sm">
           <div className="flex justify-between"><p className="font-semibold">Plan ledger</p><button type="button" onClick={() => setStatement(null)} className="text-xs underline">Close</button></div>
           {[['Collected', statement.collected], ['Fees', statement.fees], ['Paid out', statement.paidOut], ['Held in escrow', statement.heldInEscrow], ['Owed to vendors', statement.owedToVendors], ['Pending payouts', statement.pendingPayouts]].map(([k, v]) => (
-            <p key={k as string} className="flex justify-between"><span className="text-[#2a1250]/60">{k}</span><span>{rupees(v as number)}</span></p>
+            <p key={k as string} className="flex justify-between"><span className="text-[#14261b]/70">{k}</span><span>{rupees(v as number)}</span></p>
           ))}
           <p className="pt-1">{statement.reconciled ? <Badge tone="good">Reconciled to zero</Badge> : <Badge tone="warn">Not settled</Badge>}</p>
           <details className="pt-2"><summary className="cursor-pointer text-xs font-semibold">Journal ({statement.journals.length})</summary>

@@ -10,7 +10,7 @@ export type StaffRole = 'club_admin' | 'super_admin';
 export interface SessionUser { id: string; email?: string; superAdmin: boolean }
 
 export const PROFILE_COLUMNS =
-  'user_id, viber_id, alias, alias_masked, dob, generation, city, state, country, account_type, business_name, phone, phone_verified_at, vibe_line, avatar_url, status, pass_number, campaign_source, review_note, reviewed_at, muted_until, shadow_banned, created_at';
+  'user_id, viber_id, alias, alias_masked, dob, generation, city, state, country, account_type, business_name, phone, phone_verified_at, vibe_line, avatar_url, status, pass_number, campaign_source, review_note, reviewed_at, muted_until, shadow_banned, created_at, traveler_kinds, social_links, club_username, username_changed_at, bio';
 
 export async function sessionUser(): Promise<SessionUser | null> {
   try {

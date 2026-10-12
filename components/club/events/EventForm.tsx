@@ -37,7 +37,7 @@ export function EventForm({ initial, eventId }: { initial?: Form; eventId?: stri
         <div className="grid gap-4 sm:grid-cols-3">
           <Label text="Type">
             <select className={field} value={f.kind} onChange={(e) => set({ kind: e.target.value as Form['kind'] })}>
-              <option value="tour">Tour</option><option value="event">Event</option><option value="short_plan">Short plan</option>
+              <option value="tour">Trip</option><option value="event">Ticketed event</option>{f.kind === 'short_plan' && <option value="short_plan">Short plan (older)</option>}
             </select>
           </Label>
           <Label text="Starts"><input type="datetime-local" className={field} {...text('starts_at')} /></Label>

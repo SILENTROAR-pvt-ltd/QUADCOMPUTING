@@ -22,10 +22,10 @@ export function ConsentSubmit({ eventId, consent, onDone }: { eventId: string; c
 
   return (
     <Card className="space-y-3">
-      <p className="flex items-center gap-2 font-semibold"><ScrollText aria-hidden="true" className="h-4 w-4 text-[#be185d]" /> Responsibility & consent · v{consent.version}</p>
-      <p className="rounded-2xl bg-[#f3ebff]/60 p-4 text-sm leading-relaxed text-[#2a1250]/80">{consent.body}</p>
+      <p className="flex items-center gap-2 font-semibold"><ScrollText aria-hidden="true" className="h-4 w-4 text-[#3c6b2b]" /> Responsibility & consent · v{consent.version}</p>
+      <p className="rounded-2xl bg-[#14261b]/[0.05] p-4 text-sm leading-relaxed text-[#14261b]/80">{consent.body}</p>
       <label className="flex items-start gap-3 text-sm">
-        <input type="checkbox" className="mt-0.5 h-4 w-4 accent-[#7c3aed]" checked={agree} onChange={(e) => setAgree(e.target.checked)} />
+        <input type="checkbox" className="mt-0.5 h-4 w-4 accent-[#17301f]" checked={agree} onChange={(e) => setAgree(e.target.checked)} />
         <span>I agree. Sign it with my Viber ID, and record the time and my IP address.</span>
       </label>
       <Notice>{error}</Notice>

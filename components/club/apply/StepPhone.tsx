@@ -33,7 +33,7 @@ export function StepPhone({ form, set }: { form: ApplyForm; set: (patch: Partial
 
   if (form.phone_verified) {
     return (
-      <p className="flex items-center gap-2 rounded-2xl bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+      <p className="flex items-center gap-2 rounded-2xl bg-[#e1efe3] px-4 py-3 text-sm text-[#2f5d1f]">
         <CheckCircle2 aria-hidden="true" className="h-4 w-4" /> {form.phone} is verified.
         <button type="button" className="ml-auto text-xs font-semibold underline" onClick={() => { set({ phone_verified: false }); setSentTo(''); setCode(''); }}>Change</button>
       </p>
@@ -58,14 +58,14 @@ export function StepPhone({ form, set }: { form: ApplyForm; set: (patch: Partial
         </Label>
       )}
       {process.env.NODE_ENV !== 'production' && (
-        <div className="flex items-center justify-between gap-3 rounded-2xl border border-violet-200 bg-violet-50/70 p-3 text-xs text-[#2a1250]/80">
+        <div className="flex items-center justify-between gap-3 rounded-2xl border border-[#3c6b2b]/25 bg-[#e1efe3] p-3 text-xs text-[#14261b]/80">
           <div>
-            <span className="font-bold text-violet-900">⚡ Localhost Dev:</span> Master OTP is <code className="rounded bg-violet-200 px-1 py-0.5 font-mono font-bold text-violet-800">123456</code>
+            <span className="font-bold text-[#3c6b2b]">⚡ Localhost Dev:</span> Master OTP is <code className="rounded bg-[#e1efe3] px-1 py-0.5 font-mono font-bold text-[#2f5d1f]">123456</code>
           </div>
           <Button
             type="button"
             tone="quiet"
-            className="shrink-0 bg-violet-100 hover:bg-violet-200 text-xs py-1 px-3"
+            className="shrink-0 bg-[#e1efe3] px-3 py-1 text-xs hover:bg-[#e1efe3]"
             busy={busy}
             onClick={async () => {
               setError('');

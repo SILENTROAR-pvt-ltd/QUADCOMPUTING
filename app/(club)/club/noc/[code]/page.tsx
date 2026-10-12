@@ -4,7 +4,8 @@ import { ShieldX } from 'lucide-react';
 import { adminDb } from '@/lib/supabase/admin';
 import { verifyNoc } from '@/lib/club/ledger/noc.service';
 import { NocCertificate } from '@/components/club/noc/NocCertificate';
-import { DISPLAY } from '@/components/vibers/vibers-fonts';
+import { Gate } from '@/components/club/nav/Gate';
+import { CLUB_DISPLAY } from '@/components/club/fonts';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Certificate · Vibers Club' };
@@ -23,17 +24,17 @@ export default async function NocPage({ params }: { params: Promise<{ code: stri
   const proto = h.get('x-forwarded-proto') || (host.startsWith('localhost') ? 'http' : 'https');
 
   return (
-    <main className="px-4 py-12 sm:px-6">
+    <Gate>
       {result.valid && result.payload ? (
         <NocCertificate noc={result.payload} verifyUrl={`${proto}://${host}/club/noc/${result.payload.code}`} />
       ) : (
-        <div className="mx-auto max-w-md rounded-3xl border border-rose-200 bg-white p-8 text-center">
-          <ShieldX aria-hidden="true" className="mx-auto h-8 w-8 text-rose-600" />
-          <h1 className={`${DISPLAY} mt-3 text-2xl`}>Not a valid certificate</h1>
-          <p className="mt-2 text-sm text-[#2a1250]/65">This code does not match a Vibers Club certificate, or the certificate was altered.</p>
-          <Link href="/join" className="mt-5 inline-block text-sm font-semibold underline">Vibers Club</Link>
+        <div className="mx-auto max-w-md rounded-3xl border border-red-200 bg-[#fbfaf6] p-8 text-center">
+          <ShieldX aria-hidden="true" className="mx-auto h-8 w-8 text-red-600" />
+          <h1 className={`${CLUB_DISPLAY} mt-3 text-3xl font-semibold`}>Not a valid certificate</h1>
+          <p className="mt-2 text-sm text-[#14261b]/70">This code does not match a Vibers Club certificate, or the certificate was altered.</p>
+          <Link href="/join" className="mt-5 inline-block text-sm font-semibold text-[#3c6b2b] underline">Vibers Club</Link>
         </div>
       )}
-    </main>
+    </Gate>
   );
 }

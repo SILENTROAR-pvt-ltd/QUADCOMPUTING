@@ -8,7 +8,7 @@ const read = (name: string) => readFileSync(join(ROOT, 'supabase', 'migrations',
 const SETUP = join(ROOT, 'supabase', 'club_setup_all.sql');
 
 describe('One-paste Club database setup', () => {
-  it('supabase/club_setup_all.sql is exactly the four Club migrations, in order', () => {
+  it('supabase/club_setup_all.sql is exactly the Club migrations, in order', () => {
     const expected = buildSetupSql(read);
     // Run with UPDATE_CLUB_SQL=1 to regenerate the file after changing a Club migration.
     if (process.env.UPDATE_CLUB_SQL === '1' || !existsSync(SETUP)) writeFileSync(SETUP, expected);

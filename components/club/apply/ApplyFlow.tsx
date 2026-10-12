@@ -36,8 +36,8 @@ export function ApplyFlow() {
   if (done || (me.profile && me.profile.status !== 'rejected')) {
     return (
       <Card className="mx-auto max-w-lg text-center">
-        <Heading kicker="Application" title={me.profile?.status === 'approved' ? 'You are already in' : 'Application received'}>
-          {me.profile?.status === 'approved' ? 'Your Viber Pass is waiting.' : 'A real person will review it soon. We will notify you in the club.'}
+        <Heading level={1} kicker="Application" title={me.profile?.status === 'approved' ? 'You are already in' : 'Application received'}>
+          {me.profile?.status === 'approved' ? 'Your Club Visa is waiting.' : 'A real person will review it soon. We will notify you in the club.'}
         </Heading>
         <Link href="/club"><Button tone="aura">Go to the club</Button></Link>
       </Card>
@@ -62,16 +62,16 @@ export function ApplyFlow() {
 
   return (
     <div className="mx-auto max-w-xl">
-      <Heading kicker={`Step ${step + 2} of 4 · ${STEPS[step]}`} title="Apply for your Viber Pass">
+      <Heading level={1} kicker={`Step ${step + 2} of 4 · ${STEPS[step]}`} title="Apply for your Club Visa">
         Signed in as {me.user?.email}. Your answers stay private; members see only what is on your profile.
       </Heading>
       <ol aria-label="Progress" className="mb-6 flex gap-1.5">
-        {STEPS.map((s, i) => <li key={s} className={`h-1.5 flex-1 rounded-full ${i <= step ? 'bg-[#7c3aed]' : 'bg-[#2a1250]/10'}`}><span className="sr-only">{s}</span></li>)}
+        {STEPS.map((s, i) => <li key={s} className={`h-1.5 flex-1 rounded-full ${i <= step ? 'bg-[#c8da4a]' : 'bg-[#14261b]/10'}`}><span className="sr-only">{s}</span></li>)}
       </ol>
       {process.env.NODE_ENV !== 'production' && (
-        <div className="mb-4 flex items-center justify-between gap-3 rounded-2xl border border-violet-200 bg-violet-50/70 p-3 text-xs text-[#2a1250]/80">
+        <div className="mb-4 flex items-center justify-between gap-3 rounded-2xl border border-[#3c6b2b]/25 bg-[#e1efe3] p-3 text-xs text-[#14261b]/80">
           <div>
-            <span className="font-bold text-violet-900">⚡ Localhost Dev:</span> Skip application & enter club directly
+            <span className="font-bold text-[#3c6b2b]">⚡ Localhost Dev:</span> Skip application & enter club directly
           </div>
           <Button
             type="button"

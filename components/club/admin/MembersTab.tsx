@@ -8,7 +8,7 @@ import { ListState, useAdminList, useDecision } from './admin-kit';
 
 const ACTIONS: Array<[string, string, string]> = [
   ['mute', 'Mute 24h', 'Mute this member for 24 hours?'], ['unmute', 'Unmute', ''], ['shadow_ban', 'Shadow-ban', 'Shadow-ban this member?'],
-  ['unshadow_ban', 'Lift shadow-ban', ''], ['revoke', 'Revoke pass', 'Revoke this Viber Pass?'], ['reinstate', 'Reinstate', 'Reinstate this pass?'],
+  ['unshadow_ban', 'Lift shadow-ban', ''], ['revoke', 'Revoke visa', 'Revoke this Club Visa?'], ['reinstate', 'Reinstate', 'Reinstate this visa?'],
 ];
 
 /** Find a member (staff see real names behind masks) and apply Red Flag actions. */
@@ -22,7 +22,7 @@ export function MembersTab() {
     <div>
       <form onSubmit={(e) => { e.preventDefault(); setTerm(q); }} className="mb-4 flex max-w-md gap-2">
         <span className="relative flex-1">
-          <Search aria-hidden="true" className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#2a1250]/40" />
+          <Search aria-hidden="true" className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#14261b]/60" />
           <input aria-label="Search members" className={`${field} pl-9`} placeholder="Viber ID or club name" value={q} onChange={(e) => setQ(e.target.value)} />
         </span>
       </form>
@@ -35,7 +35,7 @@ export function MembersTab() {
           return (
             <Card key={m.user_id} className="!p-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="text-sm"><span className="font-semibold">{m.display_name}</span> {m.viber_id}{m.alias && <span className="text-[#2a1250]/55"> · “{m.alias}”{m.alias_masked ? ' (masked)' : ''}</span>}</p>
+                <p className="text-sm"><span className="font-semibold">{m.display_name}</span> {m.viber_id}{m.alias && <span className="text-[#14261b]/65"> · “{m.alias}”{m.alias_masked ? ' (masked)' : ''}</span>}</p>
                 <div className="flex flex-wrap gap-1">
                   <Badge tone={m.status === 'approved' ? 'good' : 'bad'}>{m.status}</Badge>
                   <Badge>{GENERATION_LABEL[m.generation]}</Badge>
@@ -47,7 +47,7 @@ export function MembersTab() {
                 {ACTIONS.filter(([a]) => (a === 'reinstate' ? m.status === 'revoked' : a === 'revoke' ? m.status === 'approved' : a === 'unmute' ? muted : a === 'mute' ? !muted : a === 'unshadow_ban' ? m.shadow_banned : a === 'shadow_ban' ? !m.shadow_banned : true))
                   .map(([action, label, confirm]) => (
                     <button key={action} type="button" disabled={busy === m.user_id} onClick={() => decide(m.user_id, { user_id: m.user_id, action, minutes: 1440 }, confirm || undefined)}
-                      className={`rounded-full border px-3 py-1 text-xs font-semibold ${action === 'revoke' ? 'border-rose-200 text-rose-700' : 'border-[#2a1250]/15'}`}>{label}</button>
+                      className={`rounded-full border px-3 py-1 text-xs font-semibold ${action === 'revoke' ? 'border-red-200 text-red-700' : 'border-[#14261b]/15'}`}>{label}</button>
                   ))}
               </div>
             </Card>

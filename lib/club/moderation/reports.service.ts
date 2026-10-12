@@ -3,7 +3,7 @@ import { fail, must } from '../http';
 import { cleanText } from '../identity/identity-rules';
 import { logModeration } from './moderation-log';
 
-export const REPORT_TARGETS = ['user', 'message', 'story', 'event', 'property'] as const;
+export const REPORT_TARGETS = ['user', 'message', 'story', 'event', 'property', 'post', 'comment', 'meetup'] as const;
 export type ReportTarget = (typeof REPORT_TARGETS)[number];
 
 export async function fileReport(db: any, reporterId: string, body: Record<string, any>) {

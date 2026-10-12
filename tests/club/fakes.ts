@@ -5,7 +5,7 @@ import { randomUUID } from 'node:crypto';
 import { createFakeSupabase, type FakeOptions } from '@/lib/testing/fake-supabase';
 
 export const CLUB_UNIQUE: FakeOptions['unique'] = {
-  viber_profiles: [['viber_id'], ['pass_number']],
+  viber_profiles: [['viber_id'], ['pass_number'], ['club_username']],
   vibers_accounts: [['handle']],
   club_ledger_accounts: [['code']],
   club_journal: [['idempotency_key']],
@@ -14,6 +14,12 @@ export const CLUB_UNIQUE: FakeOptions['unique'] = {
   club_reports: [['reporter_id', 'target_type', 'target_id']],
   club_room_members: [['room_id', 'user_id']],
   club_message_reactions: [['message_id', 'user_id', 'emoji']],
+  club_post_likes: [['post_id', 'user_id']],
+  club_places: [['slug']],
+  club_place_follows: [['place_id', 'user_id']],
+  club_follows: [['follower_id', 'followee_id']],
+  club_story_views: [['story_id', 'viewer_id']],
+  club_meetup_members: [['meetup_id', 'user_id']],
   club_event_interest: [['event_id', 'user_id']],
   club_event_consents: [['event_id', 'version']],
   club_rooms: [['slug'], ['dm_key'], ['event_id']],
@@ -57,8 +63,8 @@ export function member(userId: string, handle: string, over: Record<string, unkn
     profile: {
       user_id: userId, viber_id: handle, alias: null, alias_masked: false, dob: ADULT_DOB, generation: 'millennial', city: 'Goa', state: 'Goa',
       country: 'India', account_type: 'viber', business_name: null, phone: '919800000000', phone_verified_at: new Date().toISOString(),
-      vibe_line: 'sunsets and chai', avatar_url: null, status: 'approved', pass_number: null, campaign_source: null, review_note: null,
-      reviewed_at: null, muted_until: null, shadow_banned: false, created_at: new Date().toISOString(), ...over,
+      vibe_line: 'sunsets and chai', avatar_url: null, club_username: null, username_changed_at: null, status: 'approved', pass_number: null,
+      campaign_source: null, review_note: null, reviewed_at: null, muted_until: null, shadow_banned: false, created_at: new Date().toISOString(), ...over,
     },
   };
 }

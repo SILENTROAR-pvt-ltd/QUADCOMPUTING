@@ -32,7 +32,7 @@ export function MoneyPanel({ view, onChanged }: { view: any; onChanged: () => vo
   };
 
   if (!s) return null;
-  const row = (label: string, v: number, strong = false) => <p className={`flex justify-between text-sm ${strong ? 'font-semibold' : ''}`}><span className="text-[#2a1250]/65">{label}</span><span>{rupees(v)}</span></p>;
+  const row = (label: string, v: number, strong = false) => <p className={`flex justify-between text-sm ${strong ? 'font-semibold' : ''}`}><span className="text-[#14261b]/70">{label}</span><span>{rupees(v)}</span></p>;
   return (
     <Card className="space-y-4">
       <div className="flex items-center justify-between"><p className="font-semibold">Escrow ledger</p>{s.reconciled ? <Badge tone="good">Settled to zero</Badge> : <Badge tone="warn">Open</Badge>}</div>
@@ -46,7 +46,7 @@ export function MoneyPanel({ view, onChanged }: { view: any; onChanged: () => vo
         </ul>
       )}
       {view.event.status === 'approved' || view.event.status === 'completed' ? (
-        <div className="space-y-3 rounded-2xl bg-[#f3ebff]/50 p-4">
+        <div className="space-y-3 rounded-2xl bg-[#14261b]/[0.05] p-4">
           <p className="text-sm font-semibold">Request a payout</p>
           <Label text="Pay">
             <select className={field} value={target} onChange={(e) => setTarget(e.target.value)}>

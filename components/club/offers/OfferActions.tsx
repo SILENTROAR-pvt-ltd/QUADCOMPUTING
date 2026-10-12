@@ -58,7 +58,7 @@ export function OfferActions({ offer, role, onChanged }: { offer: any; role: str
           <div className="flex gap-2"><Button busy={busy === 'counter'} onClick={() => act('counter')}>Send counter-offer</Button><Button tone="quiet" onClick={() => setCountering(false)}>Cancel</Button></div>
         </div>
       )}
-      {role === 'creator' && <button type="button" onClick={() => act('withdraw')} className="text-xs font-semibold text-[#2a1250]/55 underline">Withdraw this offer</button>}
+      {role === 'creator' && <button type="button" onClick={() => act('withdraw')} className="text-xs font-semibold text-[#14261b]/65 underline">Withdraw this offer</button>}
       <Notice>{error}</Notice>
     </Card>
   );

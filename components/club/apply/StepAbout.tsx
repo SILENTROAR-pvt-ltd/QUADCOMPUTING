@@ -34,11 +34,11 @@ export function StepAbout({ form, set }: { form: ApplyForm; set: (patch: Partial
       <datalist id="club-countries">{COUNTRIES.map((c) => <option key={c} value={c} />)}</datalist>
 
       <fieldset>
-        <legend className="text-xs font-semibold text-[#2a1250]/80">I am joining as</legend>
+        <legend className="text-xs font-semibold text-[#14261b]/80">I am joining as</legend>
         <div className="mt-1.5 grid grid-cols-2 gap-2">
           {(['viber', 'business'] as const).map((t) => (
             <button key={t} type="button" aria-pressed={form.account_type === t} onClick={() => set({ account_type: t })}
-              className={`rounded-2xl border px-4 py-3 text-left text-sm transition ${form.account_type === t ? 'border-[#7c3aed] bg-[#7c3aed] text-white' : 'border-[#2a1250]/15 bg-white'}`}>
+              className={`rounded-2xl border px-4 py-3 text-left text-sm transition ${form.account_type === t ? 'border-[#17301f] bg-[#c8da4a] text-[#14261b]' : 'border-[#14261b]/15 bg-[#14261b]/[0.04] hover:bg-[#14261b]/[0.08]'}`}>
               <span className="block font-semibold">{t === 'viber' ? 'A Viber' : 'A business'}</span>
               <span className="block text-xs opacity-70">{t === 'viber' ? 'Travel, meet, host plans' : 'Hotel, cafe or restaurant'}</span>
             </button>
@@ -47,14 +47,14 @@ export function StepAbout({ form, set }: { form: ApplyForm; set: (patch: Partial
       </fieldset>
 
       {form.account_type === 'business' && (
-        <div className="space-y-4 rounded-2xl bg-[#f3ebff]/50 p-4">
+        <div className="space-y-4 rounded-2xl bg-[#14261b]/[0.05] p-4">
           <Label text="Business name"><input className={field} value={form.business_name} onChange={(e) => set({ business_name: e.target.value })} /></Label>
           <fieldset>
-            <legend className="text-xs font-semibold text-[#2a1250]/80">Categories <span className="font-normal text-[#2a1250]/45">· choose all that apply</span></legend>
+            <legend className="text-xs font-semibold text-[#14261b]/80">Categories <span className="font-normal text-[#14261b]/60">· choose all that apply</span></legend>
             <div className="mt-1.5 flex flex-wrap gap-2">
               {categories.map((c) => (
                 <button key={c.slug} type="button" aria-pressed={form.categories.includes(c.slug)} onClick={() => toggle(c.slug)}
-                  className={`rounded-full border px-3.5 py-1.5 text-xs font-semibold ${form.categories.includes(c.slug) ? 'border-[#7c3aed] bg-[#7c3aed] text-white' : 'border-[#2a1250]/15 bg-white'}`}>
+                  className={`rounded-full border px-3.5 py-1.5 text-xs font-semibold ${form.categories.includes(c.slug) ? 'border-[#17301f] bg-[#c8da4a] text-[#14261b]' : 'border-[#14261b]/15 bg-[#14261b]/[0.04] hover:bg-[#14261b]/[0.08]'}`}>
                   {c.label}
                 </button>
               ))}

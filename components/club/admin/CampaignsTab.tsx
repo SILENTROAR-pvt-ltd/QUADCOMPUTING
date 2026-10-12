@@ -31,8 +31,8 @@ export function CampaignsTab() {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="font-semibold">{c.label} {c.active ? <Badge tone="good">active</Badge> : <Badge>retired</Badge>}</p>
-                <p className="font-mono text-xs text-[#2a1250]/55">/join?src={c.code}</p>
-                <p className="text-xs text-[#2a1250]/55">{c.applications} application{c.applications === 1 ? '' : 's'} · created {shortDate(c.created_at)}</p>
+                <p className="font-mono text-xs text-[#14261b]/65">/join?src={c.code}</p>
+                <p className="text-xs text-[#14261b]/65">{c.applications} application{c.applications === 1 ? '' : 's'} · created {shortDate(c.created_at)}</p>
               </div>
               {c.active && origin && <QrDownloads url={`${origin}/join?src=${c.code}`} label={c.label} code={c.code} />}
             </div>

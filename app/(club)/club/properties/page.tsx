@@ -3,9 +3,12 @@
 import React, { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import { Building2, Plus } from 'lucide-react';
 import { ClubShell } from '@/components/club/ClubShell';
+import { Screen } from '@/components/club/nav/Screen';
 import { useClub } from '@/components/club/club-context';
-import { Empty, Heading, Notice, Spinner, field } from '@/components/club/ui';
+import { Empty, FOCUS, Heading, Notice, Spinner, field } from '@/components/club/ui';
+import { Segmented } from '@/components/club/ui-extra';
 import { clubFetch } from '@/components/club/api';
 import { PropertyCard } from '@/components/club/properties/PropertyCard';
 import { AMENITY_LABEL } from '@/components/club/properties/property-form';
@@ -32,14 +35,14 @@ function Marketplace() {
     <>
       <div className="flex flex-wrap items-end justify-between gap-3">
         <Heading kicker="Stays" title="Verified partner properties">Every listing is checked by the Vibers Club team. Make a group offer from your approved plan.</Heading>
-        {isBusiness && <Link href="/club/properties/new" className="mb-6 inline-flex h-10 items-center rounded-full bg-[#7c3aed] px-5 text-sm font-semibold text-white">List a property</Link>}
+        {isBusiness && (
+          <Link href="/club/properties/new" className={`mb-6 inline-flex h-10 items-center gap-1.5 rounded-full bg-[#c8da4a] px-5 text-sm font-bold text-[#14261b] hover:bg-[#bccf3b] ${FOCUS}`}>
+            <Plus aria-hidden="true" className="h-4 w-4" strokeWidth={2.5} /> List a property
+          </Link>
+        )}
       </div>
       {eventId && <div className="mb-4"><Notice tone="info">Choosing a stay for your plan. Open a property to make your group offer.</Notice></div>}
-      {isBusiness && (
-        <div role="tablist" className="mb-4 inline-flex gap-1 rounded-full bg-[#2a1250]/[0.05] p-1">
-          {(['search', 'mine'] as const).map((t) => <button key={t} role="tab" type="button" aria-selected={tab === t} onClick={() => setTab(t)} className={`rounded-full px-4 py-1.5 text-xs font-semibold ${tab === t ? 'bg-white shadow-sm' : 'text-[#2a1250]/55'}`}>{t === 'search' ? 'Find stays' : 'My listings'}</button>)}
-        </div>
-      )}
+      {isBusiness && <div className="mb-4"><Segmented label="Stays" value={tab} options={[['search', 'Find stays'], ['mine', 'My listings']]} onChange={setTab} /></div>}
       {tab === 'search' && (
         <div className="mb-5 grid gap-2 sm:grid-cols-5">
           <input aria-label="City" className={field} placeholder="City" {...f('city')} />
@@ -51,11 +54,17 @@ function Marketplace() {
       )}
       {!list ? <Spinner /> : list.length === 0
         ? <Empty title={tab === 'mine' ? 'No listings yet' : 'No stays match'}>{tab === 'mine' ? 'List your first property; staff verify it before it appears in search.' : 'Try another city or fewer filters.'}</Empty>
-        : <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{list.map((p) => <PropertyCard key={p.id} p={p} eventId={eventId} />)}</div>}
+        : <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">{list.map((p) => <PropertyCard key={p.id} p={p} eventId={eventId} />)}</div>}
     </>
   );
 }
 
 export default function PropertiesPage() {
-  return <ClubShell><Suspense fallback={<Spinner />}><Marketplace /></Suspense></ClubShell>;
+  return (
+    <ClubShell>
+      <Screen title="Stays" icon={Building2} back="/club/explore" width="wide">
+        <Suspense fallback={<Spinner />}><Marketplace /></Suspense>
+      </Screen>
+    </ClubShell>
+  );
 }
