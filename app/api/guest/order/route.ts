@@ -87,17 +87,29 @@ export const POST = withApiErrorBoundary(async function POST(request: Request) {
 
     return NextResponse.json(response, { status });
   } catch (error: any) {
+    const msg: string = error.message || '';
     const isClientError =
-      error.message?.includes('Missing') ||
-      error.message?.includes('No items') ||
-      error.message?.includes('Invalid');
-    const isNotFound = error.message?.includes('not found');
+      msg.includes('Missing') ||
+      msg.includes('No items') ||
+      msg.includes('Invalid');
+    const isNotFound = msg.includes('not found');
+    const isTableClosed =
+      msg.toLowerCase().includes('table is closed') ||
+      msg.includes('ORDER_NOT_FOUND') ||
+      error.status === 409;
 
+    if (isTableClosed) {
+      return apiError(
+        'This table has been closed or settled. Please ask staff to re-open the table.',
+        'TABLE_CLOSED',
+        409
+      );
+    }
     if (isNotFound) {
-      return apiError(error.message, 'NOT_FOUND', 404);
+      return apiError(msg, 'NOT_FOUND', 404);
     }
     if (isClientError) {
-      return apiError(error.message, 'INVALID_PAYLOAD', 400);
+      return apiError(msg, 'INVALID_PAYLOAD', 400);
     }
 
     return handleApiError(error, request, 'GuestOrderPOST');

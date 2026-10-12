@@ -2,7 +2,7 @@ export const isValidUuid = (val?: string | null): boolean => {
   return typeof val === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
 };
 
-export const CLOSED_STATUSES = ['SETTLED', 'settled', 'COMPLETED', 'completed', 'CANCELLED', 'cancelled', 'billed'];
+export const CLOSED_STATUSES = ['SETTLED', 'settled', 'COMPLETED', 'completed', 'CANCELLED', 'cancelled', 'billed', 'closed', 'CLOSED'];
 
 export function normalizeCumulativeItems(cumulativeRawItems: any[]) {
   return (cumulativeRawItems || []).map((it: any, idx: number) => {

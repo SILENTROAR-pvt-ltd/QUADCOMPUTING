@@ -187,6 +187,7 @@ export async function submitGuestOrder(body: any, supabase: any) {
   if (!rpcResult?.success) {
     const err: any = new Error(rpcResult?.error || 'Failed to submit order atomically');
     err.status = 409;
+    err.code = 'TABLE_CLOSED';
     throw err;
   }
 
