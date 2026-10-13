@@ -199,7 +199,9 @@ export type AccountState =
 export async function fetchGuestAccountState(venueId: string): Promise<AccountState> {
   if (!venueId) return { status: 'out' };
   try {
-    const res = await fetch(`/api/guest/auth/me?venue_id=${encodeURIComponent(venueId)}`, { cache: 'no-store' });
+    // A request that never answers (a dropped mobile connection) ends as "unknown" rather than leaving the menu waiting.
+    const signal = typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function' ? AbortSignal.timeout(8000) : undefined;
+    const res = await fetch(`/api/guest/auth/me?venue_id=${encodeURIComponent(venueId)}`, { cache: 'no-store', signal });
     if (!res.ok) return { status: 'unknown' };
     const data = await res.json().catch(() => null);
     if (!data || typeof data.signedIn !== 'boolean') return { status: 'unknown' };

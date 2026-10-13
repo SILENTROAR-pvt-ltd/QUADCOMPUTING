@@ -4,6 +4,7 @@ import React, { Suspense, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MenuHeader } from '@/components/guest/menu/MenuHeader';
+import { MenuSkeleton } from '@/components/guest/menu/MenuSkeleton';
 import { DiningFilters } from '@/components/guest/menu/DiningFilters';
 import { ServiceCallBar } from '@/components/guest/menu/ServiceCallBar';
 import { DiningFeed } from '@/components/guest/menu/DiningFeed';
@@ -23,6 +24,7 @@ import { useDishLikes } from '@/components/guest/menu/hooks/useDishLikes';
 import { GuestFavouritesRail } from '@/components/guest/menu/GuestFavouritesRail';
 import { MenuInfoPanel, useMenuInfo } from '@/components/guest/menu/MenuInfoPanel';
 import { useGuestAccount } from '@/lib/guest/use-guest-account';
+import { categoryCovers } from '@/lib/guest/category-covers';
 import { useGuestAddressHandle, useGuestDocumentTitle } from '@/lib/guest/use-guest-title';
 
 function GuestMenuContent() {
@@ -59,6 +61,8 @@ function GuestMenuContent() {
     }
     return counts;
   }, [state.diningItems]);
+  // A photo of one of each category's own dishes, for the same chips.
+  const dishCovers = useMemo(() => categoryCovers(state.diningItems), [state.diningItems]);
 
   // The tab title shows who is signed in and which tab is open (the address stays clean).
   const { account: titleAccount, loading: titleLoading } = useGuestAccount(venueId);
@@ -96,13 +100,7 @@ function GuestMenuContent() {
     }
   }, [sectionParam]);
 
-  if (state.isLoadingMenu) {
-    return (
-      <div className="min-h-screen bg-neutral-950 flex items-center justify-center">
-        <div className="h-6 w-6 border-2 border-white border-t-transparent animate-spin rounded-full" />
-      </div>
-    );
-  }
+  if (state.isLoadingMenu) return <MenuSkeleton />;
 
   if (state.menuError) {
     return (
@@ -140,7 +138,7 @@ function GuestMenuContent() {
 
       <MenuHeader
         tableNo={state.tableNumber}
-        guestName={state.currentGuestName}
+        guestName={titleAccount?.display_name || state.currentGuestName}
         venueName={state.businessName}
         tagline={menuInfo.tagline}
         activeOrdersCount={state.sentItems.length}
@@ -223,6 +221,7 @@ function GuestMenuContent() {
               selectedCategory={state.selectedCategory}
               onSelectCategory={state.setSelectedCategory}
               counts={dishCounts}
+              covers={dishCovers}
               shownCount={state.filteredDiningItems.length}
             />
 
@@ -364,13 +363,7 @@ function GuestMenuContent() {
 
 export default function GuestMenuPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen bg-neutral-950 flex items-center justify-center">
-          <div className="h-5 w-5 border-2 border-white border-t-transparent animate-spin rounded-full" />
-        </div>
-      }
-    >
+    <Suspense fallback={<MenuSkeleton />}>
       <GuestMenuContent />
     </Suspense>
   );

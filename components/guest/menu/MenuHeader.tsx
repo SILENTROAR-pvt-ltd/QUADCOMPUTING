@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { Receipt, Sparkles } from "lucide-react";
 import { GUEST_BRAND } from "@/lib/brand";
+import { greetingFor, greetingName } from "@/lib/guest/greeting";
 import { MenuJourneySteps } from "./MenuJourneySteps";
 
 export interface MenuHeaderProps {
@@ -19,8 +21,9 @@ export interface MenuHeaderProps {
 }
 
 const serif = { fontFamily: "'Playfair Display', Georgia, serif" };
+const ease = [0.16, 1, 0.3, 1] as const;
 
-/** The menu's first screen: who and where the guest is, and a clear next step. */
+/** The menu's first screen: the venue, a greeting for the guest, and a clear next step. */
 export function MenuHeader({
   guestName = "Guest",
   venueName = "Venue",
@@ -31,67 +34,58 @@ export function MenuHeader({
   onOpenBill,
   billRequestedBanner,
 }: MenuHeaderProps) {
+  const [greeting] = useState(() => greetingFor(new Date().getHours()));
+  const name = greetingName(guestName);
+
   return (
     <>
       <header className="relative w-full overflow-hidden">
-        {/* Soft ambient glow behind the welcome: warm gold over a hint of emerald. */}
-        <div aria-hidden className="pointer-events-none absolute inset-x-0 -top-24 h-[340px] bg-[radial-gradient(55%_60%_at_50%_30%,rgba(251,191,36,0.16),transparent_70%)]" />
-        <div aria-hidden className="pointer-events-none absolute left-1/2 top-10 h-48 w-[36rem] max-w-full -translate-x-1/2 rounded-full bg-emerald-300/15 blur-3xl" />
+        {/* Soft ambient light behind the venue's name: warm gold over a hint of emerald (gradients only, no blur filter). */}
+        <div aria-hidden className="pointer-events-none absolute inset-x-0 -top-24 h-[360px] bg-[radial-gradient(50%_55%_at_50%_32%,rgba(251,191,36,0.14),transparent_70%),radial-gradient(40%_40%_at_50%_55%,rgba(16,185,129,0.10),transparent_75%)]" />
 
-        <div className="relative mx-auto flex w-full max-w-5xl flex-col items-center px-4 pt-5 pb-4 text-center">
-          <div className="mb-5 flex w-full items-center justify-between">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-zinc-950 px-3 py-1 text-[10px] font-semibold uppercase tracking-widest text-white shadow-[0_6px_18px_-6px_rgba(0,0,0,0.5)]">
+        <div className="relative mx-auto w-full max-w-5xl px-4 pb-4 pt-4 sm:px-6">
+          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 justify-self-start rounded-full bg-zinc-950 px-3 py-1 text-[10px] font-semibold uppercase tracking-widest text-white shadow-[0_6px_18px_-6px_rgba(0,0,0,0.5)]">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_2px_rgba(52,211,153,0.7)]" />
               Table {tableNo}
             </span>
-
             <span className="text-[10px] font-semibold uppercase tracking-[0.3em] text-zinc-400">{GUEST_BRAND.name}</span>
-
             {activeOrdersCount > 0 ? (
               <button
                 onClick={onOpenBill}
-                className="flex items-center gap-1.5 rounded-full border border-zinc-200/70 bg-white/80 px-3.5 py-1.5 text-xs font-medium text-zinc-800 shadow-sm backdrop-blur transition-all hover:bg-white active:scale-95 cursor-pointer"
+                className="flex items-center gap-1.5 justify-self-end rounded-full border border-zinc-200/70 bg-white/90 px-3.5 py-1.5 text-xs font-medium text-zinc-800 shadow-sm transition-colors hover:bg-white active:scale-95 cursor-pointer"
               >
                 <Receipt className="text-zinc-600" size={13} />
                 <span>Bill ({activeOrdersCount})</span>
               </button>
-            ) : (
-              <span className="w-[72px]" aria-hidden="true" />
-            )}
+            ) : <span aria-hidden="true" />}
           </div>
 
           <motion.div
-            initial={{ opacity: 0, y: 12 }}
+            initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-            className="flex flex-col items-center"
+            transition={{ duration: 0.4, ease }}
+            className="mx-auto mt-7 flex max-w-xl flex-col items-center text-center sm:mt-9"
           >
-            <span className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-amber-200/80 bg-amber-50/80 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-800">
-              <Sparkles size={11} /> Order right from your table
-            </span>
-            <h1 className="text-3xl sm:text-5xl font-medium tracking-tight text-zinc-950" style={serif}>
-              Welcome{guestName ? `, ${guestName}` : ""}
-            </h1>
-            <p className="mt-2 flex items-center gap-1.5 text-sm sm:text-base font-light text-zinc-500">
-              <span>at</span>
-              <motion.span
-                initial={{ opacity: 0, filter: "blur(6px)", y: 4 }}
-                animate={{ opacity: 1, filter: "blur(0px)", y: 0 }}
-                transition={{ duration: 1, delay: 0.3, ease: "easeOut" }}
-                className="bg-gradient-to-r from-zinc-950 via-emerald-900 to-zinc-950 bg-clip-text font-semibold text-transparent"
-              >
-                {venueName}
-              </motion.span>
+            <p className="text-[13px] font-medium tracking-wide text-zinc-500 sm:text-sm">
+              {greeting}{name && <>, <span className="text-zinc-900">{name}</span></>}
+              <span className="text-zinc-400"> · welcome to</span>
             </p>
+            <h1 className="mt-1.5 text-[30px] font-semibold leading-[1.08] tracking-tight text-zinc-950 [text-wrap:balance] sm:text-[42px]" style={serif}>
+              {venueName}
+            </h1>
             {tagline && (
-              <p className="mt-1.5 max-w-sm text-xs italic text-zinc-500" style={serif}>{tagline}</p>
+              <p className="mt-2 max-w-md text-[13px] italic leading-snug text-zinc-500 [text-wrap:balance] sm:text-sm" style={serif}>{tagline}</p>
             )}
+            <span className="mt-3.5 inline-flex items-center gap-1.5 rounded-full border border-amber-200/80 bg-amber-50/80 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-800">
+              <Sparkles size={11} aria-hidden /> Order right from your table
+            </span>
           </motion.div>
 
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
+            initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.25, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 0.4, delay: 0.08, ease }}
             className="mt-5 flex w-full justify-center"
           >
             <MenuJourneySteps cartCount={cartCount} sentCount={activeOrdersCount} />
