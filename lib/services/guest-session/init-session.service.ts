@@ -22,10 +22,9 @@ export async function initializeGuestSession(bodyOrTable: any, clientOrBiz?: any
       // customer_phone columns, and naming them failed the whole write, so the
       // handle (the guest's wallet key for cashback) was never stored. Name and
       // phone live on the order (customer_name / customer_phone).
-      // The handle is set once, by the guest who opened the table. Anyone scanning
-      // later must not take over the session: it used to be overwritten by every
-      // scan, which moved the table's bill and cashback to the last person to scan.
-      if (guest_handle && !s.guest_handle) await claimSessionGuest(supabase, { guestHandle: guest_handle, sessionId: s.id });
+      // The table's session is shared by everyone at the table, so it never takes a guest's wallet handle. A handle
+      // on the session credited cashback for the whole table to whichever account claimed it first (and showed the
+      // wrong wallet on the host bill). Cashback is paused until it can be credited per dish.
     }
   } catch {}
 
@@ -36,7 +35,7 @@ export async function initializeGuestSession(bodyOrTable: any, clientOrBiz?: any
       const { data: n } = await supabase.from('dine_in_sessions').insert({
         business_id: targetBizId, table_id: resolvedTableId, table_number: tNum,
         guest_session_id: guest_session_id || `GS-${Date.now()}`, status: 'open',
-        guest_handle: guest_handle || null,
+        guest_handle: null,
         created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
       }).select().single();
       if (n) activeSession = n;

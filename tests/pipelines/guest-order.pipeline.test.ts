@@ -67,6 +67,13 @@ describe('Guest order pipeline (guards in front of the atomic order function)', 
     expect(ctx.db.calls.rpc.map((c: any) => c.name)).toEqual(['submit_guest_order_atomic']);
   });
 
+  it('never stamps a guest onto the shared table session, and a guest without a sign-in owns no dish', async () => {
+    await order({ guest_handle: '@reshav' }, freshIp());
+    const args = ctx.db.calls.rpc[0].args;
+    expect(args.p_guest_handle).toBeNull();
+    expect(args.p_order_items.every((it: any) => it.guest_handle === null)).toBe(true);
+  });
+
   it('ignores client prices: totals come from the catalog, and quantity is clamped', async () => {
     await order({ items: [{ item_id: COFFEE, quantity: 99, price: 1, total_item_price: 1 }] }, freshIp());
     const args = ctx.db.calls.rpc[0].args;

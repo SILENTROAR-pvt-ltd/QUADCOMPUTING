@@ -45,6 +45,7 @@ export async function fetchKitchenTickets(
     room_id: t.room_id,
     order_id: t.order_id,
     items: Array.isArray(t.items) ? t.items : [],
+    notes: t.notes || null,
     status: t.status,
     station: t.station || 'Kitchen',
     created_at: t.created_at,

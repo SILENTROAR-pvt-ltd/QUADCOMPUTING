@@ -77,19 +77,19 @@ export function GuestAccountStrip({ venueId, tableNumber }: GuestAccountStripPro
           </div>
         ) : (
           <div className={card}>
-            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-amber-50 ring-1 ring-amber-200/70">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-amber-50 ring-1 ring-amber-200/70 max-[380px]:h-10 max-[380px]:w-10">
               <UserRound className="h-5 w-5 text-amber-700" aria-hidden />
             </span>
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold text-zinc-950">Dining as a guest</p>
-              <p className="truncate text-xs text-zinc-500">Sign in to earn cashback and keep your orders</p>
+              <p className="line-clamp-2 text-xs leading-snug text-zinc-500">Sign in to earn 7% cashback and keep your orders</p>
             </div>
             <button
               type="button"
               onClick={() => setSheetOpen(true)}
-              className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-[#0A3222] px-3.5 text-xs font-semibold text-white shadow-[0_6px_16px_-8px_rgba(10,50,34,0.8)] transition-colors hover:bg-[#0d3f2b] cursor-pointer"
+              className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-[#0A3222] px-3.5 text-xs font-semibold text-white shadow-[0_6px_16px_-8px_rgba(10,50,34,0.8)] transition-colors hover:bg-[#0d3f2b] cursor-pointer max-[380px]:px-3"
             >
-              <LogIn className="h-3.5 w-3.5" aria-hidden />
+              <LogIn className="h-3.5 w-3.5 max-[380px]:hidden" aria-hidden />
               Sign in
             </button>
           </div>

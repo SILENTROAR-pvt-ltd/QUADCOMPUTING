@@ -2,6 +2,7 @@ import { normalizeTable, buildTableOrFilter } from './session-entry.util';
 import { broadcastToGuestTable } from '@/lib/realtime/channels';
 import { assertRedemptionSettleable } from '@/lib/services/wallet/redemption.service';
 import { loadGstStatus, stripTax } from '@/lib/services/billing/gst-policy';
+import { billOwner, isSharedSignedInBill, type BillOwner } from '@/lib/services/wallet/bill-owner.util';
 // Columns that exist on the deployed dine_in_sessions. It has no guest_name:
 // selecting it made every session lookup here fail, so the guest's handle was
 // never found and cashback was credited under their phone/name instead of the
@@ -69,19 +70,13 @@ export async function settleAndVacateSession(body: any, supabase: any) {
     if (t?.id && IS_UUID(t.id)) resolvedTableId = t.id;
   }
 
-  // The guest's own identity lives on the dine-in session (written there by the
-  // guest order pipeline). It MUST be carried into settlement: the guest reads
-  // their wallet keyed by their handle (localStorage.guest_handle ->
-  // useGuestWallet), so crediting cashback under anything else (e.g. the session
-  // UUID) silently lands the money on a key the guest never reads, and their
-  // wallet shows zero despite the bill confirming cashback.
-  let sessionGuestHandle: string | null = null;
+  // The dine-in session is shared by everyone at the table, so its guest_handle is never used for cashback (it
+  // credited the whole table to whoever claimed it). The cashback owner comes from who ordered each dish, below.
   let sessionGuestName: string | null = null;
   let sessionGuestSessionId: string | null = null;
 
   const captureSessionGuest = (s: any) => {
     if (!s) return;
-    sessionGuestHandle = sessionGuestHandle || s.guest_handle || null;
     sessionGuestName = sessionGuestName || s.guest_name || null;
     sessionGuestSessionId = sessionGuestSessionId || s.guest_session_id || null;
   };
@@ -123,17 +118,32 @@ export async function settleAndVacateSession(body: any, supabase: any) {
   let settledTotal = Number(
     body?.grand_total || body?.subtotal || resolvedOrder?.grand_total || resolvedOrder?.total_amount || resolvedOrder?.subtotal || 0
   );
-  // Precedence here MUST mirror how the guest reads their own wallet in
-  // components/guest/lobby/useGuestWallet.ts (handle -> phone -> name), so the
-  // credit lands on the same key the guest queries with. The session-derived
-  // handle wins over anything the POS body happens to send.
-  const guestHandle = sessionGuestHandle || body?.guest_handle || null;
+  // Whose cashback this bill is, decided here from who ordered each dish (order_items.guest_handle), never from the
+  // table's shared session or a handle the POS sends. 7% of the whole bill may go to one signed-in guest only when
+  // they ordered every dish; a bill shared with other guests gets no cashback at all.
+  let owner: BillOwner = { handle: null, handles: [], hasUnclaimed: false };
+  // If who ordered cannot be read (including before migration 20261014000002 adds the column), nobody is credited:
+  // guessing from the order's name is what credited a whole shared table to one person.
+  let ownerUnknown = false;
+  if (finalOrderId) {
+    const { data: ownerRows, error: ownerErr } = await supabase.from('order_items').select('guest_handle').eq('order_id', finalOrderId);
+    if (!ownerErr) owner = billOwner(ownerRows || []);
+    else {
+      ownerUnknown = true;
+      if (!['42703', 'PGRST204'].includes(ownerErr.code)) console.error('[Settlement] Could not read who ordered; no cashback credited:', ownerErr);
+    }
+  }
+  if (body?.guest_handle && String(body.guest_handle).toLowerCase() !== String(owner.handle || '').toLowerCase()) {
+    console.warn('[Settlement] Ignored a cashback handle that did not order this whole bill', { orderId: finalOrderId });
+  }
+  const guestHandle = owner.handle;
+  // Precedence for a bill with no signed-in guest mirrors how such a guest reads their wallet
+  // (components/guest/lobby/useGuestWallet.ts: phone -> name).
   const guestName = sessionGuestName || resolvedOrder?.customer_name || body?.customer_name || body?.guest_name || null;
   const guestPhone = resolvedOrder?.customer_phone || body?.customer_phone || null;
-  // Cashback goes only to a real guest identity (handle → phone → name) and only
-  // when the host left the receipt's cashback switch on. It used to fall back to
-  // a session/table id, minting wallet balances no guest can ever see or spend.
-  const creditCashback = body?.credit_cashback !== false;
+  // Cashback goes only to a real guest identity and only when the host left the receipt's cashback switch on.
+  // It used to fall back to a session/table id, minting wallet balances no guest can ever see or spend.
+  const creditCashback = body?.credit_cashback !== false && !ownerUnknown && !isSharedSignedInBill(owner);
   const primaryGuestId = creditCashback ? (guestHandle || guestPhone || guestName || null) : null;
 
   // A wallet redemption must be able to fund this bill before anything is written: a

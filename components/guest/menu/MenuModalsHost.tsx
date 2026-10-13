@@ -45,7 +45,8 @@ interface MenuModalsHostProps {
   businessName: string;
   isAddonOrderSuccess: boolean;
   onCloseOrderCelebration: () => void;
-  onExploreServices: () => void;
+  onTrackOrder: () => void;
+  onExploreLounge: () => void;
 }
 
 export function MenuModalsHost({
@@ -86,7 +87,8 @@ export function MenuModalsHost({
   businessName,
   isAddonOrderSuccess,
   onCloseOrderCelebration,
-  onExploreServices,
+  onTrackOrder,
+  onExploreLounge,
 }: MenuModalsHostProps) {
   return (
     <>
@@ -129,7 +131,8 @@ export function MenuModalsHost({
         businessName={businessName}
         isAddon={isAddonOrderSuccess}
         onClose={onCloseOrderCelebration}
-        onExploreServices={onExploreServices}
+        onTrackOrder={onTrackOrder}
+        onExploreLounge={onExploreLounge}
       />
     </>
   );

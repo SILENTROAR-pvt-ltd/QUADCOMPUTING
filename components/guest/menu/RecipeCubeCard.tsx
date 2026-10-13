@@ -79,21 +79,21 @@ export function RecipeCubeCard({ item, cartQuantity, onIncrement, onDecrement, l
           ) : (
             <div
               onClick={(e) => e.stopPropagation()}
-              className="flex items-center gap-1.5 rounded-full bg-[#F4E7C5] px-2 py-1 text-[#3B2C12] shadow-sm animate-in fade-in zoom-in-95"
+              className="flex items-center gap-1 rounded-full bg-black px-1.5 py-1 text-white shadow-[0_8px_18px_-10px_rgba(0,0,0,0.7)] animate-in fade-in zoom-in-95"
             >
               <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); onDecrement(item); }}
-                className={`grid h-6 w-6 place-items-center rounded-full transition-all hover:bg-[#E6CF95] active:scale-90 cursor-pointer ${cartQuantity === 1 ? 'text-rose-700' : ''}`}
+                className={`grid h-7 w-7 place-items-center rounded-full transition-colors hover:bg-white/15 active:scale-90 cursor-pointer ${cartQuantity === 1 ? 'text-rose-300' : ''}`}
                 aria-label={cartQuantity === 1 ? 'Remove from Cart' : 'Decrease Quantity'}
               >
                 {cartQuantity === 1 ? <Trash2 size={13} strokeWidth={2.5} /> : <Minus size={13} strokeWidth={2.5} />}
               </button>
-              <span className="min-w-[16px] px-0.5 text-center font-sans text-xs font-bold tabular-nums">{cartQuantity}</span>
+              <span className="min-w-[18px] px-0.5 text-center font-sans text-xs font-semibold tabular-nums">{cartQuantity}</span>
               <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); onIncrement(item); }}
-                className="grid h-6 w-6 place-items-center rounded-full transition-all hover:bg-[#E6CF95] active:scale-90 cursor-pointer"
+                className="grid h-7 w-7 place-items-center rounded-full transition-colors hover:bg-white/15 active:scale-90 cursor-pointer"
                 aria-label="Increase Quantity"
               >
                 <Plus size={13} strokeWidth={2.5} />

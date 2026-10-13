@@ -9,6 +9,8 @@ import { loadGstStatus, stripTax } from '@/lib/services/billing/gst-policy';
 
 export async function submitGuestOrder(body: any, supabase: any) {
   const { business_id, cafe_id, table_number, guest_name, guest_phone, guest_handle, items: incomingItems = [] } = body;
+  // One note for the whole table ("Table note for kitchen"). It goes on the kitchen ticket once, never on each dish.
+  const tableNote = typeof body.table_note === 'string' ? body.table_note.trim().slice(0, 200) : '';
   const rawTableNumber = (table_number || '').trim();
   if (!rawTableNumber) throw new Error('Missing table_number');
   if (!/^[A-Za-z0-9 -]{1,12}$/.test(rawTableNumber)) {
@@ -20,12 +22,30 @@ export async function submitGuestOrder(body: any, supabase: any) {
   const resolvedBizId: string = isValidUuid(business_id) ? business_id! : isValidUuid(cafe_id) ? cafe_id! : '';
   if (!resolvedBizId) throw new Error('Missing or invalid business_id');
 
+  const idempotencyKey = body.idempotency_key || body.client_order_nonce || null;
+  const itemIds = incomingItems
+    .map((item: any) => item.item_id || item.id)
+    .filter((id: any) => typeof id === 'string' && id.trim().length > 0);
+
+  // Every read that does not depend on another runs at once: the venue check, the duplicate check, the table's open
+  // order, the verified prices, the venue's stations and its GST status. This used to be one round trip after another.
+  const [bizRes, dupRes, lookup, catalogRes, stationRes, gst] = await Promise.all([
+    supabase.from('businesses').select('id').eq('id', resolvedBizId).maybeSingle(),
+    // DB-Backed Idempotency Guard (P0 #1): a duplicate returns the original order below. The atomic RPC re-checks the same
+    // unique constraint inside its transaction, so a concurrent retry is still handled correctly.
+    idempotencyKey
+      ? supabase.from('orders').select('*').eq('business_id', resolvedBizId).eq('idempotency_key', idempotencyKey).maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
+    lookupExistingOrder(supabase, resolvedBizId, rawTableNumber, normTable),
+    // Verified prices come from catalog_items by id AND business_id, never from the client.
+    supabase.from('catalog_items').select('id, name, price, item_type, category, metadata, station').eq('business_id', resolvedBizId).in('id', itemIds),
+    // Until the station migration is applied the setting is unreadable, and every station is treated as running.
+    supabase.from('businesses').select('kitchen_stations').eq('id', resolvedBizId).maybeSingle(),
+    loadGstStatus(supabase, resolvedBizId),
+  ]);
+
   // Verify business exists in database
-  const { data: bizCheck, error: bizCheckErr } = await supabase
-    .from('businesses')
-    .select('id')
-    .eq('id', resolvedBizId)
-    .maybeSingle();
+  const { data: bizCheck, error: bizCheckErr } = bizRes;
 
   if (bizCheckErr || !bizCheck) {
     const { data: catCheck } = await supabase
@@ -42,19 +62,8 @@ export async function submitGuestOrder(body: any, supabase: any) {
     }
   }
 
-  const idempotencyKey = body.idempotency_key || body.client_order_nonce || null;
-
-  // DB-Backed Idempotency Guard (P0 #1): Return original order if duplicate detected.
-  // This is a fast-path check only — the atomic RPC below re-checks the same
-  // unique constraint inside its own transaction, so a concurrent retry that
-  // races past this check is still handled correctly, not just this early exit.
   if (idempotencyKey) {
-    const { data: existingOrder, error: dupCheckErr } = await supabase
-      .from('orders')
-      .select('*')
-      .eq('business_id', resolvedBizId)
-      .eq('idempotency_key', idempotencyKey)
-      .maybeSingle();
+    const { data: existingOrder, error: dupCheckErr } = dupRes as any;
 
     if (dupCheckErr) throw dupCheckErr;
     if (existingOrder) {
@@ -76,33 +85,14 @@ export async function submitGuestOrder(body: any, supabase: any) {
     }
   }
 
-  const { existingActiveOrder, previousRawItems } = await lookupExistingOrder(supabase, resolvedBizId, rawTableNumber, normTable);
+  const { existingActiveOrder, previousRawItems } = lookup;
   const isAddonOrder = Boolean(existingActiveOrder);
   const targetOrderId = isValidUuid(existingActiveOrder?.id) ? existingActiveOrder.id : randomUUID();
 
-  // Load verified prices from catalog_items by id AND business_id
-  const itemIds = incomingItems
-    .map((item: any) => item.item_id || item.id)
-    .filter((id: any) => typeof id === 'string' && id.trim().length > 0);
-
-  const { data: dbCatalogItems } = await supabase
-    .from('catalog_items')
-    .select('id, name, price, item_type, category, metadata, station')
-    .eq('business_id', resolvedBizId)
-    .in('id', itemIds);
-
   const catalogMap = new Map<string, any>(
-    (dbCatalogItems || []).map((ci: any) => [ci.id, ci])
+    (catalogRes.data || []).map((ci: any) => [ci.id, ci])
   );
-
-  // Which stations this venue runs. Until the station migration is applied the setting is
-  // unreadable, and every station is treated as running, so orders are never blocked by it.
-  const { data: stationRow } = await supabase
-    .from('businesses')
-    .select('kitchen_stations')
-    .eq('id', resolvedBizId)
-    .maybeSingle();
-  const stations = enabledStations(stationRow?.kitchen_stations);
+  const stations = enabledStations(stationRes.data?.kitchen_stations);
 
   const newItemsFormatted = incomingItems.map((item: any, idx: number) => {
     const rawId = item.item_id || item.id || null;
@@ -141,7 +131,6 @@ export async function submitGuestOrder(body: any, supabase: any) {
   const aggregatedForBill = aggregateOrderItems(cumulativeRawItems);
   // GST only when the venue has a verified GSTIN (gst-policy.ts); otherwise the bill carries no tax.
   const computedTotals = calculateOrderTotals(cumulativeRawItems);
-  const gst = await loadGstStatus(supabase, resolvedBizId);
   const totals = gst.canCharge ? computedTotals : { ...computedTotals, ...stripTax(computedTotals) };
   const customerName = guest_name || (guest_handle ? `Guest (${guest_handle})` : existingActiveOrder?.customer_name || 'Guest');
   const customerPhone = guest_phone || existingActiveOrder?.customer_phone || null;
@@ -158,8 +147,11 @@ export async function submitGuestOrder(body: any, supabase: any) {
     p_table_number: rawTableNumber,
     p_order_id: targetOrderId,
     p_is_addon: isAddonOrder,
+    // Each dish records who ordered it: the verified sign-in handle (request-identity.ts), or null for a guest
+    // without an account. Cashback on a shared table is decided from these rows (bill-owner.util.ts).
     p_order_items: newItemsFormatted.map((it: any) => ({
       item_id: it.item_id, item_name: it.item_name, price: it.price, quantity: it.quantity, notes: it.notes,
+      guest_handle: guest_handle || null,
     })),
     p_aggregated_items: aggregatedForBill,
     p_subtotal: totals.subtotal,
@@ -168,7 +160,9 @@ export async function submitGuestOrder(body: any, supabase: any) {
     p_idempotency_key: idempotencyKey,
     p_customer_name: customerName,
     p_customer_phone: customerPhone,
-    p_guest_handle: guest_handle || null,
+    // Never stamp the ordering guest onto the table's shared session: the deployed function did
+    // `guest_handle = COALESCE(p_guest_handle, guest_handle)`, which moved the whole table to the last orderer.
+    p_guest_handle: null,
     p_ticket_number: ticketNumber,
     // Each line goes to the station that cooks it, from the menu catalogue (see item-station.ts).
     p_ticket_items: newItemsFormatted.map((it: any, idx: number) => {
@@ -191,26 +185,21 @@ export async function submitGuestOrder(body: any, supabase: any) {
     throw err;
   }
 
-  // Link the guest's wallet handle to this order's dine-in session, when it has none yet.
-  // Settlement credits cashback to the session's guest_handle; the session is
-  // usually created before the guest fills in their details, so without this
-  // the credit fell back to their phone/name — a wallet key the guest app never
-  // reads. Best-effort: the order itself is already committed.
-  // Only this order's own session, and never over an existing handle: this used to
-  // rewrite every open or bill_requested session at the table, including earlier
-  // parties' unclosed sessions, so their bills showed in this guest's account.
-  if (guest_handle) {
-    try {
-      await claimSessionGuest(supabase, {
-        guestHandle: guest_handle,
-        businessId: resolvedBizId,
-        sessionId: rpcResult?.session_id || null,
-        tableFilter: buildTableOrFilter(rawTableNumber),
-      });
-    } catch (linkErr) {
-      console.error('[GuestOrder] Could not link guest handle to session (cashback may land on phone/name):', linkErr);
-    }
+  // The table note goes on this submission's kitchen ticket(s) once. When the order spans several stations the
+  // database gives each one a letter suffix (KOT-1234-K, -B, -G), so match the number and its suffixed copies.
+  // Best-effort: the order is already committed, so a failed note write must not fail the order.
+  if (tableNote) {
+    const { error: noteErr } = await supabase
+      .from('kitchen_tickets')
+      .update({ notes: tableNote })
+      .eq('order_id', targetOrderId)
+      .or(`ticket_number.eq.${ticketNumber},ticket_number.like.${ticketNumber}-%`);
+    if (noteErr) console.error('[submitGuestOrder] table note not saved on ticket', noteErr);
   }
+
+  // The guest's wallet handle is NOT attached to the table's shared session: that credited the whole table's
+  // cashback to whichever account claimed it. Ownership is per dish (order_items.guest_handle, written above), and
+  // settlement credits a guest only when they ordered every dish on the bill (settle-session.service.ts).
 
   if (rpcResult.is_duplicate) {
     const { data: existingOrder } = await supabase.from('orders').select('*').eq('id', rpcResult.order_id).maybeSingle();

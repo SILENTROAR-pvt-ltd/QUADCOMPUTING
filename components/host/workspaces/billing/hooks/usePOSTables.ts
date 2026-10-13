@@ -125,7 +125,13 @@ export function usePOSTables(propsBusinessId?: string | null) {
         }
       }
     } catch (e) {
-      console.error('Failed to fetch tables', e);
+      // A dropped connection or a dev-server restart rejects fetch with a TypeError. The last tables stay on screen
+      // and the next poll (or the realtime signal) refreshes them, so this is not an error worth surfacing.
+      if (e instanceof TypeError) {
+        if (typeof navigator !== 'undefined' && !navigator.onLine) setIsOnline(false);
+        return;
+      }
+      console.warn('Could not refresh tables', e);
     }
   }, [businessId, fetchSessions]);
 

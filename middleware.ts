@@ -37,7 +37,8 @@ export async function middleware(request: NextRequest) {
   const isApiAdminRoute = pathname.startsWith('/api/admin');
   const isAdminPageRoute = pathname.startsWith('/admin');
   const isHostPageRoute = pathname.startsWith('/host');
-  const isAuthRoute = pathname.startsWith('/auth/host');
+  // /auth/host is deliberately not redirected for a signed-in account: that account may be a guest or a non-host
+  // login, and the host must still see the sign-in form. The page offers "Open control center" instead.
 
   // 1. API Route Guards - return 401/403 JSON instead of redirecting
   // (No bypass for /api/host/provision: provisioning now always runs after a
@@ -87,16 +88,6 @@ export async function middleware(request: NextRequest) {
   if (!user && isHostPageRoute) {
     const url = request.nextUrl.clone();
     url.pathname = '/auth/host';
-    const redirectResponse = NextResponse.redirect(url);
-    supabaseResponse.cookies.getAll().forEach((cookie) => {
-      redirectResponse.cookies.set(cookie.name, cookie.value);
-    });
-    return redirectResponse;
-  }
-
-  if (user && isAuthRoute) {
-    const url = request.nextUrl.clone();
-    url.pathname = '/host/control-center';
     const redirectResponse = NextResponse.redirect(url);
     supabaseResponse.cookies.getAll().forEach((cookie) => {
       redirectResponse.cookies.set(cookie.name, cookie.value);

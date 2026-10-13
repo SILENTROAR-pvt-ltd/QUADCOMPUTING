@@ -29,6 +29,8 @@ export interface KitchenTicket {
   station?: string;
   staff_id?: string;
   items: KitchenItem[];
+  /** The table's one note for the whole ticket ("Table note for kitchen"), shown once on the card. */
+  notes?: string | null;
   status: 'PENDING' | 'PREPARING' | 'READY' | 'SERVED' | 'CANCELLED';
   created_at: string;
   updated_at?: string;

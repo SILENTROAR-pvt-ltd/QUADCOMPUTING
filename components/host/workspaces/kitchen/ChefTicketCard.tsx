@@ -35,6 +35,12 @@ export const ChefTicketCard = memo(function ChefTicketCard({
         timings={timings}
       />
 
+      {ticket.notes && (
+        <div className="mx-4 mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+          <span className="font-semibold">Table note:</span> {ticket.notes}
+        </div>
+      )}
+
       <ChefCardItems
         items={ticket.items}
         onToggleItemDone={onToggleItemDone}

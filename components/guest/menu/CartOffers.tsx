@@ -13,13 +13,13 @@ const ORDER_CATEGORIES = ['food', 'general'];
 interface CartOffersProps {
   venueId: string;
   tableNumber: string;
+  /** From useOrderOffers, loaded with the menu so the review opens with them already in place. */
+  offers: VenueLiveOffer[];
 }
 
-/** Live venue offers that apply to this order, shown in the review before it goes to the kitchen. */
-export function CartOffers({ venueId, tableNumber }: CartOffersProps) {
+/** The venue's live offers that apply to a food order. Call it where it stays mounted, so the list is ready early. */
+export function useOrderOffers(venueId: string): VenueLiveOffer[] {
   const [offers, setOffers] = useState<VenueLiveOffer[]>([]);
-  const [open, setOpen] = useState<VenueLiveOffer | null>(null);
-
   useEffect(() => {
     if (!venueId) return;
     let live = true;
@@ -30,6 +30,12 @@ export function CartOffers({ venueId, tableNumber }: CartOffersProps) {
       });
     return () => { live = false; };
   }, [venueId]);
+  return offers;
+}
+
+/** Live venue offers that apply to this order, shown in the review before it goes to the kitchen. */
+export function CartOffers({ venueId, tableNumber, offers }: CartOffersProps) {
+  const [open, setOpen] = useState<VenueLiveOffer | null>(null);
 
   if (offers.length === 0) return null;
 

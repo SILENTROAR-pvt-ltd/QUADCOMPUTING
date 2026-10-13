@@ -26,6 +26,8 @@ interface CartStore {
   removeFromCart: (cart_id: string) => void;
   incrementQuantity: (cart_id: string) => void;
   decrementQuantity: (cart_id: string) => void;
+  /** The guest's note for this one dish ("less spicy"), sent to the kitchen under that dish only. */
+  setItemNote: (cart_id: string, notes: string) => void;
   clearCart: () => void;
   getTotalCount: () => number;
   getSubtotal: () => number;
@@ -151,6 +153,15 @@ export const useCartStore = create<CartStore>((set, get) => ({
         });
       }
 
+      saveCartToStorage(updatedItems);
+      return { items: updatedItems };
+    });
+  },
+
+  setItemNote: (cart_id: string, notes: string) => {
+    set((state) => {
+      const clean = notes.slice(0, 120);
+      const updatedItems = state.items.map((it) => (it.cart_id === cart_id ? { ...it, notes: clean || undefined } : it));
       saveCartToStorage(updatedItems);
       return { items: updatedItems };
     });

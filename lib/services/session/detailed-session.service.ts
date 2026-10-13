@@ -24,19 +24,35 @@ export async function getDetailedHostSession(requestUrl: string, supabase: any, 
     return scoped.or(tableOr);
   };
 
-  let session: any = null;
-  if (sessionId) {
-    session = (await supabase.from('dine_in_sessions').select('*').eq('id', sessionId).eq('business_id', businessId).maybeSingle()).data;
-  } else if (tableId || tableOr) {
-    session = (await byTable(supabase.from('dine_in_sessions').select('*')).in('status', LIVE_SESSION)
-      .order('created_at', { ascending: false }).limit(1).maybeSingle()).data;
+  const sessionQuery = () => sessionId
+    ? supabase.from('dine_in_sessions').select('*').eq('id', sessionId).eq('business_id', businessId).maybeSingle()
+    : byTable(supabase.from('dine_in_sessions').select('*')).in('status', LIVE_SESSION)
+      .order('created_at', { ascending: false }).limit(1).maybeSingle();
+
+  // The POS almost always knows the order (from the polled table list): read the session, the order and its dishes
+  // at once instead of one after another. The dishes are used only if the order is this venue's.
+  if (orderId) {
+    const [sessionRes, orderRes, itemsRes] = await Promise.all([
+      sessionId || tableId || tableOr ? sessionQuery() : Promise.resolve({ data: null }),
+      supabase.from('orders').select('*').eq('id', orderId).eq('business_id', businessId).maybeSingle(),
+      supabase.from('order_items').select('*').eq('order_id', orderId).order('created_at', { ascending: true }),
+    ]);
+    let fastSession: any = sessionRes?.data ?? null;
+    if (fastSession && !LIVE_SESSION.includes(String(fastSession.status ?? '').toLowerCase())) fastSession = null;
+    let fastOrder: any = orderRes?.data ?? null;
+    if (fastOrder && CLOSED_STATUSES.includes(String(fastOrder.status ?? '').toLowerCase())) fastOrder = null;
+    if (!fastSession && !fastOrder) return EMPTY;
+    const rows = fastOrder ? itemsRes?.data : null;
+    const fastItems = rows?.length ? rows : Array.isArray(fastOrder?.items) ? fastOrder.items : Array.isArray(fastOrder?.raw_items) ? fastOrder.raw_items : [];
+    return { success: true, session: fastSession, order: fastOrder, items: fastItems, aggregated: aggregateOrderItems(fastItems) };
   }
+
+  let session: any = null;
+  if (sessionId || tableId || tableOr) session = (await sessionQuery()).data;
   if (session && !LIVE_SESSION.includes(String(session.status ?? '').toLowerCase())) session = null;
 
   let order: any = null;
-  if (orderId) {
-    order = (await supabase.from('orders').select('*').eq('id', orderId).eq('business_id', businessId).maybeSingle()).data;
-  } else if (session) {
+  if (session) {
     order = (await supabase.from('orders').select('*').eq('session_id', session.id).eq('business_id', businessId)
       .not('status', 'in', CLOSED_LIST).order('created_at', { ascending: false }).limit(1).maybeSingle()).data;
   } else if (tableId || tableOr) {

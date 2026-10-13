@@ -44,9 +44,11 @@ export function useGuestOrderDispatch(p: {
         table_number: p.tableNumber, business_id: p.activeSession?.business_id || p.cafeParam,
         cafe_id: p.cafeParam, guest_name: name.trim() || p.currentGuestName || 'Guest', guest_phone: phone.trim() || undefined,
         guest_handle: guestHandle,
+        // Each dish carries only its own notes. The table note is sent once, for the whole ticket.
+        table_note: notes.trim() || undefined,
         items: p.cartItems.map((c) => ({
           id: c.item_id, item_id: c.item_id, name: c.name, price: c.total_item_price, quantity: c.quantity,
-          notes: [(c.selected_addons || []).map((a: any) => `${a.name} (+₹${a.price})`).join(', '), c.notes, notes].filter(Boolean).join(' | ') || undefined,
+          notes: [(c.selected_addons || []).map((a: any) => `${a.name} (+₹${a.price})`).join(', '), c.notes].filter(Boolean).join(' | ') || undefined,
         })),
       };
       const res = await fetch('/api/guest/order', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });

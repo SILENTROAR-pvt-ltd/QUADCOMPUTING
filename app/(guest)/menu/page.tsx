@@ -1,7 +1,7 @@
 'use client';
 
 import React, { Suspense, useEffect, useMemo } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MenuHeader } from '@/components/guest/menu/MenuHeader';
 import { MenuSkeleton } from '@/components/guest/menu/MenuSkeleton';
@@ -13,7 +13,7 @@ import { ActiveBillView } from '@/components/guest/menu/ActiveBillView';
 import { BillWalletRedeem } from '@/components/guest/menu/BillWalletRedeem';
 import { FloatingCartBar } from '@/components/guest/menu/FloatingCartBar';
 import { OfferTicker } from '@/components/guest/offers/OfferTicker';
-import { GuestTabBar } from '@/components/guest/shell/GuestTabBar';
+import { GuestTabBar, guestHref } from '@/components/guest/shell/GuestTabBar';
 import { GuestMeView } from '@/components/guest/me/GuestMeView';
 import { GuestAccountStrip } from '@/components/guest/account/GuestAccountStrip';
 import { LiveOrderTracker } from '@/components/guest/menu/LiveOrderTracker';
@@ -29,6 +29,7 @@ import { useGuestAddressHandle, useGuestDocumentTitle } from '@/lib/guest/use-gu
 
 function GuestMenuContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const rawTableParam = searchParams.get('table') || searchParams.get('table_number') || 'T-01';
   const tableMatch = rawTableParam.match(/[a-zA-Z0-9-]+/);
   const tableParam = tableMatch ? tableMatch[0] : 'T-01';
@@ -343,18 +344,14 @@ function GuestMenuContent() {
         orderCelebration={state.orderCelebration}
         businessName={state.businessName}
         isAddonOrderSuccess={state.isAddonOrderSuccess}
-        onCloseOrderCelebration={() => {
+        onCloseOrderCelebration={() => state.setOrderCelebration(false)}
+        onTrackOrder={() => {
           state.setOrderCelebration(false);
-          goTab('menu');
-          state.setShowBeyondDining(true);
+          goTab('live_order');
         }}
-        onExploreServices={() => {
+        onExploreLounge={() => {
           state.setOrderCelebration(false);
-          goTab('menu');
-          state.setShowBeyondDining(true);
-          setTimeout(() => {
-            document.getElementById('services-section')?.scrollIntoView({ behavior: 'smooth' });
-          }, 150);
+          router.push(guestHref('/guest/lobby', state.tableNumber, venueId));
         }}
       />
     </div>

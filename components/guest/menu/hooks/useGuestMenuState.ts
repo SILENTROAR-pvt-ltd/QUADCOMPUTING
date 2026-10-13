@@ -49,7 +49,7 @@ export function useGuestMenuState({ tableParam, cafeParam }: { tableParam: strin
 
     await orderData.handlePlaceOrder(finalName, finalPhone, ui.orderCookingNotes, (isAddon) => {
       ui.setShowCartReview(false); ui.setOrderCookingNotes(''); ui.setIsAddonOrderSuccess(isAddon);
-      ui.setShowBeyondDining(true); ui.setActiveTab('menu'); ui.setOrderCelebration(false);
+      ui.setShowBeyondDining(true); ui.setActiveTab('menu'); ui.setOrderCelebration(true);
     }, finalHandle);
   };
 
