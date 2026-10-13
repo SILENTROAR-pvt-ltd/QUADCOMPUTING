@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
+import { Analytics } from '@vercel/analytics/next';
 
 export const metadata: Metadata = {
   title: 'Quad Computing',
@@ -26,6 +27,7 @@ export default function RootLayout({
       <body>
         {children}
         <RealtimeHealthIndicator />
+        <Analytics />
       </body>
     </html>
   );
