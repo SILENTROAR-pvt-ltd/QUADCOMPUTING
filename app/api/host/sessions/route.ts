@@ -90,6 +90,14 @@ export const PATCH = withApiErrorBoundary(async function PATCH(request: Request)
       return NextResponse.json(released, { status: released.ok ? 200 : released.status });
     }
 
+    // A waiter sends the table's bill to billing: the same bill request a guest makes, so the billing POS lists the table
+    // and rings. Nothing is settled and the table is not freed; the cashier does that from billing.
+    if (body.action === 'request_bill') {
+      const { updateGuestSession } = await import('@/lib/services/guest-session/update-session.service');
+      const result = await updateGuestSession({ ...body, business_id: venueId, cafe_id: venueId, action: 'request_bill' }, supabase);
+      return NextResponse.json(result);
+    }
+
     const { withIdempotency, generateIdempotencyKey } = await import('@/lib/services/api-idempotency.util');
     const key = generateIdempotencyKey(
       'settle_session',

@@ -66,27 +66,30 @@ export function LiveTableAddItems({ venueId, tableNumber, onAdded }: LiveTableAd
   };
 
   return (
-    <section aria-label="Add items to this table" className="space-y-3">
-      <div className="relative">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-neutral-400" />
-        <input
-          type="search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search the menu"
-          aria-label="Search the menu"
-          maxLength={60}
-          className="h-11 w-full rounded-xl border border-neutral-200 bg-white pl-9 pr-3 text-[16px] sm:text-sm focus:border-neutral-900 focus:outline-none"
-        />
-      </div>
+    <section aria-label="Add items to this table" className="space-y-2">
+      {/* Search and categories stay at the top of the panel's scroll while the dishes pass under them. */}
+      <div className="sticky top-0 z-10 -mx-4 -mt-2 space-y-2 bg-white px-4 pb-2 pt-2 sm:-mx-5 sm:px-5">
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-neutral-400" />
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search the menu"
+            aria-label="Search the menu"
+            maxLength={60}
+            className="h-10 w-full rounded-xl border border-neutral-200 bg-white pl-9 pr-3 text-[16px] sm:text-sm focus:border-neutral-900 focus:outline-none"
+          />
+        </div>
 
-      <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1" role="group" aria-label="Category">
-        {categories.map((c) => (
-          <button key={c} type="button" onClick={() => setCategory(c)} aria-pressed={category === c}
-            className={`h-9 shrink-0 rounded-full border px-3.5 text-[12px] font-semibold cursor-pointer ${category === c ? 'border-neutral-950 bg-neutral-950 text-white' : 'border-neutral-200 bg-white text-neutral-700'}`}>
-            {c}
-          </button>
-        ))}
+        <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="group" aria-label="Category">
+          {categories.map((c) => (
+            <button key={c} type="button" onClick={() => setCategory(c)} aria-pressed={category === c}
+              className={`h-8 shrink-0 rounded-full border px-3 text-[12px] font-semibold cursor-pointer ${category === c ? 'border-neutral-950 bg-neutral-950 text-white' : 'border-neutral-200 bg-white text-neutral-700'}`}>
+              {c}
+            </button>
+          ))}
+        </div>
       </div>
 
       {loading ? (
@@ -94,21 +97,21 @@ export function LiveTableAddItems({ venueId, tableNumber, onAdded }: LiveTableAd
       ) : visible.length === 0 ? (
         <p className="text-xs text-neutral-500">No menu items match.</p>
       ) : (
-        <ul className="max-h-[48dvh] divide-y divide-neutral-100 overflow-y-auto rounded-xl border border-neutral-200 bg-white">
+        <ul className="divide-y divide-neutral-100 rounded-xl border border-neutral-200 bg-white">
           {visible.map((item) => {
             const qty = cart[item.id] ?? 0;
             return (
-              <li key={item.id} className="flex items-center justify-between gap-3 px-3 py-2.5">
+              <li key={item.id} className="flex items-center justify-between gap-3 px-3 py-2">
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium text-neutral-950">{item.name}</p>
                   <p className="text-[11px] text-neutral-500">{item.category} · {inr(item.price)}</p>
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
                   {qty > 0 && (
-                    <button type="button" onClick={() => setQty(item.id, qty - 1)} aria-label={`Remove one ${item.name}`} className="flex h-10 w-10 items-center justify-center rounded-xl border border-neutral-200 cursor-pointer active:bg-neutral-100"><Minus className="h-3.5 w-3.5" /></button>
+                    <button type="button" onClick={() => setQty(item.id, qty - 1)} aria-label={`Remove one ${item.name}`} className="flex h-9 w-9 items-center justify-center rounded-xl border border-neutral-200 cursor-pointer active:bg-neutral-100"><Minus className="h-3.5 w-3.5" /></button>
                   )}
                   {qty > 0 && <span className="w-6 text-center font-mono text-sm font-bold">{qty}</span>}
-                  <button type="button" onClick={() => setQty(item.id, qty + 1)} aria-label={`Add one ${item.name}`} className="flex h-10 w-10 items-center justify-center rounded-xl bg-neutral-950 text-white cursor-pointer active:bg-neutral-800"><Plus className="h-3.5 w-3.5" /></button>
+                  <button type="button" onClick={() => setQty(item.id, qty + 1)} aria-label={`Add one ${item.name}`} className="flex h-9 w-9 items-center justify-center rounded-xl bg-neutral-950 text-white cursor-pointer active:bg-neutral-800"><Plus className="h-3.5 w-3.5" /></button>
                 </div>
               </li>
             );
@@ -119,15 +122,18 @@ export function LiveTableAddItems({ venueId, tableNumber, onAdded }: LiveTableAd
       {error && <p role="alert" className="text-xs font-medium text-rose-600">{error}</p>}
       {done && <p role="status" className="flex items-center gap-1.5 text-xs font-medium text-emerald-700"><CheckCircle2 className="h-3.5 w-3.5" /> {done}</p>}
 
-      <button
-        type="button"
-        onClick={send}
-        disabled={sending || lines.length === 0}
-        className="sticky bottom-0 flex h-14 w-full cursor-pointer items-center justify-center gap-2 rounded-2xl bg-neutral-950 text-[14px] font-semibold text-white shadow-[0_14px_24px_-14px_rgba(0,0,0,0.6)] active:scale-[0.99] disabled:bg-neutral-300 disabled:shadow-none"
-      >
-        {sending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-        {lines.length === 0 ? 'Pick items to add' : `Add ${lines.reduce((n, l) => n + l.qty, 0)} to table · ${inr(total)}`}
-      </button>
+      {/* Pinned to the bottom of the panel's scroll, so what you picked can always be sent without scrolling back. */}
+      <div className="sticky bottom-0 -mx-4 -mb-3 bg-white/95 px-4 pb-3 pt-2 backdrop-blur-sm sm:-mx-5 sm:px-5">
+        <button
+          type="button"
+          onClick={send}
+          disabled={sending || lines.length === 0}
+          className="flex h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-neutral-950 text-[14px] font-semibold text-white shadow-[0_10px_20px_-14px_rgba(0,0,0,0.6)] active:scale-[0.99] disabled:bg-neutral-300 disabled:shadow-none"
+        >
+          {sending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+          {lines.length === 0 ? 'Pick items to add' : `Add ${lines.reduce((n, l) => n + l.qty, 0)} to table · ${inr(total)}`}
+        </button>
+      </div>
     </section>
   );
 }

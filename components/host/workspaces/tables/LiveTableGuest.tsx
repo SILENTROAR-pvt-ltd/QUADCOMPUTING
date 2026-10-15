@@ -11,13 +11,14 @@ interface LiveTableGuestProps {
 
 const clock = (iso: string | null) => (iso ? new Date(iso).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' }) : null);
 
-/** Who is at the table: the guest's name, handle, phone, and the session they are in. */
+/** Who is at the table, on two short lines: the guest's name and where they ordered from, then handle, phone and seating time. */
 export function LiveTableGuest({ session, order }: LiveTableGuestProps) {
   if (!session && !order) return null;
   const info = tableGuestInfo(session, order);
   const uidShort = info.sessionUid ? info.sessionUid.replace(/^host-/, '').slice(0, 8) : null;
+  const seated = clock(info.since);
   return (
-    <section aria-label="Guest at this table" className="space-y-2 rounded-2xl border border-neutral-200 bg-neutral-50 p-3 text-xs">
+    <section aria-label="Guest at this table" className="rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2 text-xs">
       <div className="flex items-center justify-between gap-2">
         <p className="flex min-w-0 items-center gap-1.5 font-semibold text-neutral-950">
           <UserRound className="h-3.5 w-3.5 shrink-0" /> <span className="truncate">{info.name}</span>
@@ -26,12 +27,14 @@ export function LiveTableGuest({ session, order }: LiveTableGuestProps) {
           {info.walkIn ? 'Walk-in' : 'Guest app'}
         </span>
       </div>
-      <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[11px] text-neutral-600">
-        {info.handle && (<><dt>Handle</dt><dd className="font-mono text-neutral-900">@{info.handle.replace(/^@/, '')}</dd></>)}
-        {info.phone && (<><dt className="flex items-center gap-1"><Phone className="h-3 w-3" /> Phone</dt><dd className="font-mono text-neutral-900">{info.phone}</dd></>)}
-        {uidShort && (<><dt className="flex items-center gap-1"><Fingerprint className="h-3 w-3" /> Session</dt><dd className="font-mono text-neutral-900">{uidShort}</dd></>)}
-        {clock(info.since) && (<><dt>Seated</dt><dd className="text-neutral-900">{clock(info.since)}</dd></>)}
-      </dl>
+      {(info.handle || info.phone || seated || uidShort) && (
+        <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-neutral-600">
+          {info.handle && <span className="font-mono text-neutral-900">@{info.handle.replace(/^@/, '')}</span>}
+          {info.phone && <span className="inline-flex items-center gap-1 font-mono text-neutral-900"><Phone className="h-3 w-3" aria-hidden /> {info.phone}</span>}
+          {seated && <span>Seated <span className="text-neutral-900">{seated}</span></span>}
+          {uidShort && <span className="hidden items-center gap-1 sm:inline-flex"><Fingerprint className="h-3 w-3" aria-hidden /> <span className="font-mono text-neutral-900">{uidShort}</span></span>}
+        </p>
+      )}
     </section>
   );
 }

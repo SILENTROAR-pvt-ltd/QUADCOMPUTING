@@ -37,6 +37,9 @@ interface MenuModalsHostProps {
   onDecrement: (id: string) => void;
   onRemove: (id: string) => void;
   hasActiveOrder: boolean;
+  menuItems?: MenuItem[];
+  featuredIds?: string[];
+  onQuickAdd?: (item: MenuItem) => void;
   selectedService: MenuItem | null;
   onCloseServiceModal: () => void;
   onRequestService: (s: MenuItem) => void;
@@ -79,6 +82,9 @@ export function MenuModalsHost({
   onDecrement,
   onRemove,
   hasActiveOrder,
+  menuItems,
+  featuredIds,
+  onQuickAdd,
   selectedService,
   onCloseServiceModal,
   onRequestService,
@@ -116,6 +122,9 @@ export function MenuModalsHost({
         onDecrement={onDecrement}
         onRemove={onRemove}
         hasActiveOrder={hasActiveOrder}
+        menuItems={menuItems}
+        featuredIds={featuredIds}
+        onQuickAdd={onQuickAdd}
       />
 
       <VenueServiceModal

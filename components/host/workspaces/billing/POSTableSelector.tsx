@@ -5,6 +5,7 @@ import { Bed, UtensilsCrossed } from 'lucide-react';
 import type { RestaurantTable } from './hooks/usePOSTables';
 import { POSTableGridItem } from './components/POSTableGridItem';
 import { POSRoomGridItem, type RoomOption } from './components/POSRoomGridItem';
+import { paymentTableKey, type BillPayment } from '@/lib/services/payments/bill-payment.rules';
 
 interface Props {
   tables: RestaurantTable[];
@@ -16,6 +17,8 @@ interface Props {
   setSelectedRoomId?: (id: string | null) => void;
   onSelectActiveTable?: (table: RestaurantTable) => void;
   onMarkVacant?: (table: RestaurantTable) => void;
+  /** How each table said it will pay, keyed by the table number in any spelling. Shown as a small badge on the table. */
+  payments?: Map<string, BillPayment>;
 }
 
 export function POSTableSelector({
@@ -28,6 +31,7 @@ export function POSTableSelector({
   setSelectedRoomId,
   onSelectActiveTable,
   onMarkVacant,
+  payments,
 }: Props) {
   const [activeTab, setActiveTab] = useState<'tables' | 'rooms'>('tables');
   const [rooms, setRooms] = useState<RoomOption[]>([]);
@@ -197,6 +201,7 @@ export function POSTableSelector({
             tables.map((table) => (
               <POSTableGridItem
                 key={table.id}
+                payment={payments?.get(paymentTableKey(table.table_number)) ?? null}
                 table={table}
                 isSelected={selectedTableId === table.id}
                 onSelect={handleSelectTable}

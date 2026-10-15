@@ -58,7 +58,7 @@ export function WalletHostPass({ redemption, walletCode }: { redemption: ActiveR
         </button>
       </div>
       <p className="text-center text-[9px] text-neutral-500">
-        Single-use. Show this to the host before the bill is settled. Only the discount applied is taken from your wallet.
+        Single-use. Show this to our team before the bill is settled. Only the discount applied is taken from your wallet.
       </p>
     </div>
   );

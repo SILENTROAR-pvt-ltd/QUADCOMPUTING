@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import Image from "next/image";
 import { Search, X } from "lucide-react";
 import { stickerFor, stickerSrc } from "@/lib/guest/menu-stickers";
@@ -152,65 +151,13 @@ function CategoryRail({ variant, categories, selectedCategory, onSelect, counts,
   );
 }
 
-/**
- * The menu's filter bar: search, and the categories as photos of their own dishes. Once the guest scrolls past it, a compact bar
- * (search and small chips) slides down from the top and stays, so filtering is always one tap away. The compact bar
- * floats over the page instead of resizing it, so nothing below ever jumps.
- */
-export function DiningFilters({
-  searchQuery,
-  setSearchQuery,
-  categories,
-  selectedCategory,
-  onSelectCategory,
-  counts,
-  covers,
-  shownCount,
-}: DiningFiltersProps) {
-  const block = useRef<HTMLDivElement>(null);
-  const [compact, setCompact] = useState(false);
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => { setMounted(true); }, []);
-
-  useEffect(() => {
-    const el = block.current;
-    if (!el || typeof IntersectionObserver === "undefined") return;
-    const io = new IntersectionObserver(([entry]) => setCompact(!entry.isIntersecting && entry.boundingClientRect.top < 0), { threshold: 0 });
-    io.observe(el);
-    return () => io.disconnect();
-  }, []);
-
-  // Choosing a category from the compact bar brings the dishes up under it.
-  const selectFromBar = (cat: string) => {
-    onSelectCategory(cat);
-    const el = block.current;
-    if (el) window.scrollTo({ top: el.getBoundingClientRect().bottom + window.scrollY - 96, behavior: "smooth" });
-  };
-
+/** The menu's filter bar: search, and the categories as photos of their own dishes. */
+export function DiningFilters({ searchQuery, setSearchQuery, categories, selectedCategory, onSelectCategory, counts, covers, shownCount }: DiningFiltersProps) {
   return (
-    <>
-      <div ref={block} className="space-y-2.5">
-        <SearchField value={searchQuery} onChange={setSearchQuery} shownCount={shownCount} />
-        <CategoryRail variant="tiles" categories={categories} selectedCategory={selectedCategory} onSelect={onSelectCategory} counts={counts} covers={covers} />
-      </div>
-
-      {/* Drawn at the end of the page (a portal), so no parent's spacing or transform can move it off the top. */}
-      {mounted && createPortal(
-        <div
-          aria-hidden={!compact}
-          inert={!compact}
-          className={`fixed inset-x-0 top-0 z-40 transition-transform duration-300 ease-out will-change-transform ${compact ? "translate-y-0" : "-translate-y-full"}`}
-        >
-          <div className="border-b border-zinc-200/70 bg-[#faf9f6]/[0.97] shadow-[0_10px_24px_-18px_rgba(0,0,0,0.35)]">
-            <div className="mx-auto max-w-5xl space-y-2 px-4 py-2 sm:px-6">
-              <SearchField value={searchQuery} onChange={setSearchQuery} shownCount={shownCount} compact />
-              <CategoryRail variant="pills" categories={categories} selectedCategory={selectedCategory} onSelect={selectFromBar} counts={counts} covers={covers} />
-            </div>
-          </div>
-        </div>,
-        document.body,
-      )}
-    </>
+    <div className="space-y-2.5">
+      <SearchField value={searchQuery} onChange={setSearchQuery} shownCount={shownCount} />
+      <CategoryRail variant="tiles" categories={categories} selectedCategory={selectedCategory} onSelect={onSelectCategory} counts={counts} covers={covers} />
+    </div>
   );
 }
 

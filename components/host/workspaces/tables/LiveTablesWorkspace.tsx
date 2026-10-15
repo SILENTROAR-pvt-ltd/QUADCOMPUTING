@@ -3,6 +3,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { LayoutGrid } from 'lucide-react';
 import { usePOSTables, type RestaurantTable } from '@/components/host/workspaces/billing/hooks/usePOSTables';
+import { useKitchenRealtime } from '@/lib/hooks/use-kitchen-realtime';
+import { useLivePayments } from '@/lib/hooks/use-live-payments';
+import { paymentTableKey } from '@/lib/services/payments/bill-payment.rules';
+import { kitchenSummary, ticketsForTable } from '@/lib/utils/table-kitchen';
 import { latestSettledByTable, normalizeTableNumber, tableVisualState, type TableVisualState } from '@/lib/utils/live-table-state';
 import { LiveTableTile } from './LiveTableTile';
 import { LiveTableControlPanel } from './LiveTableControlPanel';
@@ -14,10 +18,17 @@ interface LiveTablesWorkspaceProps {
 }
 
 const SETTLED_REFRESH_MS = 60_000;
+/** The kitchen feed is live; this slower re-read only catches a dropped connection. */
+const KITCHEN_REFRESH_MS = 15_000;
 
 /** Every table of the venue on one page: its state at a glance, and the selected table's bill to act on. */
 export function LiveTablesWorkspace({ venueId, onNavigate }: LiveTablesWorkspaceProps) {
   const { tables, fetchTables } = usePOSTables(venueId);
+  // One live kitchen feed for the whole page: a chef's change reaches every table's tile and panel at once.
+  const kitchen = useKitchenRealtime({ businessId: venueId });
+  const refetchKitchen = kitchen.refetch;
+  // How each table said it will pay, and whether staff have confirmed it.
+  const livePayments = useLivePayments();
   const [settledAt, setSettledAt] = useState<Map<string, number>>(new Map());
   const [selected, setSelected] = useState<string | null>(null);
   const [filter, setFilter] = useState<TableVisualState | 'all'>('all');
@@ -42,6 +53,11 @@ export function LiveTablesWorkspace({ venueId, onNavigate }: LiveTablesWorkspace
     return () => clearInterval(timer);
   }, [loadSettled]);
 
+  useEffect(() => {
+    const timer = setInterval(() => { if (document.visibilityState === 'visible') void refetchKitchen(); }, KITCHEN_REFRESH_MS);
+    return () => clearInterval(timer);
+  }, [refetchKitchen]);
+
   const rows = useMemo(() => {
     const now = Date.now();
     return (tables as RestaurantTable[])
@@ -53,6 +69,16 @@ export function LiveTablesWorkspace({ venueId, onNavigate }: LiveTablesWorkspace
       })
       .sort((a, b) => a.number.localeCompare(b.number, undefined, { numeric: true, sensitivity: 'base' }));
   }, [tables, settledAt, turnedOver]);
+
+  // Dishes ready to serve, per table, from the same live feed the panel reads.
+  const readyByTable = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const r of rows) {
+      const ready = kitchenSummary(ticketsForTable(kitchen.tickets, r.number, null)).readyDishes;
+      if (ready > 0) map.set(r.number, ready);
+    }
+    return map;
+  }, [rows, kitchen.tickets]);
 
   const counts = useMemo(() => {
     const c: Record<TableVisualState, number> = { live: 0, bill_requested: 0, occupied: 0, settled: 0, vacant: 0 };
@@ -68,14 +94,15 @@ export function LiveTablesWorkspace({ venueId, onNavigate }: LiveTablesWorkspace
   // A line or an item changed: only the tables are read again, not the history.
   const tablesChanged = useCallback(() => { void fetchTables(); }, [fetchTables]);
 
-  const finished = useCallback((number: string, kind: 'settle' | 'release') => {
+  // Only an unstarted table is freed from here; settling a bill is the cashier's, in billing.
+  const finished = useCallback((number: string) => {
     const key = normalizeTableNumber(number);
-    setTurnedOver((m) => new Map(m).set(key, kind === 'settle' ? 'settled' : 'vacant'));
+    setTurnedOver((m) => new Map(m).set(key, 'vacant'));
     setSelected(null);
-    void Promise.all([fetchTables(), kind === 'settle' ? loadSettled() : Promise.resolve()]).then(() => {
+    void fetchTables().then(() => {
       setTurnedOver((m) => { const next = new Map(m); next.delete(key); return next; });
     });
-  }, [fetchTables, loadSettled]);
+  }, [fetchTables]);
 
   // A phone shows the table as a sheet over the board: Escape closes it, and the board behind does not scroll.
   useEffect(() => {
@@ -151,6 +178,8 @@ export function LiveTablesWorkspace({ venueId, onNavigate }: LiveTablesWorkspace
               state={state}
               amount={table.activeSession ? Number(table.activeSession.grandTotal) || 0 : null}
               itemCount={table.activeSession?.itemsCount}
+              readyCount={readyByTable.get(number) ?? 0}
+              payment={state === 'vacant' || state === 'settled' ? null : livePayments.byTable.get(paymentTableKey(number)) ?? null}
               selected={selected === number}
               onSelect={select}
             />
@@ -169,8 +198,13 @@ export function LiveTablesWorkspace({ venueId, onNavigate }: LiveTablesWorkspace
                 venueId={venueId}
                 tableNumber={chosen.number}
                 state={chosen.state}
+                kitchenTickets={kitchen.tickets}
+                kitchenLoading={kitchen.isLoading}
+                payment={livePayments.byTable.get(paymentTableKey(chosen.number)) ?? null}
+                onVerifyPayment={livePayments.verify}
+                onServeTicket={(id) => kitchen.updateTicketStatus(id, 'SERVED')}
                 onChanged={tablesChanged}
-                onFinished={(kind) => finished(chosen.number, kind)}
+                onFinished={() => finished(chosen.number)}
                 onOpenBilling={() => onNavigate?.('billing')}
                 onClose={close}
               />

@@ -2,10 +2,15 @@
 
 import React, { useEffect, useState } from 'react';
 import { Clock, MapPin, Phone, Bike } from 'lucide-react';
-import { apiRequest } from '@/lib/utils/api-client';
+import { sharedGet } from '@/lib/utils/shared-get';
 import { EMPTY_MENU_INFO, type MenuInfo } from '@/lib/services/menu-info/menu-info';
 
 const serif = { fontFamily: "'Playfair Display', Georgia, serif" };
+
+interface InfoPayload { info?: MenuInfo; gst_applicable?: boolean | null }
+
+// One request feeds both hooks: the menu page and the order review ask for the same thing at the same moment.
+const infoUrl = (venueId: string) => `/api/guest/menu/info?cafe_id=${encodeURIComponent(venueId)}`;
 
 /** The venue's public information, loaded once for the menu page. Empty until it arrives. */
 export function useMenuInfo(venueId: string): MenuInfo {
@@ -13,14 +18,27 @@ export function useMenuInfo(venueId: string): MenuInfo {
   useEffect(() => {
     if (!venueId) return;
     let alive = true;
-    apiRequest<any>(`/api/guest/menu/info?cafe_id=${encodeURIComponent(venueId)}`, { cache: 'no-store' }).then((res) => {
-      if (alive && res.ok && res.data?.info) setInfo(res.data.info);
+    sharedGet<InfoPayload>(infoUrl(venueId)).then((res) => {
+      if (alive && res.ok && res.data?.info) setInfo({ ...EMPTY_MENU_INFO, ...res.data.info });
     });
     return () => { alive = false; };
   }, [venueId]);
   return info;
 }
 
+/** Whether this venue charges GST on a bill: true or false once known, null while loading or when it could not be read. */
+export function useVenueGst(venueId: string): boolean | null {
+  const [applicable, setApplicable] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (!venueId) return;
+    let alive = true;
+    sharedGet<InfoPayload>(infoUrl(venueId)).then((res) => {
+      if (alive && res.ok && typeof res.data?.gst_applicable === 'boolean') setApplicable(res.data.gst_applicable);
+    });
+    return () => { alive = false; };
+  }, [venueId]);
+  return applicable;
+}
 function InfoTile({ icon: Icon, label, children }: { icon: React.ComponentType<{ size?: number; className?: string }>; label: string; children: React.ReactNode }) {
   return (
     <div className="flex gap-3.5 rounded-2xl border border-zinc-200/80 bg-white p-4">

@@ -14,6 +14,7 @@ import { CatalogItemCard } from './catalog/components/CatalogItemCard';
 import { CatalogEmptyState } from './catalog/components/CatalogEmptyState';
 import { CatalogModalsContainer } from './catalog/components/CatalogModalsContainer';
 import { MenuInfoCard } from './catalog/MenuInfoCard';
+import { TopPicksCard } from './catalog/TopPicksCard';
 import { CatalogCategoryChips } from './catalog/components/CatalogCategoryChips';
 import { DishPhotoPicker } from './catalog/images/DishPhotoPicker';
 import { DishPhotoIngest } from './catalog/images/DishPhotoIngest';
@@ -76,6 +77,8 @@ export function CatalogWorkspace({ cafeId: propCafeId }: CatalogWorkspaceProps =
         activeCafeId={activeCafeId} itemCount={activeItems.length} fetchError={fetchError}
         isRefreshing={isRefreshing} isLoading={isLoading} onRefresh={refreshCatalog}
       />
+
+      <TopPicksCard items={activeItems} />
 
       <MenuInfoCard />
 

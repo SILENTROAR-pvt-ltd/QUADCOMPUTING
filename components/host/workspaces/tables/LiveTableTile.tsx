@@ -11,6 +11,10 @@ export interface LiveTableTileProps {
   /** The running bill, when there is an order. */
   amount?: number | null;
   itemCount?: number;
+  /** Dishes the kitchen has finished and nobody has taken out yet. */
+  readyCount?: number;
+  /** How the table said it will pay, and how far that has got. */
+  payment?: { method: 'UPI' | 'CASH' | 'CARD'; status: 'chosen' | 'claimed' | 'verified' | 'settled' | 'cancelled' } | null;
   selected: boolean;
   onSelect: (tableNumber: string) => void;
 }
@@ -18,7 +22,7 @@ export interface LiveTableTileProps {
 const inr = (n: number) => `₹${Math.round(Number(n) || 0).toLocaleString('en-IN')}`;
 
 /** One table on the board: its number, its state colour, and the running bill when there is one. */
-function LiveTableTileBase({ tableNumber, seats, state, amount, itemCount, selected, onSelect }: LiveTableTileProps) {
+function LiveTableTileBase({ tableNumber, seats, state, amount, itemCount, readyCount = 0, payment = null, selected, onSelect }: LiveTableTileProps) {
   const style = TABLE_STATE_STYLE[state];
   const hasBill = state !== 'vacant' && state !== 'settled' && amount !== null && amount !== undefined;
   return (
@@ -26,7 +30,7 @@ function LiveTableTileBase({ tableNumber, seats, state, amount, itemCount, selec
       type="button"
       onClick={() => onSelect(tableNumber)}
       aria-pressed={selected}
-      aria-label={`Table ${tableNumber}, ${style.label}${hasBill ? `, bill ${inr(amount as number)}` : ''}`}
+      aria-label={`Table ${tableNumber}, ${style.label}${hasBill ? `, bill ${inr(amount as number)}` : ''}${readyCount > 0 ? `, ${readyCount} ready to serve` : ''}`}
       className={`flex min-h-[7rem] w-full flex-col justify-between rounded-2xl border p-3 text-left transition-[transform,box-shadow] cursor-pointer active:scale-[0.97] lg:hover:-translate-y-0.5 lg:hover:shadow-md ${style.tile} ${
         selected ? 'outline outline-2 outline-offset-2 outline-neutral-950' : ''
       }`}
@@ -38,6 +42,23 @@ function LiveTableTileBase({ tableNumber, seats, state, amount, itemCount, selec
           {style.label}
         </span>
       </div>
+      {payment && (
+        <span className={`mt-2 inline-flex w-fit items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-bold ${
+          payment.status === 'claimed' ? 'bg-amber-500 text-white' : payment.status === 'verified' ? 'bg-emerald-100 text-emerald-900' : 'bg-neutral-200 text-neutral-800'
+        }`}>
+          {payment.status === 'claimed' && <span aria-hidden className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />}
+          {payment.status === 'claimed'
+            ? 'Paid by UPI · confirm'
+            : payment.status === 'verified'
+              ? 'Paid · to billing'
+              : payment.method === 'UPI' ? 'Paying by UPI' : `Pays by ${payment.method === 'CASH' ? 'cash' : 'card'}`}
+        </span>
+      )}
+      {readyCount > 0 && (
+        <span className="mt-2 inline-flex w-fit items-center gap-1.5 rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold text-white">
+          <span aria-hidden className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" /> {readyCount} ready to serve
+        </span>
+      )}
       <div className="mt-2 flex items-end justify-between gap-2">
         <span className="text-[11px] text-neutral-500">
           {itemCount ? `${itemCount} ${itemCount === 1 ? 'item' : 'items'}` : seats ? `${seats} seats` : ''}

@@ -5,7 +5,6 @@ import { motion } from "framer-motion";
 import { Receipt, Sparkles } from "lucide-react";
 import { GUEST_BRAND } from "@/lib/brand";
 import { greetingFor, greetingName } from "@/lib/guest/greeting";
-import { MenuJourneySteps } from "./MenuJourneySteps";
 
 export interface MenuHeaderProps {
   guestName?: string;
@@ -14,8 +13,6 @@ export interface MenuHeaderProps {
   tagline?: string;
   tableNo?: string;
   activeOrdersCount?: number;
-  /** Dishes in the tray, not yet sent. Drives the "what to do next" steps. */
-  cartCount?: number;
   onOpenBill?: () => void;
   billRequestedBanner?: boolean;
 }
@@ -30,7 +27,6 @@ export function MenuHeader({
   tagline = "",
   tableNo = "T-05",
   activeOrdersCount = 0,
-  cartCount = 0,
   onOpenBill,
   billRequestedBanner,
 }: MenuHeaderProps) {
@@ -82,21 +78,12 @@ export function MenuHeader({
               <Sparkles size={11} aria-hidden /> Order right from your table
             </span>
           </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.08, ease }}
-            className="mt-5 flex w-full justify-center"
-          >
-            <MenuJourneySteps cartCount={cartCount} sentCount={activeOrdersCount} />
-          </motion.div>
         </div>
       </header>
 
       {billRequestedBanner && (
         <div role="status" className="border-y border-amber-200/70 bg-amber-50/80 py-2 text-center text-xs text-amber-900">
-          Bill requested. Your host is preparing it now.
+          Bill requested. Our team is preparing it now.
         </div>
       )}
     </>

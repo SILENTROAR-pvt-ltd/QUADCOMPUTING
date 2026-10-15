@@ -19,7 +19,7 @@ export const BeyondDiningSection: React.FC<BeyondDiningSectionProps> = ({ servic
       <div className="mb-3 px-0.5">
         <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-zinc-400">Beyond dining</p>
         <h2 className="mt-1 text-[21px] leading-tight text-zinc-950" style={SERVICE_SERIF}>Explore venue services</h2>
-        <p className="mt-1.5 text-[12px] leading-snug text-zinc-500">Tap any to request it. Our team will add it to your bill.</p>
+        <p className="mt-1.5 text-[12px] leading-snug text-zinc-500">Tap any experience you would like, and our team will gladly contact you to arrange it.</p>
       </div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
         {services.map((service) => (

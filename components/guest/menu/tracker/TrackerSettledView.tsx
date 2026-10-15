@@ -6,6 +6,7 @@ import { Download, FileText, Wallet } from 'lucide-react';
 import { getKnownOrder } from '../hooks/guest-storage.util';
 import { SettledBillSheet } from './SettledBillSheet';
 import { PremiumStar } from './PremiumStar';
+import { ThankYouBlock } from './ThankYouBlock';
 import { apiRequest, jsonRequest } from '@/lib/utils/api-client';
 
 interface Props {
@@ -23,7 +24,6 @@ interface Props {
 }
 
 const SERIF = { fontFamily: "'Playfair Display', Georgia, serif" } as const;
-const THANK_YOU = '/media/stickers/thank-you-v1.webp';
 const REVIEW_TAGS = ['Taste', 'On-time service', 'Cleanliness', 'Friendly staff', 'Ambience', 'Value for money'];
 const RATING_WORDS = ['', 'We are sorry to hear that', 'Thank you for telling us', 'Thank you', 'We are glad you enjoyed it', 'It was a pleasure to host you'];
 const inr = (n: number) => `₹${n.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
@@ -80,18 +80,11 @@ export function TrackerSettledView({ tableNumber, settledTotal, cafeName, venueI
       className="mb-6 w-full overflow-hidden rounded-[28px] border border-neutral-200/80 bg-[#fcfaf4] shadow-[0_24px_60px_-30px_rgba(10,50,34,0.45)]"
     >
       {/* The thank-you */}
-      <div className="relative px-6 pb-6 pt-7 text-center">
-        <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-[radial-gradient(60%_80%_at_50%_0%,rgba(120,100,60,0.08),transparent_75%)]" />
-        {/* eslint-disable-next-line @next/next/no-img-element -- a 105 KB animated sticker from public/media; images.unoptimized is set, and next/image would flatten the animation */}
-        <img src={THANK_YOU} alt="Thank you" width={132} height={122} draggable={false} className="relative mx-auto h-[122px] w-[132px] select-none object-contain" />
-        <p className="mt-3 text-[10px] font-medium uppercase tracking-[0.24em] text-zinc-400">Table {tableNumber} · Bill settled</p>
-        <h3 className="mx-auto mt-2 max-w-sm text-[26px] leading-[1.15] text-zinc-950 [text-wrap:balance]" style={SERIF}>
-          Thank you for dining with {venue}.
-        </h3>
-        <p className="mx-auto mt-2.5 max-w-sm text-[13px] leading-relaxed text-zinc-500 [text-wrap:balance]">
-          It was a pleasure to host you. Your payment is complete and the table has been released. We hope to welcome you again very soon.
-        </p>
-      </div>
+      <ThankYouBlock
+        eyebrow={`Table ${tableNumber} · Bill settled`}
+        title={`Thank you for dining with ${venue}.`}
+        body="It was a pleasure to host you. Your payment is complete and the table has been released. We hope to welcome you again very soon."
+      />
 
       {signedIn && cashback > 0 && (
         <div className="mx-5 mb-4 flex items-center gap-3.5 rounded-2xl border border-neutral-200 bg-white px-4 py-3.5">

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { isRepeatRing, RING_GAP_MS } from '@/lib/host-alert-sound';
 import { callsToRepeat, REPEAT_MS } from './HostAlertSound';
-import { arrivedTickets } from './usePendingKot';
+import { arrivedTickets, isStaffAddedTicket } from './usePendingKot';
 
 describe('the order bell', () => {
   it('rings once for one event reported by two screens', () => {
@@ -12,6 +12,14 @@ describe('the order bell', () => {
   it('counts only tickets that were not there before', () => {
     expect(arrivedTickets(new Set(['a', 'b']), ['a', 'b', 'c'])).toEqual(['c']);
     expect(arrivedTickets(new Set(['a']), [])).toEqual([]);
+  });
+
+  it('does not ring the host for a ticket the waiter keyed in, only for guest orders', () => {
+    expect(isStaffAddedTicket({ items: [{ added_by: 'staff' }, { added_by: 'staff' }] })).toBe(true);
+    expect(isStaffAddedTicket({ items: [{ added_by: 'staff' }, {}] })).toBe(false);
+    expect(isStaffAddedTicket({ items: [{}] })).toBe(false);
+    expect(isStaffAddedTicket({ items: [] })).toBe(false);
+    expect(isStaffAddedTicket({})).toBe(false);
   });
 
   it('rings again only for guest calls nobody has answered for a while', () => {

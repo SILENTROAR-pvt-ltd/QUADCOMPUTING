@@ -51,7 +51,7 @@ describe('Kitchen stations: one ticket per station', () => {
     const stations = db.tables.kitchen_tickets.map((t) => t.station).sort();
     expect(stations).toEqual(['Bar', 'Kitchen']);
     const bar = db.tables.kitchen_tickets.find((t) => t.station === 'Bar')!;
-    expect(bar.items).toEqual([{ name: 'Cold Brew', qty: 2, category: 'Beverages' }]);
+    expect(bar.items).toEqual([{ name: 'Cold Brew', qty: 2, category: 'Beverages', added_by: 'staff' }]);
     expect(bar.ticket_number).toMatch(/-B$/);
   });
 

@@ -4,12 +4,14 @@ import React from 'react';
 import { Flame, UtensilsCrossed, Wine } from 'lucide-react';
 import { STATIONS, type KitchenStation } from './kitchen-station';
 
-export type BoardTab = 'ACTIVE' | 'SERVED';
+export type BoardTab = 'ACTIVE' | 'READY' | 'SERVED';
 
 interface KitchenBoardFiltersProps {
   tab: BoardTab;
   onTab: (tab: BoardTab) => void;
   activeCount: number;
+  /** Tickets the kitchen has marked ready, waiting for the waiter to take them out. */
+  readyCount: number;
   servedCount: number;
   station: 'ALL' | KitchenStation;
   onStation: (station: 'ALL' | KitchenStation) => void;
@@ -27,28 +29,37 @@ const chip = (on: boolean) =>
     on ? 'bg-neutral-950 text-white' : 'border border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50'
   }`;
 
-/** Active or served, and which station. Scrolls sideways on a phone instead of wrapping. */
+/** Active, ready to serve or served, and which station. Scrolls sideways on a phone instead of wrapping. */
 export function KitchenBoardFilters(props: KitchenBoardFiltersProps) {
   const { tab, station, stationCounts } = props;
   const total = STATIONS.reduce((sum, s) => sum + stationCounts[s], 0);
+  const waiting = props.readyCount > 0;
 
   return (
     <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-      <div role="tablist" aria-label="Tickets" className="grid grid-cols-2 gap-1 rounded-xl bg-neutral-100 p-1 md:w-auto">
-        {(['ACTIVE', 'SERVED'] as const).map((t) => (
-          <button
-            key={t}
-            type="button"
-            role="tab"
-            aria-selected={tab === t}
-            onClick={() => props.onTab(t)}
-            className={`h-10 rounded-lg px-4 text-xs font-semibold transition-colors cursor-pointer ${
-              tab === t ? 'bg-white text-neutral-950 shadow-xs' : 'text-neutral-500'
-            }`}
-          >
-            {t === 'ACTIVE' ? `Active · ${props.activeCount}` : `Served · ${props.servedCount}`}
-          </button>
-        ))}
+      <div role="tablist" aria-label="Tickets" className="grid grid-cols-3 gap-1 rounded-xl bg-neutral-100 p-1 md:w-auto">
+        {(['ACTIVE', 'READY', 'SERVED'] as const).map((t) => {
+          const on = tab === t;
+          // Ready is the one the waiter watches: it turns green and shows a pulse while something is waiting to be served.
+          const readyAlert = t === 'READY' && waiting;
+          return (
+            <button
+              key={t}
+              type="button"
+              role="tab"
+              aria-selected={on}
+              onClick={() => props.onTab(t)}
+              className={`flex h-10 items-center justify-center gap-1.5 rounded-lg px-3 text-xs font-semibold transition-colors cursor-pointer sm:px-4 ${
+                on
+                  ? readyAlert ? 'bg-emerald-600 text-white shadow-xs' : 'bg-white text-neutral-950 shadow-xs'
+                  : readyAlert ? 'bg-emerald-50 text-emerald-800' : 'text-neutral-500'
+              }`}
+            >
+              {readyAlert && !on && <span aria-hidden className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-emerald-500" />}
+              {t === 'ACTIVE' ? `Active · ${props.activeCount}` : t === 'READY' ? `Ready · ${props.readyCount}` : `Served · ${props.servedCount}`}
+            </button>
+          );
+        })}
       </div>
 
       <div role="group" aria-label="Station" className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 md:pb-0">

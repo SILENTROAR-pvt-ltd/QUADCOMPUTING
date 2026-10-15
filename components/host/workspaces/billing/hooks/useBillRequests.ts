@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { BillRequestEvent } from '../BillRequestsModal';
+import { sharedGet } from '@/lib/utils/shared-get';
 import { usePoll } from '@/lib/utils/use-poll';
 
 const POLL_MS = 6000;
@@ -11,10 +12,10 @@ export function useBillRequests() {
 
   const load = useCallback(async () => {
     try {
-      const response = await fetch('/api/host/sessions?view=bill_requests', { cache: 'no-store' });
+      // Shared with the sidebar's bill-request poll, so one screen sends one request, not two.
+      const response = await sharedGet<{ requests?: BillRequestEvent[] }>('/api/host/sessions?view=bill_requests');
       if (!response.ok) throw new Error('Bill request history is unavailable.');
-      const data = await response.json();
-      setRequests(Array.isArray(data.requests) ? data.requests : []);
+      setRequests(Array.isArray(response.data?.requests) ? response.data.requests : []);
       setError('');
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'Unable to load history.');

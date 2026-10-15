@@ -26,7 +26,7 @@ export interface LiveOrderTrackerProps {
   settledTotal?: number;
   /** Real cashback credited to the wallet for this bill (from the order API). */
   cashbackCredited?: number;
-  onExploreServices?: () => void;
+  onExploreLounge?: () => void;
   /** The venue, so a review can be sent after the bill settles. */
   venueId?: string;
   /** The order this device took part in, so its settled bill can be fetched. */
@@ -38,6 +38,8 @@ export interface LiveOrderTrackerProps {
   isAddon?: boolean;
   onRefresh?: () => void;
   isRefreshing?: boolean;
+  /** Bumped by the parent to open the card, even if the guest had folded it. */
+  openRequest?: number;
   order?: {
     id?: string;
     kot_number?: string;
@@ -65,7 +67,7 @@ export function LiveOrderTracker({
   billSettled = false,
   settledTotal = 0,
   cashbackCredited = 0,
-  onExploreServices,
+  onExploreLounge,
   venueId,
   orderId,
   signedIn = false,
@@ -73,6 +75,7 @@ export function LiveOrderTracker({
   isAddon = false,
   onRefresh,
   isRefreshing = false,
+  openRequest = 0,
   order,
 }: LiveOrderTrackerProps) {
   const [collapsed, setCollapsed] = useState(false);
@@ -100,6 +103,11 @@ export function LiveOrderTracker({
     return () => clearInterval(timer);
   }, [stage, calm, billSettled, copy.whispers.length]);
 
+  // The menu's "Order tracker" action asks for the card to be open.
+  useEffect(() => {
+    if (openRequest > 0) setCollapsed(false);
+  }, [openRequest]);
+
   if (billSettled) {
     if (Number(settledTotal || 0) <= 0) return null;
     return <TrackerSettledView tableNumber={resolvedTable} settledTotal={settledTotal} cashbackCredited={cashbackCredited} cafeName={(order as any)?.business_name || (order as any)?.cafe_name || cafeName} venueId={venueId} orderId={orderId || order?.id || null} signedIn={signedIn} />;
@@ -110,6 +118,7 @@ export function LiveOrderTracker({
 
   return (
     <section
+      id="live-order-tracker"
       data-kot-step={currentStep}
       data-kot-status={resolvedKot}
       aria-label="Live order tracker"
@@ -219,7 +228,7 @@ export function LiveOrderTracker({
                 onRequestBill={onRequestBill}
                 isRequestingBill={isRequestingBill}
                 billRequested={billRequested}
-                onExploreServices={onExploreServices}
+                onExploreLounge={onExploreLounge}
               />
             </div>
           </motion.div>

@@ -30,6 +30,8 @@ export interface InvoiceData {
   /** Cashback the bill earned into the guest's wallet. */
   wallet_cashback?: number;
   payment_method?: string;
+  /** How the guest said they will pay (from their phone), so the cashier's payment method starts on it. */
+  preferredTender?: 'UPI' | 'CASH' | 'CARD';
   items: InvoiceItem[];
   subtotal: number;
   discountType?: 'percentage' | 'flat';

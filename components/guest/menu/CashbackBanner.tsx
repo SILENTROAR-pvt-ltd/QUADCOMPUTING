@@ -85,7 +85,9 @@ function Amount({ value }: { value: number }) {
       initial={{ y: -4, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.22, ease: 'easeOut' }}
-      className="inline-block font-semibold tabular-nums"
+      // Clean sans with lining, even-width figures: the serif the sentence is set in draws old-style numerals that look uneven.
+      style={{ fontFamily: 'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif', fontVariantNumeric: 'lining-nums tabular-nums' }}
+      className="inline-block text-[17px] font-bold tracking-tight"
     >
       {rupees(value)}
     </motion.span>

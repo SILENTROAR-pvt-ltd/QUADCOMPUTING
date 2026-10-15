@@ -1,6 +1,7 @@
 import { normalizeTable, buildTableOrFilter } from './session-entry.util';
 import { broadcastToGuestTable } from '@/lib/realtime/channels';
 import { assertRedemptionSettleable } from '@/lib/services/wallet/redemption.service';
+import { markPaymentSettled } from '@/lib/services/payments/bill-payment.service';
 import { loadGstStatus, stripTax } from '@/lib/services/billing/gst-policy';
 import { billOwner, isSharedSignedInBill, type BillOwner } from '@/lib/services/wallet/bill-owner.util';
 // Columns that exist on the deployed dine_in_sessions. It has no guest_name:
@@ -224,6 +225,10 @@ export async function settleAndVacateSession(body: any, supabase: any) {
   const redemptionResult = redemptionCode
     ? { redeemed_amount: Number(settlementRpc.redeemed_amount || 0) }
     : null;
+
+  // The table's live payment (what the guest chose, and that staff confirmed it) is closed with the bill. Best-effort:
+  // it never undoes a settlement, and it does nothing before the payments migration is applied.
+  await markPaymentSettled(supabase, businessId, { sessionId: targetSessionId, orderId: finalOrderId, tableNumber: rawTable || null });
 
   // The bill's owner, recorded once at settlement: the guest's invoices are read from this
   // (guest-bills.service), never from the table's shared session. Best-effort: the column

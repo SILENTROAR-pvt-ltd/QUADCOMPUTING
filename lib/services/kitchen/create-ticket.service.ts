@@ -26,7 +26,9 @@ export async function createKitchenTicketRecord(
   const byStation = new Map<KitchenStation, any[]>();
   for (const item of validItems) {
     const station = resolveItemStation({ station: item.station, category: item.category, name: item.name }, enabled);
-    byStation.set(station, [...(byStation.get(station) ?? []), { ...item, station: undefined }]);
+    const { station: _st, ...rest } = item;
+    // `added_by` marks a dish keyed in by staff, so the host bell stays quiet for it and only the kitchen board rings.
+    byStation.set(station, [...(byStation.get(station) ?? []), { ...rest, added_by: 'staff' }]);
   }
 
   const ticketBase = `KOT-${Math.floor(1000 + Math.random() * 9000)}`;

@@ -7,14 +7,21 @@ export type Tender = 'CASH' | 'UPI' | 'CARD';
 
 interface BillTotals { subtotal: number; tax: number; total: number; orderId: string | null }
 
-/** Settle a table's bill by payment, or free the table when nothing was started. */
-export function useTableActions(venueId: string, tableNumber: string, bill: BillTotals, onDone: (kind: 'settle' | 'release') => void) {
-  const [busy, setBusy] = useState<'settle' | 'release' | null>(null);
+/** What the waiter's action did: asked billing to settle, or freed a table that had nothing started. */
+export type TableActionKind = 'request' | 'release';
+
+/**
+ * A waiter's actions on a live table. Settling is not one of them: the bill goes to billing as a bill request, and the
+ * cashier settles it there. An unstarted table can still be freed.
+ */
+export function useTableActions(venueId: string, tableNumber: string, bill: BillTotals, onDone: (kind: TableActionKind) => void) {
+  const [busy, setBusy] = useState<TableActionKind | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [requested, setRequested] = useState(false);
   const inFlight = useRef(false);
 
-  const run = async (kind: 'settle' | 'release', body: Record<string, unknown>) => {
-    // A second tap while the first is still being sent must not settle twice.
+  const run = async (kind: TableActionKind, body: Record<string, unknown>) => {
+    // A second tap while the first is still being sent must not send twice.
     if (inFlight.current) return false;
     inFlight.current = true;
     setBusy(kind);
@@ -26,13 +33,15 @@ export function useTableActions(venueId: string, tableNumber: string, bill: Bill
       setError(result.error);
       return false;
     }
+    if (kind === 'request') setRequested(true);
     onDone(kind);
     return true;
   };
 
-  const settle = (tender: Tender) => run('settle', {
+  /** Sends this table's bill to billing, with its running total, so the cashier sees what to settle. */
+  const sendToBilling = () => run('request', {
+    action: 'request_bill',
     order_id: bill.orderId ?? undefined,
-    payment_method: tender,
     subtotal: bill.subtotal,
     tax_amount: bill.tax,
     grand_total: bill.total,
@@ -40,5 +49,5 @@ export function useTableActions(venueId: string, tableNumber: string, bill: Bill
 
   const release = () => run('release', { action: 'release' });
 
-  return { busy, error, settle, release, setError };
+  return { busy, error, requested, sendToBilling, release, setError };
 }

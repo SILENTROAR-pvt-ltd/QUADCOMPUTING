@@ -11,7 +11,8 @@ export function useDigitalReceiptActions(
   invoice: InvoiceData,
   onSuccess?: (paymentMethod: Tender, result: SaveResult) => void | Promise<void>,
 ) {
-  const [paymentMethod, setPaymentMethod] = useState<Tender>('UPI');
+  // The cashier's choice starts on how the guest said they will pay, and can still be changed.
+  const [paymentMethod, setPaymentMethod] = useState<Tender>(invoice.preferredTender ?? 'UPI');
   const [upiConfirmed, setUpiConfirmed] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);

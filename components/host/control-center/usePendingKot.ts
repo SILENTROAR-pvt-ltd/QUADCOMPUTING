@@ -11,6 +11,15 @@ const POLL_MS = 8000;
 export const arrivedTickets = (before: Set<string>, next: string[]) => next.filter((id) => !before.has(id));
 
 /**
+ * A ticket whose dishes were all keyed in by staff (the waiter adding to a live bill). It rings on the kitchen board for
+ * the chef, but not on host screens, so the waiter's own phone does not ring for what they just entered.
+ */
+export const isStaffAddedTicket = (ticket: { items?: Array<{ added_by?: string } | null> | null }) => {
+  const items = Array.isArray(ticket?.items) ? ticket.items : [];
+  return items.length > 0 && items.every((item) => item?.added_by === 'staff');
+};
+
+/**
  * New kitchen tickets, for the sidebar dot and the order bell. Realtime is the main signal; the poll catches a dropped
  * socket and keeps running in a background tab (the browser slows it there), so an order is still announced.
  * `arrivals` counts tickets that appeared after the first load, so opening the app never rings for old orders.
@@ -24,10 +33,13 @@ export function usePendingKot(cafeId?: string) {
     const url = cafeId ? `/api/host/kitchen/tickets?business_id=${encodeURIComponent(cafeId)}` : '/api/host/kitchen/tickets';
     const res = await sharedGet<{ tickets?: any[] }>(url);
     if (!res.ok) return;
-    const ids = (res.data?.tickets || []).filter((t: any) => t.status === 'PENDING').map((t: any) => String(t.id));
+    const pending = (res.data?.tickets || []).filter((t: any) => t.status === 'PENDING');
+    const ids = pending.map((t: any) => String(t.id));
+    const staffAdded = new Set(pending.filter(isStaffAddedTicket).map((t: any) => String(t.id)));
     setPendingKotCount(ids.length);
     if (known.current) {
-      const fresh = arrivedTickets(known.current, ids);
+      // Tickets staff entered still count as pending, but never ring the host bell.
+      const fresh = arrivedTickets(known.current, ids).filter((id) => !staffAdded.has(id));
       if (fresh.length) setArrivals((n) => n + fresh.length);
     }
     known.current = new Set(ids);

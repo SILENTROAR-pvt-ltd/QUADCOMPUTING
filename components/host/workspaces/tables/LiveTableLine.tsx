@@ -39,15 +39,15 @@ export function LiveTableLine({ line, confirming, removing, onAskRemove, onConfi
   const k = KITCHEN_STATUS[status] ?? KITCHEN_STATUS.pending;
   const canRemove = status === 'pending';
   return (
-    <li className="flex items-start gap-2.5 py-3">
+    <li className="flex items-start gap-2.5 py-2.5">
       {canRemove && onQuantity ? (
         <div className="flex shrink-0 items-center overflow-hidden rounded-xl border border-neutral-200" aria-label={`Quantity of ${line.item_name}`}>
-          <button type="button" onClick={() => onQuantity(line.quantity - 1)} disabled={line.quantity <= 1 || removing} aria-label={`One less ${line.item_name}`} className="flex h-10 w-10 items-center justify-center text-lg text-neutral-700 hover:bg-neutral-50 active:bg-neutral-100 disabled:opacity-30 cursor-pointer">−</button>
-          <span className="w-7 text-center font-mono text-sm font-bold text-neutral-950">{line.quantity}</span>
-          <button type="button" onClick={() => onQuantity(line.quantity + 1)} disabled={line.quantity >= 50 || removing} aria-label={`One more ${line.item_name}`} className="flex h-10 w-10 items-center justify-center text-lg text-neutral-700 hover:bg-neutral-50 active:bg-neutral-100 disabled:opacity-30 cursor-pointer">+</button>
+          <button type="button" onClick={() => onQuantity(line.quantity - 1)} disabled={line.quantity <= 1 || removing} aria-label={`One less ${line.item_name}`} className="flex h-9 w-9 items-center justify-center text-lg text-neutral-700 hover:bg-neutral-50 active:bg-neutral-100 disabled:opacity-30 cursor-pointer">−</button>
+          <span className="w-6 text-center font-mono text-sm font-bold text-neutral-950">{line.quantity}</span>
+          <button type="button" onClick={() => onQuantity(line.quantity + 1)} disabled={line.quantity >= 50 || removing} aria-label={`One more ${line.item_name}`} className="flex h-9 w-9 items-center justify-center text-lg text-neutral-700 hover:bg-neutral-50 active:bg-neutral-100 disabled:opacity-30 cursor-pointer">+</button>
         </div>
       ) : (
-        <span className="flex h-10 min-w-[2.5rem] shrink-0 items-center justify-center rounded-xl bg-neutral-950 px-1.5 font-mono text-sm font-bold text-white">
+        <span className="flex h-9 min-w-[2.25rem] shrink-0 items-center justify-center rounded-xl bg-neutral-950 px-1.5 font-mono text-sm font-bold text-white">
           {line.quantity}×
         </span>
       )}

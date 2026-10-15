@@ -1,11 +1,11 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Sparkles } from 'lucide-react';
 import type { VenueLiveOffer } from '@/types/offers';
 import { isOfferLive } from '@/lib/guest/offer-requests-client';
 import { apiRequest } from '@/lib/utils/api-client';
 import { OfferActionSheet } from '@/components/guest/offers/OfferActionSheet';
+import { OfferTile } from '@/components/guest/offers/OfferTicker';
 
 // Stay deals apply to a room, not to a food order, so they are not listed in the order review.
 const ORDER_CATEGORIES = ['food', 'general'];
@@ -43,26 +43,16 @@ export function CartOffers({ venueId, tableNumber, offers }: CartOffersProps) {
     <div className="space-y-2 border-t border-zinc-100 pt-3">
       <div className="flex items-center justify-between">
         <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">Venue offers</span>
-        <span className="text-[10px] font-medium text-amber-700">Live now</span>
+        <span className="text-[10px] font-medium text-[#4a3a8c]">Live now</span>
       </div>
-      <ul className="space-y-2">
+      {/* Small rectangular tiles, the same as on the menu: two across, each opens its offer. */}
+      <ul className={`grid gap-2 ${offers.length === 1 ? 'mx-auto max-w-[230px] grid-cols-1' : 'grid-cols-2'}`}>
         {offers.map((o) => (
-          <li key={o.id}>
-            <button
-              type="button"
-              onClick={() => setOpen(o)}
-              className="flex w-full cursor-pointer items-center justify-between gap-3 rounded-2xl border border-amber-200/80 bg-amber-50/60 px-3.5 py-2.5 text-left transition-colors hover:bg-amber-50"
-            >
-              <span className="flex min-w-0 items-center gap-2">
-                <Sparkles className="h-3.5 w-3.5 shrink-0 text-amber-600" />
-                <span className="truncate text-xs font-semibold text-neutral-900">{o.title}</span>
-              </span>
-              <span className="shrink-0 font-mono text-[11px] font-bold text-amber-900">{o.discount_badge}</span>
-            </button>
+          <li key={o.id} className="min-w-0">
+            <OfferTile offer={o} onOpen={() => setOpen(o)} className="w-full" />
           </li>
         ))}
-      </ul>
-      {open && (
+      </ul>      {open && (
         <OfferActionSheet venueId={venueId} tableNumber={tableNumber} offer={open} onClose={() => setOpen(null)} />
       )}
     </div>

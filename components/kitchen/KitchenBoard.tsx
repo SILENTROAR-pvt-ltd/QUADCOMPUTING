@@ -44,7 +44,7 @@ export function KitchenBoard({ businessId, stationFilter = 'ALL', className = ''
     useKitchenRealtime({ businessId, onNewTicket });
 
   const inTab = useMemo(
-    () => tickets.filter((t) => (tab === 'ACTIVE' ? isActive(t) : t.status === 'SERVED')),
+    () => tickets.filter((t) => (tab === 'ACTIVE' ? isActive(t) : tab === 'READY' ? t.status === 'READY' : t.status === 'SERVED')),
     [tickets, tab]
   );
   const stationCounts = useMemo(() => {
@@ -54,12 +54,16 @@ export function KitchenBoard({ businessId, stationFilter = 'ALL', className = ''
   }, [inTab]);
   const visible = useMemo(() => {
     const list = inTab.filter((t) => station === 'ALL' || resolveStation(t) === station);
-    // Active: oldest first, the order the kitchen works in. Served: most recent first.
-    return list.sort((a, b) =>
-      tab === 'ACTIVE' ? time(a.created_at) - time(b.created_at) : time(b.updated_at || b.created_at) - time(a.updated_at || a.created_at)
-    );
+    // Active: oldest first, the order the kitchen works in. Ready: the one waiting longest first, so it is served first.
+    // Served: most recent first.
+    return list.sort((a, b) => {
+      if (tab === 'ACTIVE') return time(a.created_at) - time(b.created_at);
+      if (tab === 'READY') return time(a.updated_at || a.created_at) - time(b.updated_at || b.created_at);
+      return time(b.updated_at || b.created_at) - time(a.updated_at || a.created_at);
+    });
   }, [inTab, station, tab]);
   const activeCount = useMemo(() => tickets.filter(isActive).length, [tickets]);
+  const readyCount = useMemo(() => tickets.filter((t) => t.status === 'READY').length, [tickets]);
   const servedCount = useMemo(() => tickets.filter((t) => t.status === 'SERVED').length, [tickets]);
 
   return (
@@ -82,6 +86,7 @@ export function KitchenBoard({ businessId, stationFilter = 'ALL', className = ''
         tab={tab}
         onTab={setTab}
         activeCount={activeCount}
+        readyCount={readyCount}
         servedCount={servedCount}
         station={station}
         onStation={setStation}
@@ -94,9 +99,15 @@ export function KitchenBoard({ businessId, stationFilter = 'ALL', className = ''
         </div>
       ) : visible.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-neutral-300 bg-white px-6 py-16 text-center">
-          <p className="font-serif text-lg text-neutral-900">{tab === 'ACTIVE' ? 'No orders waiting' : 'Nothing served yet'}</p>
+          <p className="font-serif text-lg text-neutral-900">
+            {tab === 'ACTIVE' ? 'No orders waiting' : tab === 'READY' ? 'Nothing ready to serve' : 'Nothing served yet'}
+          </p>
           <p className="mt-1 text-xs text-neutral-500">
-            {tab === 'ACTIVE' ? 'New orders appear here the moment a guest sends them.' : 'Served tickets are kept here for the day.'}
+            {tab === 'ACTIVE'
+              ? 'New orders appear here the moment a guest sends them.'
+              : tab === 'READY'
+                ? 'Dishes show up here the moment the kitchen marks them ready, so you can take them out.'
+                : 'Served tickets are kept here for the day.'}
           </p>
         </div>
       ) : (

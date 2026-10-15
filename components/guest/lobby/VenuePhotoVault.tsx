@@ -10,10 +10,19 @@ import { createClient } from '@/lib/supabase/client';
 
 interface VenuePhotoVaultProps {
   venueId?: string;
+  /** "rail" is one swipeable row (for the menu); "grid" is the lounge's full grid. */
+  layout?: 'grid' | 'rail';
+  /** Draws nothing until the venue has shared something, instead of an empty-state card. */
+  hideWhenEmpty?: boolean;
+  /** The guest's table, so a "Request this" on a moment reaches the team with the table. */
+  tableNumber?: string;
 }
 
 export function VenuePhotoVault({
   venueId = '',
+  layout = 'grid',
+  hideWhenEmpty = false,
+  tableNumber,
 }: VenuePhotoVaultProps) {
   // Starts empty: a venue shows only its own vault. Seeding from a shared demo
   // constant made every brand-new venue display another venue's curated content.
@@ -128,9 +137,47 @@ export function VenuePhotoVault({
     return photos.filter((p) => p.category?.toLowerCase() === activeCategory.toLowerCase());
   }, [photos, activeCategory]);
 
+  if (hideWhenEmpty && (isLoading || photos.length === 0)) return null;
+
+  const rail = layout === 'rail';
+
   return (
-    <section className="space-y-5 sm:space-y-6">
-      {/* Section Header */}
+    <section
+      aria-label="Moments from the venue"
+      className={rail ? 'space-y-3.5 border-t border-zinc-200/80 pt-8' : 'space-y-5 sm:space-y-6'}
+    >
+      {/* On the menu the header follows the other sections: a small label, a serif title, one quiet line, and category pills in the menu's own style. */}
+      {rail && (
+        <div className="space-y-3">
+          <div className="px-0.5">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-zinc-400">From the venue</p>
+            <h2 className="mt-1 text-[21px] leading-tight text-zinc-950" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>Moments</h2>
+            <p className="mt-1.5 text-[12px] leading-snug text-zinc-500">Photos and events shared by the venue.</p>
+          </div>
+          {dynamicCategories.length > 2 && (
+            <div role="group" aria-label="Moments categories" className="-mx-4 flex gap-1.5 overflow-x-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:-mx-6 sm:px-6">
+              {dynamicCategories.map((cat) => (
+                <button
+                  key={cat}
+                  type="button"
+                  aria-pressed={activeCategory === cat}
+                  onClick={() => setActiveCategory(cat)}
+                  className={`h-9 shrink-0 cursor-pointer whitespace-nowrap rounded-full px-3.5 text-xs font-medium transition-colors active:scale-95 ${
+                    activeCategory === cat
+                      ? 'bg-[#0A3222] text-white shadow-[0_6px_16px_-8px_rgba(10,50,34,0.8)]'
+                      : 'border border-zinc-200/70 bg-white text-zinc-600 hover:text-zinc-900'
+                  }`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Section Header (the lounge's) */}
+      {!rail && (
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1.5">
@@ -175,6 +222,7 @@ export function VenuePhotoVault({
           ))}
         </div>
       </div>
+      )}
 
       {/* Loading Skeleton or Responsive Grid */}
       {isLoading ? (
@@ -211,6 +259,14 @@ export function VenuePhotoVault({
             </button>
           )}
         </div>
+      ) : layout === 'rail' ? (
+        <div className="-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:-mx-6 sm:px-6">
+          {filteredPhotos.map((photo) => (
+            <div key={photo.id} className="w-[78%] max-w-[320px] shrink-0 snap-start">
+              <VaultPhotoCard item={photo} onSelect={setSelectedPhoto} variant="light" />
+            </div>
+          ))}
+        </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {filteredPhotos.map((photo) => (
@@ -227,6 +283,9 @@ export function VenuePhotoVault({
       <VaultLightboxModal
         selectedItem={selectedPhoto}
         onClose={() => setSelectedPhoto(null)}
+        variant={rail ? 'light' : 'dark'}
+        venueId={venueId}
+        tableNumber={tableNumber}
       />
     </section>
   );

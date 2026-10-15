@@ -10,6 +10,9 @@ import { WalletRedeemPass } from '@/components/guest/lobby/wallet/WalletRedeemPa
 import { GuestAuthSheet } from '@/components/guest/account/GuestAuthSheet';
 import { CartOffers, useOrderOffers } from '@/components/guest/menu/CartOffers';
 import { CashbackBanner } from '@/components/guest/menu/CashbackBanner';
+import { CartSuggestions } from '@/components/guest/menu/CartSuggestions';
+import { useVenueGst } from '@/components/guest/menu/MenuInfoPanel';
+import type { MenuItem } from '@/components/guest/menu/types';
 import { CASHBACK_PERCENT, cashbackFor, rupees } from '@/lib/guest/cashback';
 
 interface CartReviewModalProps {
@@ -31,6 +34,12 @@ interface CartReviewModalProps {
   onDecrement: (cart_id: string) => void;
   onRemove: (cart_id: string) => void;
   hasActiveOrder?: boolean;
+  /** The menu, for suggesting a drink or something sweet. Without it nothing is suggested. */
+  menuItems?: MenuItem[];
+  /** The venue's top picks, offered first. */
+  featuredIds?: string[];
+  /** Adds one of a dish in a tap. */
+  onQuickAdd?: (item: MenuItem) => void;
 }
 
 // The sheet rises like a native one: a short, decelerating slide with no spring to settle.
@@ -67,11 +76,16 @@ export const CartReviewModal: React.FC<CartReviewModalProps> = ({
   onDecrement,
   onRemove,
   hasActiveOrder = false,
+  menuItems = [],
+  featuredIds = [],
+  onQuickAdd,
 }) => {
   // Account, wallet and offers load with the menu (this component stays mounted), so the sheet opens complete.
   const { account, refresh } = useGuestAccount(cafeId);
   const { wallet } = useGuestWallet(cafeId);
   const offers = useOrderOffers(cafeId);
+  // Whether this venue charges GST, so the bill says so plainly instead of guessing.
+  const gstApplicable = useVenueGst(cafeId);
   const setItemNote = useCartStore((s) => s.setItemNote);
   // Why sign-in is open: to claim cashback (stay on the review) or to place the order (send it once signed in).
   const [authFor, setAuthFor] = useState<'claim' | 'order' | null>(null);
@@ -155,7 +169,7 @@ export const CartReviewModal: React.FC<CartReviewModalProps> = ({
               )}
 
               {/* Items */}
-              <div className="mt-1 divide-y divide-zinc-100">
+              <div className="mt-5 divide-y divide-zinc-100">
                 {cartItems.map((cartItem) => (
                   <div key={cartItem.cart_id} className="py-3 space-y-1.5">
                     <div className="flex items-start gap-3">
@@ -214,6 +228,10 @@ export const CartReviewModal: React.FC<CartReviewModalProps> = ({
                 ))}
               </div>
 
+              {onQuickAdd && menuItems.length > 0 && (
+                <CartSuggestions cartItems={cartItems} menuItems={menuItems} featuredIds={featuredIds} onAdd={onQuickAdd} />
+              )}
+
               {account && (
                 <div className="pt-3">
                   <WalletRedeemPass
@@ -239,9 +257,14 @@ export const CartReviewModal: React.FC<CartReviewModalProps> = ({
                   <span>{account ? 'Cashback to your wallet' : 'Cashback when you sign in'} ({CASHBACK_PERCENT}%)</span>
                   <span className={`font-semibold tabular-nums ${account ? 'text-emerald-700' : 'text-zinc-900'}`}>+{rupees(cashbackAmount)}</span>
                 </div>
-                <p className="text-[11px] text-neutral-500 font-light pt-0.5 leading-relaxed">
-                  If the venue is GST-registered, GST (5% on food, 18% on services) is added to your bill.
-                </p>
+                {gstApplicable !== null && (
+                  <div className="flex items-center justify-between">
+                    <span>GST</span>
+                    {gstApplicable
+                      ? <span className="font-medium text-zinc-900">Added to your bill</span>
+                      : <span className="text-zinc-500">Not applicable</span>}
+                  </div>
+                )}
               </div>
             </div>
 

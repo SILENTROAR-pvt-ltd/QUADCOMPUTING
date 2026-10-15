@@ -9,7 +9,7 @@ export interface TrackerActionsProps {
   onRequestBill?: () => void;
   isRequestingBill?: boolean;
   billRequested?: boolean;
-  onExploreServices?: () => void;
+  onExploreLounge?: () => void;
 }
 
 const quiet = 'inline-flex h-10 items-center gap-2 rounded-full border border-neutral-200 bg-white px-4 text-[12.5px] font-medium text-zinc-800 transition-all hover:border-neutral-300 hover:bg-neutral-50 active:scale-[0.97] cursor-pointer';
@@ -20,7 +20,7 @@ export function TrackerActions({
   onRequestBill,
   isRequestingBill = false,
   billRequested = false,
-  onExploreServices,
+  onExploreLounge,
 }: TrackerActionsProps) {
   return (
     <div className="mt-6 flex flex-wrap items-center gap-2.5 border-t border-[#e6d9b8]/60 pt-5">
@@ -53,11 +53,13 @@ export function TrackerActions({
         </button>
       )}
 
-      {onExploreServices && (
-        <button type="button" onClick={onExploreServices} className={`${quiet} ml-auto text-[#0A3222]`}>
-          <span>Explore our services</span>
-          <ArrowRight className="h-3.5 w-3.5" />
-        </button>
+      {onExploreLounge && (
+        <div className="basis-full">
+          <button type="button" onClick={onExploreLounge} className={`${quiet} text-[#0A3222]`}>
+            <span>Explore our lounge</span>
+            <ArrowRight className="h-3.5 w-3.5" />
+          </button>
+        </div>
       )}
     </div>
   );

@@ -17,12 +17,16 @@ import { useBillingSession } from './billing/hooks/useBillingSession';
 import { BillingHeader } from './billing/components/BillingHeader';
 import { BillRequestsModal } from './billing/BillRequestsModal';
 import { usePOSCatalog } from './billing/hooks/usePOSCatalog';
+import { useLivePayments } from '@/lib/hooks/use-live-payments';
+import { paymentTableKey } from '@/lib/services/payments/bill-payment.rules';
 
 export function BillingWorkspace({ onNavigate }: { onNavigate?: (tab: string) => void }) {
   const storeBusinessId = useHostWorkspace((state) => state.businessId);
   const { tables, businessId, fetchTables, markTableVacant, isOnline, activeStaff, setActiveStaff } =
     usePOSTables(storeBusinessId);
   usePOSCatalog(businessId);
+  // How each table said it will pay: shown on the table, and the payment method starts on it at the till.
+  const livePayments = useLivePayments();
 
   const serviceCatalog = useHostWorkspace((state) => state.serviceCatalog);
   const activeItems = useMemo(
@@ -193,6 +197,7 @@ export function BillingWorkspace({ onNavigate }: { onNavigate?: (tab: string) =>
                 setSelectedRoomId={cart.setSelectedRoomId}
                 onSelectActiveTable={handleSelectActiveTable}
                 onMarkVacant={handleMarkTableVacant}
+                payments={livePayments.byTable}
               />
             </div>
 
@@ -279,7 +284,7 @@ export function BillingWorkspace({ onNavigate }: { onNavigate?: (tab: string) =>
       {/* Modals */}
       {invoicePreview && (
         <InvoicePreviewModal
-          invoice={invoicePreview}
+          invoice={{ ...invoicePreview, preferredTender: livePayments.byTable.get(paymentTableKey(invoicePreview.table_number ?? cart.selectedTableNumber))?.method }}
           onClose={() => setInvoicePreview(null)}
           onSuccess={(paymentMethod, saved) => handleOrderSuccess(activeTab === 'history' ? fetchOrderHistory : undefined, paymentMethod, saved)}
         />

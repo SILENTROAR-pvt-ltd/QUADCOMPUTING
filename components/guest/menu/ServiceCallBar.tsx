@@ -1,9 +1,9 @@
 "use client";
 
-import { Bell, ChefHat, MessageSquareText, Receipt } from "lucide-react";
+import { ConciergeBell, Receipt } from "lucide-react";
 import { useState } from "react";
 import { apiRequest, jsonRequest } from "@/lib/utils/api-client";
-import { StaffCallSheet, type CallTarget } from "./StaffCallSheet";
+import { StaffCallSheet } from "./StaffCallSheet";
 
 export interface ServiceCallBarProps {
   venueId: string;
@@ -12,6 +12,8 @@ export interface ServiceCallBarProps {
   onRequestBill?: () => void;
   isRequestingBill?: boolean;
   billRequested?: boolean;
+  /** Once the bill is asked for, the button opens the guest's payment instead of sitting disabled. */
+  onResumePay?: () => void;
 }
 
 export function ServiceCallBar({
@@ -21,20 +23,21 @@ export function ServiceCallBar({
   onRequestBill,
   isRequestingBill = false,
   billRequested = false,
+  onResumePay,
 }: ServiceCallBarProps) {
   const [loadingType, setLoadingType] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [sheet, setSheet] = useState<CallTarget | null>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3500);
   };
 
-  // One path for every call: the API validates the venue/table, rate-limits, and writes the
+  // One path for every request: the API validates the venue/table, rate-limits, and writes the
   // notification. The browser used to insert into the table directly and ignore the API's answer,
   // so guests were told "notified" even when nothing was stored.
-  const sendCall = async (type: "WAITER" | "CHEF" | "BILL", message?: string) => {
+  const sendCall = async (type: "WAITER" | "BILL", message?: string) => {
     setLoadingType(type);
     try {
       const result = await apiRequest("/api/guest/call-staff", jsonRequest("POST", { venue_id: venueId, table_number: tableNo, type, ...(message ? { message } : {}) }));
@@ -44,13 +47,17 @@ export function ServiceCallBar({
     }
   };
 
-  const sendFromSheet = async (target: CallTarget, message: string) => {
-    const ok = await sendCall(target, message);
-    if (ok) showToast(`${target === "WAITER" ? "The waiter" : "The chef"} has been told${message ? ": " + message : ""}`);
+  const sendFromSheet = async (_target: "WAITER" | "CHEF", message: string) => {
+    const ok = await sendCall("WAITER", message);
+    if (ok) showToast(message ? `Request sent: ${message}` : "Our team has been told and will come to your table");
     return ok;
   };
 
   const handleRequestBillAction = async () => {
+    if (billRequested && onResumePay) {
+      onResumePay();
+      return;
+    }
     if (onRequestBill) {
       onRequestBill();
       return;
@@ -59,53 +66,41 @@ export function ServiceCallBar({
     showToast(ok ? "Final bill requested — Captain & Host alerted." : "Couldn't alert staff. Please try again, or wave to the waiter.");
   };
 
-  const tile = "flex-1 py-2.5 px-4 bg-white hover:bg-zinc-50 border border-zinc-200/80 rounded-2xl text-xs font-semibold text-zinc-800 shadow-xs flex items-center justify-center gap-2 transition-all active:scale-95 cursor-pointer disabled:opacity-60";
-
   return (
     <div className="w-full max-w-xl mx-auto px-4 my-3 relative">
       <div className="flex items-center justify-center gap-3">
-        <button onClick={() => setSheet("WAITER")} disabled={loadingType === "WAITER"} className={tile}>
-          <Bell className="text-neutral-700" size={14} />
-          <span>{loadingType === "WAITER" ? "Calling..." : "Call Waiter"}</span>
+        <button
+          onClick={() => setSheetOpen(true)}
+          disabled={loadingType === "WAITER"}
+          className="flex-[1.45] whitespace-nowrap py-2.5 px-3 bg-white hover:bg-zinc-50 border border-zinc-200/80 rounded-2xl text-xs font-semibold text-zinc-800 shadow-xs flex items-center justify-center gap-2 transition-all active:scale-95 cursor-pointer disabled:opacity-60"
+        >
+          <ConciergeBell className="text-neutral-700" size={14} />
+          <span>{loadingType === "WAITER" ? "Sending..." : "Request table service"}</span>
         </button>
 
-        {hasOrderPlaced ? (
+        {hasOrderPlaced && (
           <button
             onClick={handleRequestBillAction}
-            disabled={isRequestingBill || billRequested || loadingType === "BILL"}
-            className={`flex-1 py-2.5 px-4 rounded-2xl text-xs font-semibold shadow-xs flex items-center justify-center gap-2 transition-all active:scale-95 cursor-pointer ${
+            disabled={isRequestingBill || (billRequested && !onResumePay) || loadingType === "BILL"}
+            className={`flex-1 whitespace-nowrap py-2.5 px-3 rounded-2xl text-xs font-semibold shadow-xs flex items-center justify-center gap-2 transition-all active:scale-95 cursor-pointer ${
               billRequested
-                ? "bg-amber-500/10 border border-amber-500/30 text-amber-700 cursor-default"
+                ? `bg-amber-500/10 border border-amber-500/30 text-amber-700 ${onResumePay ? "" : "cursor-default"}`
                 : "bg-white hover:bg-zinc-50 border border-zinc-200/80 text-zinc-800 disabled:opacity-60"
             }`}
           >
             <Receipt className="text-amber-600" size={14} />
             <span>
               {billRequested
-                ? "Bill Requested"
+                ? onResumePay ? "Pay your bill" : "Bill Requested"
                 : isRequestingBill || loadingType === "BILL"
                 ? "Requesting..."
                 : "Request Bill"}
             </span>
           </button>
-        ) : (
-          <button onClick={() => setSheet("CHEF")} disabled={loadingType === "CHEF"} className={tile}>
-            <ChefHat className="text-emerald-600" size={14} />
-            <span>{loadingType === "CHEF" ? "Calling..." : "Call Chef"}</span>
-          </button>
         )}
       </div>
 
-      {/* For something small: water, cutlery, a word with the kitchen. Opens the same sheet, ready to type. */}
-      <button
-        type="button"
-        onClick={() => setSheet("WAITER")}
-        className="mt-2 flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-zinc-300 bg-transparent py-2 text-[12px] font-medium text-zinc-600 transition-colors active:bg-white cursor-pointer"
-      >
-        <MessageSquareText size={14} aria-hidden /> Need something? Message the staff
-      </button>
-
-      {sheet && <StaffCallSheet initial={sheet} onSend={sendFromSheet} onClose={() => setSheet(null)} />}
+      {sheetOpen && <StaffCallSheet initial="WAITER" onSend={sendFromSheet} onClose={() => setSheetOpen(false)} />}
 
       {toastMessage && (
         <div className="absolute -top-12 left-1/2 -translate-x-1/2 z-50 max-w-[92%] truncate bg-zinc-900 text-white px-4 py-2 rounded-xl text-xs font-medium shadow-xl animate-in fade-in zoom-in-95 duration-200">

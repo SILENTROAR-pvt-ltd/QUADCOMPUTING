@@ -79,7 +79,7 @@ export function WalletRedeemPass({ balance, guestId, guestHandle, walletCode, ta
         <p className="flex items-center gap-1.5 text-xs font-semibold text-neutral-950">
           <Sparkles className="h-3.5 w-3.5 text-amber-600" /> Redeem Cashback
         </p>
-        <p className="text-[10px] text-neutral-500">Generate a one-time code for the host to verify</p>
+        <p className="text-[10px] text-neutral-500">Get a one-time code for our team to apply</p>
         {error && <p role="alert" className="mt-1 text-[10px] text-rose-600">{error}</p>}
       </div>
       <button

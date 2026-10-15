@@ -49,3 +49,14 @@ export function generateUpiIntentUri({
 
   return `upi://pay?pa=${sanitizedUpi}&pn=${sanitizedName}&am=${formattedAmount}&cu=INR&tn=${note}`;
 }
+
+/**
+ * A UPI pay link with a plain-language note (for example "Table T-04"), for the guest to open in their UPI app.
+ * `scheme` swaps the prefix for a specific app (gpay://upi/pay, phonepe://pay, paytmmp://pay); the query is the same.
+ */
+export function upiPayLink({ upiId, payee, amount, note, scheme = 'upi://pay' }: { upiId: string; payee: string; amount: number; note?: string; scheme?: string }): string {
+  if (!upiId || !upiId.includes('@')) throw new Error('Invalid or missing UPI handle');
+  const q = new URLSearchParams({ pa: upiId.trim(), pn: (payee || 'Venue').trim(), am: Math.max(0, Number(amount) || 0).toFixed(2), cu: 'INR' });
+  if (note) q.set('tn', note.slice(0, 40));
+  return `${scheme}?${q.toString()}`;
+}
