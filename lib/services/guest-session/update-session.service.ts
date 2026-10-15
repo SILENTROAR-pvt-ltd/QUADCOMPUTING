@@ -1,5 +1,6 @@
 import { isValidUuid, normalizeTable } from './session-utils';
 import { processBillRequestEvent } from './bill-request-event.util';
+import { buildTableOrFilter, CLOSED_STATUSES } from '../guest-order/order-utils';
 
 export async function updateGuestSession(body: any, supabase: any) {
   const { session_id, table_number, business_id, cafe_id, action, status } = body;
@@ -14,27 +15,45 @@ export async function updateGuestSession(body: any, supabase: any) {
 
   let updatedSession: any = null;
   let lastDbError: any = null;
+  const tableOr = rawTable ? buildTableOrFilter(rawTable) : '';
+  const LIVE = ['open', 'bill_requested'];
 
-  if (isValidUuid(session_id)) {
+  // Only a live session of this very table is ever marked. A phone still holding the last party's session id cannot
+  // reopen that closed session, and cannot mark another table's.
+  if (isValidUuid(session_id) && tableOr) {
     try {
       const { data: updated, error } = await supabase.from('dine_in_sessions').update({ status: targetStatus, updated_at: nowIso })
-        .eq('id', session_id).eq('business_id', resolvedBizId).select().maybeSingle();
+        .eq('id', session_id).eq('business_id', resolvedBizId).or(tableOr).in('status', LIVE).select().maybeSingle();
       if (error) lastDbError = error;
       if (updated) updatedSession = updated;
     } catch (e) { lastDbError = e; }
   }
 
-  if (!updatedSession && rawTable) {
+  // Otherwise the table's newest live session, and only that one.
+  if (!updatedSession && tableOr) {
     try {
-      const { data: updated, error } = await supabase.from('dine_in_sessions').update({ status: targetStatus, updated_at: nowIso })
-        .eq('business_id', resolvedBizId).or(`table_number.eq.${rawTable},table_number.eq.Table ${rawTable},table_number.eq.T-${normTable}`)
-        .in('status', ['open', 'bill_requested']).select().maybeSingle();
-      if (error) lastDbError = error;
-      if (updated) updatedSession = updated;
+      const { data: latest, error: findErr } = await supabase.from('dine_in_sessions').select('id')
+        .eq('business_id', resolvedBizId).or(tableOr).in('status', LIVE)
+        .order('updated_at', { ascending: false }).limit(1).maybeSingle();
+      if (findErr) lastDbError = findErr;
+      if (latest?.id) {
+        const { data: updated, error } = await supabase.from('dine_in_sessions').update({ status: targetStatus, updated_at: nowIso })
+          .eq('id', latest.id).eq('business_id', resolvedBizId).select().maybeSingle();
+        if (error) lastDbError = error;
+        if (updated) updatedSession = updated;
+      }
     } catch (e) { lastDbError = e; }
   }
 
-  if (!updatedSession && rawTable) {
+  // No live session: a new one is opened only when the table really has an open order to bill.
+  if (!updatedSession && tableOr && !lastDbError) {
+    const { data: openOrders, error: orderErr } = await supabase.from('orders').select('id').eq('business_id', resolvedBizId)
+      .or(tableOr).not('status', 'in', `(${CLOSED_STATUSES.map((s) => `"${s}"`).join(',')})`).limit(1);
+    if (orderErr) throw orderErr;
+    if (!openOrders || openOrders.length === 0) throw new Error('Invalid request: there is no open bill at this table');
+  }
+
+  if (!updatedSession && rawTable && !lastDbError) {
     try {
       const { data: newSess, error } = await supabase.from('dine_in_sessions').insert({
         business_id: resolvedBizId, table_number: rawTable, guest_session_id: session_id || `gst_${Date.now()}`,

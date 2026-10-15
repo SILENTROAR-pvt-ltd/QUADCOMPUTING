@@ -6,8 +6,6 @@ import type { TableVisualState } from '@/lib/utils/live-table-state';
 import type { KitchenTicket } from '@/lib/utils/kitchen';
 import { kitchenSummary, ticketsForTable } from '@/lib/utils/table-kitchen';
 import { LiveTableKitchen } from './LiveTableKitchen';
-import { LiveTablePayment } from './LiveTablePayment';
-import type { BillPayment } from '@/lib/services/payments/bill-payment.rules';
 import { TABLE_STATE_STYLE } from './live-table-style';
 import { LiveTableLine, type BillLine } from './LiveTableLine';
 import { LiveTableFooter } from './LiveTableFooter';
@@ -25,10 +23,6 @@ interface LiveTableControlPanelProps {
   kitchenLoading: boolean;
   /** Marks a ticket served; resolves false when it could not be saved. */
   onServeTicket: (ticketId: string) => Promise<boolean>;
-  /** How this table said it will pay, if it has. */
-  payment: BillPayment | null;
-  /** Confirms the money was received; resolves false when it could not be saved. */
-  onVerifyPayment: (paymentId: string) => Promise<boolean>;
   /** A line or an item changed: the board's tables refresh. */
   onChanged: () => void;
   /** An unstarted table was freed: the board updates at once and the panel closes. */
@@ -40,7 +34,7 @@ interface LiveTableControlPanelProps {
 const OCCUPIED: TableVisualState[] = ['live', 'occupied', 'bill_requested'];
 
 /** The selected table: who is there, its bill and kitchen, adding items, and sending the bill to billing (or freeing an unstarted table). */
-export function LiveTableControlPanel({ venueId, tableNumber, state, kitchenTickets, kitchenLoading, onServeTicket, payment, onVerifyPayment, onChanged, onFinished, onOpenBilling, onClose }: LiveTableControlPanelProps) {
+export function LiveTableControlPanel({ venueId, tableNumber, state, kitchenTickets, kitchenLoading, onServeTicket, onChanged, onFinished, onOpenBilling, onClose }: LiveTableControlPanelProps) {
   const [view, setView] = useState<'bill' | 'kitchen' | 'add'>('bill');
   const [confirming, setConfirming] = useState<string | null>(null);
   const bill = useTableBill(venueId, tableNumber, onChanged);
@@ -86,8 +80,6 @@ export function LiveTableControlPanel({ venueId, tableNumber, state, kitchenTick
       {/* The guest and the Bill / Add items switch stay put; only the bill below them scrolls. */}
       <div className="shrink-0 space-y-2 px-4 pt-3 sm:px-5">
         {showGuest && <LiveTableGuest session={bill.session} order={bill.order} />}
-
-        {payment && showGuest && <LiveTablePayment payment={payment} onVerify={onVerifyPayment} />}
 
         {kitchen.readyDishes > 0 && view !== 'kitchen' && (
           <button type="button" onClick={() => setView('kitchen')}

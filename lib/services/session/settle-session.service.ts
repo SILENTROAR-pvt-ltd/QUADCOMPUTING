@@ -1,7 +1,6 @@
 import { normalizeTable, buildTableOrFilter } from './session-entry.util';
 import { broadcastToGuestTable } from '@/lib/realtime/channels';
 import { assertRedemptionSettleable } from '@/lib/services/wallet/redemption.service';
-import { markPaymentSettled } from '@/lib/services/payments/bill-payment.service';
 import { loadGstStatus, stripTax } from '@/lib/services/billing/gst-policy';
 import { billOwner, isSharedSignedInBill, type BillOwner } from '@/lib/services/wallet/bill-owner.util';
 // Columns that exist on the deployed dine_in_sessions. It has no guest_name:
@@ -226,10 +225,6 @@ export async function settleAndVacateSession(body: any, supabase: any) {
     ? { redeemed_amount: Number(settlementRpc.redeemed_amount || 0) }
     : null;
 
-  // The table's live payment (what the guest chose, and that staff confirmed it) is closed with the bill. Best-effort:
-  // it never undoes a settlement, and it does nothing before the payments migration is applied.
-  await markPaymentSettled(supabase, businessId, { sessionId: targetSessionId, orderId: finalOrderId, tableNumber: rawTable || null });
-
   // The bill's owner, recorded once at settlement: the guest's invoices are read from this
   // (guest-bills.service), never from the table's shared session. Best-effort: the column
   // only exists once migration 20261010000017 is applied.
@@ -241,6 +236,21 @@ export async function settleAndVacateSession(body: any, supabase: any) {
     const { error: ownerErr } = await supabase.from('orders').update({ guest_handle: ownerHandle })
       .eq('id', finalOrderId).eq('business_id', businessId);
     if (ownerErr && !['42703', 'PGRST204'].includes(ownerErr.code)) console.error('[Settlement] Could not record the bill owner:', ownerErr);
+  };
+
+  // Once the bill is settled, a live session left behind at the table (open or "bill requested") with no unbilled order
+  // of its own is closed: the next party joined it and was shown as having asked for the bill. A session that still
+  // carries an open order is left alone, so that order stays on the billing screen.
+  const closeStraySessions = async () => {
+    const [{ data: live }, { data: openOrders }] = await Promise.all([
+      supabase.from('dine_in_sessions').select('id').eq('business_id', businessId).or(tableOr).in('status', ['open', 'bill_requested']),
+      supabase.from('orders').select('session_id').eq('business_id', businessId).or(tableOr)
+        .not('status', 'in', '("settled","SETTLED","completed","COMPLETED","cancelled","CANCELLED","billed","closed","CLOSED")'),
+    ]);
+    const billed = new Set((openOrders || []).map((o: any) => o.session_id).filter(Boolean));
+    const stray = (live || []).map((s: any) => s.id).filter((id: string) => !billed.has(id));
+    if (stray.length === 0) return;
+    await supabase.from('dine_in_sessions').update({ status: 'closed', updated_at: nowIso }).in('id', stray).eq('business_id', businessId);
   };
 
   // Secondary cleanup: any other stray open order rows for this session/table (legacy
@@ -267,6 +277,7 @@ export async function settleAndVacateSession(body: any, supabase: any) {
         rawTable && tableOr
           ? supabase.from('bill_request_events').update({ settled_at: nowIso }).eq('business_id', businessId).or(tableOr).is('settled_at', null)
           : null,
+        rawTable && tableOr ? closeStraySessions() : null,
       ]);
     } catch (cleanupErr) {
       console.error('[Settlement] Secondary cleanup (stray orders / bill requests) failed:', cleanupErr);
@@ -309,6 +320,8 @@ export async function settleAndVacateSession(body: any, supabase: any) {
   // awaited so it finishes before the serverless response returns).
   await broadcastToGuestTable(supabase, businessId, rawTable, 'table_settled', {
     table_number: rawTable,
+    // Which bill was settled: a phone at the table shows "settled" only when this is its own order.
+    order_id: finalOrderId,
     settled_total: settledTotal,
     cashback: cashbackResult.cashback_amount,
     redeemed: redemptionResult?.redeemed_amount,

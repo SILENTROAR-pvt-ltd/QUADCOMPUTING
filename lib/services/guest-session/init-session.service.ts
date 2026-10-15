@@ -12,7 +12,9 @@ export async function initializeGuestSession(bodyOrTable: any, clientOrBiz?: any
   const { targetBizId, resolvedTableId } = await resolveTableAndBusiness(supabase, table_id, table_number || 'Unknown', business_id);
   let activeSession: any = null;
   try {
-    let q = supabase.from('dine_in_sessions').select('*').eq('status', 'open').order('created_at', { ascending: false }).limit(1);
+    // A party that has asked for its bill is still at the table: a phone scanning now joins that same session instead
+    // of opening a second one beside it (a stray session the next party would later have joined).
+    let q = supabase.from('dine_in_sessions').select('*').in('status', ['open', 'bill_requested']).order('created_at', { ascending: false }).limit(1);
     q = resolvedTableId ? q.eq('table_id', resolvedTableId) : table_number ? q.eq('table_number', table_number) : q;
     if (targetBizId) q = q.eq('business_id', targetBizId);
     const { data: s } = await q.maybeSingle();

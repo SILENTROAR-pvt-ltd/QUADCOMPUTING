@@ -4,8 +4,6 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { LayoutGrid } from 'lucide-react';
 import { usePOSTables, type RestaurantTable } from '@/components/host/workspaces/billing/hooks/usePOSTables';
 import { useKitchenRealtime } from '@/lib/hooks/use-kitchen-realtime';
-import { useLivePayments } from '@/lib/hooks/use-live-payments';
-import { paymentTableKey } from '@/lib/services/payments/bill-payment.rules';
 import { kitchenSummary, ticketsForTable } from '@/lib/utils/table-kitchen';
 import { latestSettledByTable, normalizeTableNumber, tableVisualState, type TableVisualState } from '@/lib/utils/live-table-state';
 import { LiveTableTile } from './LiveTableTile';
@@ -27,8 +25,6 @@ export function LiveTablesWorkspace({ venueId, onNavigate }: LiveTablesWorkspace
   // One live kitchen feed for the whole page: a chef's change reaches every table's tile and panel at once.
   const kitchen = useKitchenRealtime({ businessId: venueId });
   const refetchKitchen = kitchen.refetch;
-  // How each table said it will pay, and whether staff have confirmed it.
-  const livePayments = useLivePayments();
   const [settledAt, setSettledAt] = useState<Map<string, number>>(new Map());
   const [selected, setSelected] = useState<string | null>(null);
   const [filter, setFilter] = useState<TableVisualState | 'all'>('all');
@@ -179,7 +175,6 @@ export function LiveTablesWorkspace({ venueId, onNavigate }: LiveTablesWorkspace
               amount={table.activeSession ? Number(table.activeSession.grandTotal) || 0 : null}
               itemCount={table.activeSession?.itemsCount}
               readyCount={readyByTable.get(number) ?? 0}
-              payment={state === 'vacant' || state === 'settled' ? null : livePayments.byTable.get(paymentTableKey(number)) ?? null}
               selected={selected === number}
               onSelect={select}
             />
@@ -200,8 +195,6 @@ export function LiveTablesWorkspace({ venueId, onNavigate }: LiveTablesWorkspace
                 state={chosen.state}
                 kitchenTickets={kitchen.tickets}
                 kitchenLoading={kitchen.isLoading}
-                payment={livePayments.byTable.get(paymentTableKey(chosen.number)) ?? null}
-                onVerifyPayment={livePayments.verify}
                 onServeTicket={(id) => kitchen.updateTicketStatus(id, 'SERVED')}
                 onChanged={tablesChanged}
                 onFinished={() => finished(chosen.number)}

@@ -72,7 +72,9 @@ export function useGuestOrderPolling(props: PollingProps) {
         const res = await fetch(`/api/guest/session?session_id=${encodeURIComponent(statusId)}&table_number=${encodeURIComponent(tableNumber)}&cafe_id=${encodeURIComponent(cafeParam)}`, { cache: 'no-store' });
         const data = await res.json();
         if (data.table_number && normalizeTableIdentifier(data.table_number) !== normalizeTableIdentifier(tableNumber)) return;
-        if (data.session_status === 'closed' && (p.hasActiveOrder || p.sentItemsCount > 0 || p.billRequestedBanner)) p.markBillSettled(data.settled_total);
+        // A closed session is only a hint: the session this phone remembers may be an earlier party's. Whether this
+        // phone's own bill was settled is asked of the order check, which answers only for the order this device placed.
+        if (data.session_status === 'closed' && (p.hasActiveOrder || p.sentItemsCount > 0 || p.billRequestedBanner)) void pollActiveOrder();
         if (data.kot_status) p.setKotStatus(data.kot_status);
         if (data.ticket_number) p.setTicketNumber(data.ticket_number);
       } catch {} finally {
@@ -84,7 +86,7 @@ export function useGuestOrderPolling(props: PollingProps) {
     // Active orders poll faster; idle tables poll at relaxed interval
     const interval = setInterval(() => void checkStatus(), isActive ? STATUS_POLL_ACTIVE_MS : POLL_IDLE_MS);
     return () => clearInterval(interval);
-  }, [statusId, tableNumber, cafeParam, isActive]);
+  }, [statusId, tableNumber, cafeParam, isActive, pollActiveOrder]);
 
   useEffect(() => {
     if (!tableNumber) return;

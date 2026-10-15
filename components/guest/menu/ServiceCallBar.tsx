@@ -12,8 +12,6 @@ export interface ServiceCallBarProps {
   onRequestBill?: () => void;
   isRequestingBill?: boolean;
   billRequested?: boolean;
-  /** Once the bill is asked for, the button opens the guest's payment instead of sitting disabled. */
-  onResumePay?: () => void;
 }
 
 export function ServiceCallBar({
@@ -23,7 +21,6 @@ export function ServiceCallBar({
   onRequestBill,
   isRequestingBill = false,
   billRequested = false,
-  onResumePay,
 }: ServiceCallBarProps) {
   const [loadingType, setLoadingType] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -54,10 +51,7 @@ export function ServiceCallBar({
   };
 
   const handleRequestBillAction = async () => {
-    if (billRequested && onResumePay) {
-      onResumePay();
-      return;
-    }
+    if (billRequested) return;
     if (onRequestBill) {
       onRequestBill();
       return;
@@ -81,17 +75,17 @@ export function ServiceCallBar({
         {hasOrderPlaced && (
           <button
             onClick={handleRequestBillAction}
-            disabled={isRequestingBill || (billRequested && !onResumePay) || loadingType === "BILL"}
+            disabled={isRequestingBill || billRequested || loadingType === "BILL"}
             className={`flex-1 whitespace-nowrap py-2.5 px-3 rounded-2xl text-xs font-semibold shadow-xs flex items-center justify-center gap-2 transition-all active:scale-95 cursor-pointer ${
               billRequested
-                ? `bg-amber-500/10 border border-amber-500/30 text-amber-700 ${onResumePay ? "" : "cursor-default"}`
+                ? "bg-amber-500/10 border border-amber-500/30 text-amber-700 cursor-default"
                 : "bg-white hover:bg-zinc-50 border border-zinc-200/80 text-zinc-800 disabled:opacity-60"
             }`}
           >
             <Receipt className="text-amber-600" size={14} />
             <span>
               {billRequested
-                ? onResumePay ? "Pay your bill" : "Bill Requested"
+                ? "Bill Requested"
                 : isRequestingBill || loadingType === "BILL"
                 ? "Requesting..."
                 : "Request Bill"}

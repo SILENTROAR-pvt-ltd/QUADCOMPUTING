@@ -2,30 +2,17 @@
 
 import React from 'react';
 import type { RestaurantTable } from '../hooks/usePOSTables';
-import type { BillPayment } from '@/lib/services/payments/bill-payment.rules';
 
 interface POSTableGridItemProps {
   table: RestaurantTable;
   isSelected: boolean;
   onSelect: (table: RestaurantTable) => void;
-  /** How the table said it will pay, so the cashier knows what to expect before opening it. */
-  payment?: BillPayment | null;
-}
-
-/** "UPI paid", "Cash", "Card" or "Paid": a few characters under the bill line. */
-function paymentTag(p: BillPayment): string {
-  if (p.status === 'verified') return 'Paid ✓';
-  if (p.status === 'claimed') return 'UPI paid · verify';
-  const name = p.method === 'UPI' ? 'UPI' : p.method === 'CASH' ? 'Cash' : 'Card';
-  // Part of the bill was paid earlier: say how much is left, so the till never collects the whole bill twice.
-  return (p.paid_before ?? 0) > 0 ? `${name} · ₹${Math.round(p.amount)} due` : name;
 }
 
 export const POSTableGridItem: React.FC<POSTableGridItemProps> = ({
   table,
   isSelected,
   onSelect,
-  payment = null,
 }) => {
   const session = table.activeSession;
   const isBillRequested = session?.status === 'bill_requested';
@@ -75,7 +62,6 @@ export const POSTableGridItem: React.FC<POSTableGridItemProps> = ({
       {isBillRequested ? (
         <p className="text-[10px] font-bold mt-1 truncate text-orange-700">
           Bill Req • ₹{session.subtotal.toFixed(0)}
-          {payment && <span className={`ml-1 ${payment.status === 'claimed' ? 'text-amber-700' : payment.status === 'verified' ? 'text-emerald-700' : 'text-neutral-600'}`}>• {paymentTag(payment)}</span>}
         </p>
       ) : isOpen ? (
         <p className="text-[10px] font-bold mt-1 truncate text-blue-700">

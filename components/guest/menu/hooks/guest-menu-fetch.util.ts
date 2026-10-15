@@ -58,7 +58,8 @@ export async function fetchMenuAndInitSession(p: FetchMenuParams) {
     session: sessData?.session || null,
     order: sessData?.order || null,
     orderItems: sessData?.items || [],
-    isBillRequested: sessData?.session?.status === 'bill_requested',
+    // Only with an open order at the table: a session left "bill requested" never greets a new party as billed.
+    isBillRequested: Boolean(sessData?.order) && sessData?.session?.status === 'bill_requested',
     kotStatus: sessData?.kot_status || null,
     ticketNumber: sessData?.ticket_number || null,
     isSettled: Boolean(sessData?.is_settled),

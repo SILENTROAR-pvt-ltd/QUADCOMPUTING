@@ -13,8 +13,6 @@ export interface LiveTableTileProps {
   itemCount?: number;
   /** Dishes the kitchen has finished and nobody has taken out yet. */
   readyCount?: number;
-  /** How the table said it will pay, and how far that has got. */
-  payment?: { method: 'UPI' | 'CASH' | 'CARD'; status: 'chosen' | 'claimed' | 'verified' | 'settled' | 'cancelled' } | null;
   selected: boolean;
   onSelect: (tableNumber: string) => void;
 }
@@ -22,7 +20,7 @@ export interface LiveTableTileProps {
 const inr = (n: number) => `₹${Math.round(Number(n) || 0).toLocaleString('en-IN')}`;
 
 /** One table on the board: its number, its state colour, and the running bill when there is one. */
-function LiveTableTileBase({ tableNumber, seats, state, amount, itemCount, readyCount = 0, payment = null, selected, onSelect }: LiveTableTileProps) {
+function LiveTableTileBase({ tableNumber, seats, state, amount, itemCount, readyCount = 0, selected, onSelect }: LiveTableTileProps) {
   const style = TABLE_STATE_STYLE[state];
   const hasBill = state !== 'vacant' && state !== 'settled' && amount !== null && amount !== undefined;
   return (
@@ -42,18 +40,6 @@ function LiveTableTileBase({ tableNumber, seats, state, amount, itemCount, ready
           {style.label}
         </span>
       </div>
-      {payment && (
-        <span className={`mt-2 inline-flex w-fit items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-bold ${
-          payment.status === 'claimed' ? 'bg-amber-500 text-white' : payment.status === 'verified' ? 'bg-emerald-100 text-emerald-900' : 'bg-neutral-200 text-neutral-800'
-        }`}>
-          {payment.status === 'claimed' && <span aria-hidden className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />}
-          {payment.status === 'claimed'
-            ? 'Paid by UPI · confirm'
-            : payment.status === 'verified'
-              ? 'Paid · to billing'
-              : payment.method === 'UPI' ? 'Paying by UPI' : `Pays by ${payment.method === 'CASH' ? 'cash' : 'card'}`}
-        </span>
-      )}
       {readyCount > 0 && (
         <span className="mt-2 inline-flex w-fit items-center gap-1.5 rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold text-white">
           <span aria-hidden className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" /> {readyCount} ready to serve

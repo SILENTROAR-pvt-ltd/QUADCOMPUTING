@@ -117,7 +117,8 @@ function GuestMenuContent() {
   const billReady = ['ready', 'served'].includes(resolveTrackerStage(String(state.kotStatus || ''), String(state.masterOrder?.status || '')));
   const [finalizeOpen, setFinalizeOpen] = useState(false);
   const requestBill = () => {
-    if (billReady) setFinalizeOpen(true);
+    if (state.billRequestedBanner) state.showToast('Your bill is on its way. Our team will bring it to your table.');
+    else if (billReady) setFinalizeOpen(true);
     else state.showToast('You can request the bill once your food is ready.');
   };
 
@@ -215,7 +216,6 @@ function GuestMenuContent() {
             onRequestBill={requestBill}
             isRequestingBill={state.isRequestingBill}
             billRequested={state.billRequestedBanner}
-            onResumePay={() => setFinalizeOpen(true)}
           />
         </div>
       ) : (
@@ -333,7 +333,6 @@ function GuestMenuContent() {
           cafeId={venueId}
           tableNumber={state.tableNumber}
           billTotal={Number(state.runningTotal) || 0}
-          alreadyRequested={state.billRequestedBanner}
           onConfirm={state.handleRequestBill}
           onClose={() => setFinalizeOpen(false)}
         />

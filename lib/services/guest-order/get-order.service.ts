@@ -96,7 +96,6 @@ export async function getGuestActiveOrder(requestUrl: string, supabase: any) {
 
   const { data: dbSession, error: sessionErr } = sessionRes;
   if (sessionErr) throw sessionErr;
-  if (dbSession?.status === 'bill_requested') isBillRequested = true;
 
   // Active orders strictly override any settlement
   if (activeOrder && !['settled', 'SETTLED', 'closed', 'CLOSED', 'completed', 'COMPLETED'].includes(activeOrder.status)) {
@@ -110,6 +109,10 @@ export async function getGuestActiveOrder(requestUrl: string, supabase: any) {
   }
 
   const hasActive = Boolean(activeOrder) && !isSettled;
+  // "Bill requested" belongs to the party at the table now: it needs an open order, and when that order names its session,
+  // the very same session. A session left behind by an earlier party never marks a new guest's bill as requested.
+  const sameSession = !activeOrder?.session_id || activeOrder.session_id === dbSession?.id;
+  if (hasActive && sameSession && dbSession?.status === 'bill_requested') isBillRequested = true;
   // The ticket was fetched with the dishes when the table had an open order; only a bill that arrived through the
   // settled path (no open order) would reach here without one, and that path never has a live ticket.
   const latestTicket = hasActive

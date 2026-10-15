@@ -46,6 +46,11 @@ export async function releaseTable(body: any, supabase: any, businessId: string)
     .update({ status: 'VACANT' }).eq('business_id', businessId).or(tableOr);
   if (tableErr) throw tableErr;
 
+  // A freed table no longer wants its bill: the billing screen stops ringing for it. Best-effort.
+  const { error: requestErr } = await supabase.from('bill_request_events')
+    .update({ settled_at: new Date().toISOString() }).eq('business_id', businessId).or(tableOr).is('settled_at', null);
+  if (requestErr) console.error('[releaseTable] Could not clear the bill request:', requestErr.message);
+
   closeActiveOrder(businessId, rawTable);
   return { ok: true, status: 'VACANT', message: 'Table is free. Unstarted items were removed.' };
 }

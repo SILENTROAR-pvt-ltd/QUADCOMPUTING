@@ -22,7 +22,13 @@ export function useGuestRealtimeSync(props: RealtimeSyncProps) {
   useEffect(() => {
     if (!tableNumber) return;
     const supabase = createClient(), normCurrent = normalizeTableIdentifier(tableNumber);
-    const markBillSettled = (amount?: number) => latest.current.markBillSettled(amount);
+    // A settlement on this table is this phone's only when it has an order and the settled bill is that order (a push
+    // that names no order is taken as the table's one bill). A new party's phone never shows the last party's bill as paid.
+    const markBillSettled = (amount?: number, orderId?: string | null) => {
+      const { masterOrderId } = latest.current;
+      if (!masterOrderId || (orderId && orderId !== masterOrderId)) return;
+      latest.current.markBillSettled(amount);
+    };
 
     const handleKot = (targetTable?: string, orderId?: string, status?: string, ticket?: string) => {
       const { masterOrderId, setKotStatus, setTicketNumber } = latest.current;
@@ -40,8 +46,10 @@ export function useGuestRealtimeSync(props: RealtimeSyncProps) {
       if (!normTarget && (!masterOrderId || orderId !== masterOrderId)) return;
       const s = (status || '').toLowerCase();
       if (['settled', 'paid', 'completed'].includes(s)) {
-        markBillSettled(amount);
+        markBillSettled(amount, orderId);
       } else {
+        // Another order at the table moving on says nothing about this phone's bill.
+        if (orderId && masterOrderId && orderId !== masterOrderId) return;
         resetSettledState?.();
         if (status) setKotStatus(status.toUpperCase());
       }
@@ -67,7 +75,7 @@ export function useGuestRealtimeSync(props: RealtimeSyncProps) {
     const sessionCh = topic && supabase.channel(topic)
       .on('broadcast', { event: 'table_settled' }, (msg: any) => {
         if (msg.payload && normalizeTableIdentifier(msg.payload.table_number) === normCurrent) {
-          markBillSettled(msg.payload.settled_total);
+          markBillSettled(msg.payload.settled_total, msg.payload.order_id);
           try { window.dispatchEvent(new CustomEvent('guest-wallet:refresh')); } catch {}
         }
       })
