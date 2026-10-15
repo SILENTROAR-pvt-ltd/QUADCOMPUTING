@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { BadgeCheck, LogIn, LogOut, UserRound } from 'lucide-react';
 import { useGuestAccount } from '@/lib/guest/use-guest-account';
 import { signOutGuest } from '@/lib/guest/guest-account-client';
@@ -23,6 +23,19 @@ export function GuestAccountStrip({ venueId, tableNumber }: GuestAccountStripPro
   const { account, loading, refresh } = useGuestAccount(venueId);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
+  const [notice, setNotice] = useState('');
+
+  // Back from Google (see /auth/callback): open the sheet, which finishes the profile or goes straight in. The marker is
+  // removed from the address so a refresh does not reopen it; table and venue in the query are left untouched.
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const marker = url.searchParams.get('auth');
+    if (marker !== 'google' && marker !== 'failed') return;
+    url.searchParams.delete('auth');
+    window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+    if (marker === 'failed') setNotice('Google sign-in did not complete. Please try again, or use your email.');
+    setSheetOpen(true);
+  }, []);
 
   if (!venueId) return null;
 
@@ -100,8 +113,9 @@ export function GuestAccountStrip({ venueId, tableNumber }: GuestAccountStripPro
         isOpen={sheetOpen}
         venueId={venueId}
         tableNumber={tableNumber}
-        onClose={() => setSheetOpen(false)}
-        onSignedIn={() => { setSheetOpen(false); void refresh(); }}
+        onClose={() => { setSheetOpen(false); setNotice(''); }}
+        onSignedIn={() => { setSheetOpen(false); setNotice(''); void refresh(); }}
+        notice={notice}
       />
     </>
   );

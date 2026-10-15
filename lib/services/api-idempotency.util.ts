@@ -24,8 +24,19 @@ if (typeof setInterval !== 'undefined') {
 
 export function generateIdempotencyKey(scope: string, identifier: string, payload?: any): string {
   if (payload?.idempotency_key) return `${scope}:${payload.idempotency_key}`;
-  const payloadFingerprint = payload ? JSON.stringify(payload).length : 0;
+  const payloadFingerprint = payload ? hashString(JSON.stringify(payload)) : '0';
   return `${scope}:${identifier.trim().toUpperCase()}:${payloadFingerprint}`;
+}
+
+// The key used to be the JSON's length, so two different carts of equal length sent within 2 s to one table
+// collapsed into one order. A content hash separates them (FNV-1a, 32 bit, plus the length).
+function hashString(input: string): string {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < input.length; i++) {
+    h ^= input.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return `${h.toString(36)}-${input.length}`;
 }
 
 export function checkIdempotency(key: string): { isDuplicate: boolean; cachedResult?: any; status?: number } {

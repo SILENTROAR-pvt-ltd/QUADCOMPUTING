@@ -48,8 +48,9 @@ export function useGuestMenuState({ tableParam, cafeParam }: { tableParam: strin
     const finalHandle = overrideHandle ?? contact.guestHandleInput;
 
     await orderData.handlePlaceOrder(finalName, finalPhone, ui.orderCookingNotes, (isAddon) => {
+      // A small thank-you card opens over the menu (OrderSuccessModal); the guest chooses what to do while the food is prepared.
       ui.setShowCartReview(false); ui.setOrderCookingNotes(''); ui.setIsAddonOrderSuccess(isAddon);
-      ui.setShowBeyondDining(true); ui.setActiveTab('menu'); ui.setOrderCelebration(true);
+      ui.setActiveTab('menu'); ui.setOrderCelebration(true);
     }, finalHandle);
   };
 

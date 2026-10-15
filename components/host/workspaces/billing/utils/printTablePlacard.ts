@@ -1,3 +1,5 @@
+import { escapeHtml } from '@/lib/utils/escape-html';
+
 export function printTablePlacard(
   qrSvgElement: SVGSVGElement | null,
   activeTableNumber: string,
@@ -10,7 +12,8 @@ export function printTablePlacard(
   if (!printWindow) return;
 
   const isUniversal = mode === 'universal';
-  const tableTitle = isUniversal ? 'DIGITAL MENU & BAR' : `TABLE ${activeTableNumber}`;
+  const safeTable = escapeHtml(activeTableNumber);
+  const tableTitle = isUniversal ? 'DIGITAL MENU & BAR' : `TABLE ${safeTable}`;
   const subTitle = isUniversal
     ? 'SCAN TO OPEN CAFE MENU & ORDER DIRECT'
     : 'SCAN TO ORDER INSTANTLY TO KITCHEN';
@@ -19,7 +22,7 @@ export function printTablePlacard(
     <!DOCTYPE html>
     <html>
       <head>
-        <title>Quad Table Placard - ${activeTableNumber}</title>
+        <title>Quad Table Placard - ${safeTable}</title>
         <style>
           @page { size: A6 portrait; margin: 0; }
           * { box-sizing: border-box; margin: 0; padding: 0; }

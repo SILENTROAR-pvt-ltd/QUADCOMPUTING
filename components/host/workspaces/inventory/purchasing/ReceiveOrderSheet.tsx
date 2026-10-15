@@ -13,7 +13,7 @@ interface Props {
   onDone: (msg: string) => void;
 }
 
-const num = 'h-9 w-full rounded-lg border border-neutral-200 px-2 text-right font-mono text-sm outline-none focus:border-neutral-900';
+const num = 'h-11 w-full rounded-xl border border-neutral-200 px-2 text-right font-mono text-[16px] outline-none focus:border-neutral-900 sm:text-sm';
 
 /** Book a delivery into stock: what actually arrived and at what rate (from the vendor's bill). */
 export function ReceiveOrderSheet({ order, onClose, onReceive, onDone }: Props) {
@@ -43,9 +43,9 @@ export function ReceiveOrderSheet({ order, onClose, onReceive, onDone }: Props) 
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/30 p-3 backdrop-blur-sm" onClick={onClose}>
+    <div className="fixed inset-0 z-[90] flex items-end justify-center bg-neutral-950/40 sm:items-center sm:p-3" onClick={onClose}>
       <div role="dialog" aria-modal="true" aria-label={`Receive ${order.reference}`} onClick={(e) => e.stopPropagation()}
-        className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-3xl border border-neutral-200 bg-white shadow-2xl">
+        className="flex max-h-[94dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-[28px] border border-neutral-200 bg-white shadow-2xl sm:rounded-3xl">
         <header className="flex items-start justify-between border-b border-neutral-200 px-5 py-4">
           <div>
             <h2 className="font-serif text-2xl text-neutral-950">Receive delivery</h2>
@@ -56,17 +56,17 @@ export function ReceiveOrderSheet({ order, onClose, onReceive, onDone }: Props) 
         <ul className="flex-1 divide-y divide-neutral-100 overflow-y-auto px-5">
           {rows.map((r, i) => (
             <li key={r.item_id} className="grid grid-cols-[1fr_6.5rem_6.5rem] items-center gap-2 py-2.5">
-              <div className="min-w-0"><p className="truncate text-sm font-medium text-neutral-950">{r.name}</p><p className="text-[11px] text-neutral-500">Ordered {r.quantity} {r.unit}</p></div>
+              <div className="min-w-0"><p className="truncate text-sm font-medium text-neutral-950">{r.name}</p><p className="text-[11px] text-neutral-500">Ordered {r.quantity} {r.unit}{r.is_new && <span className="ml-1 font-semibold text-emerald-700">· new item</span>}</p></div>
               <label><span className="sr-only">Arrived ({r.unit})</span><input type="number" min={0} step="any" value={r.qty} onChange={(e) => set(i, 'qty', e.target.value)} className={num} /></label>
               <label><span className="sr-only">Rate</span><input type="number" min={0} step="any" value={r.cost} placeholder="₹ rate" onChange={(e) => set(i, 'cost', e.target.value)} className={num} /></label>
             </li>
           ))}
         </ul>
-        <footer className="space-y-2 border-t border-neutral-200 px-5 py-4">
+        <footer className="space-y-2 border-t border-neutral-200 px-5 pt-4 pb-[calc(env(safe-area-inset-bottom,0px)+1rem)]">
           {error && <p role="alert" className="text-xs text-rose-700">{error}</p>}
           <div className="flex items-center justify-between gap-3">
             <p className="text-sm text-neutral-700">Bill value <strong className="text-neutral-950">{inr(total, 2)}</strong></p>
-            <button type="button" onClick={submit} disabled={busy} className="h-11 rounded-xl bg-neutral-950 px-5 text-sm font-semibold text-white hover:bg-neutral-800 disabled:opacity-40 cursor-pointer">{busy ? 'Adding to stock…' : 'Add to stock'}</button>
+            <button type="button" onClick={submit} disabled={busy} className="h-12 rounded-2xl bg-neutral-950 px-6 text-sm font-semibold text-white hover:bg-neutral-800 disabled:opacity-40 cursor-pointer active:scale-[0.99]">{busy ? 'Adding to stock…' : 'Add to stock'}</button>
           </div>
         </footer>
       </div>

@@ -152,7 +152,7 @@ export function POSGuestWalletPanel({ guestHandle, appliedCode, onApply, onRemov
                   type="button"
                   onClick={applyCode}
                   disabled={applying || Boolean(appliedCode)}
-                  className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-neutral-900 px-3 py-2 text-xs font-semibold text-white hover:bg-black disabled:opacity-40"
+                  className="inline-flex h-11 cursor-pointer items-center gap-1.5 rounded-xl bg-neutral-900 px-4 text-[13px] font-semibold text-white hover:bg-black disabled:opacity-40"
                 >
                   {applying && <Loader2 className="h-3 w-3 animate-spin" />}
                   Apply {inr(active.amount)} to bill
@@ -180,7 +180,7 @@ export function POSGuestWalletPanel({ guestHandle, appliedCode, onApply, onRemov
           <button
             type="button"
             onClick={() => setHistoryOpen(true)}
-            className="flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-neutral-200 py-2 text-xs font-semibold text-neutral-700 hover:bg-neutral-50"
+            className="flex min-h-11 w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-neutral-200 py-2 text-xs font-semibold text-neutral-700 hover:bg-neutral-50"
           >
             <History className="h-3.5 w-3.5" /> View wallet history · {ledgerCount}
           </button>

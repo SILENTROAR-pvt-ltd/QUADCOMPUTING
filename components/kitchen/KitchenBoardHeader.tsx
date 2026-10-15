@@ -1,21 +1,19 @@
 'use client';
 
-import React from 'react';
-import { Bell, ChefHat, RefreshCw, Volume2, VolumeX } from 'lucide-react';
+import React, { useSyncExternalStore } from 'react';
+import { BellRing, ChefHat, RefreshCw } from 'lucide-react';
+import { isAlertSoundUnlocked, subscribeAlertSound, unlockAlertSound } from '@/lib/host-alert-sound';
 
 interface KitchenBoardHeaderProps {
   isSubscribed: boolean;
   isLoading: boolean;
-  soundUnlocked: boolean;
-  soundMuted: boolean;
-  onUnlockSound: () => void;
-  onToggleMute: () => void;
   onRefresh: () => void;
 }
 
-/** Title, live connection state, the sound switch and refresh. Compact on a phone. */
+/** Title, live connection state, the order bell and refresh. The bell has no mute: it rings for every new order. */
 export function KitchenBoardHeader(props: KitchenBoardHeaderProps) {
-  const { isSubscribed, isLoading, soundUnlocked, soundMuted } = props;
+  const { isSubscribed, isLoading } = props;
+  const soundOn = useSyncExternalStore(subscribeAlertSound, isAlertSoundUnlocked, () => false);
   return (
     <header className="flex items-center justify-between gap-3 rounded-2xl border border-neutral-200 bg-white p-3 sm:p-4">
       <div className="flex min-w-0 items-center gap-3">
@@ -26,33 +24,24 @@ export function KitchenBoardHeader(props: KitchenBoardHeaderProps) {
           <h2 className="truncate font-serif text-lg text-neutral-950 sm:text-xl">Live Kitchen</h2>
           <p className="flex items-center gap-1.5 text-[11px] text-neutral-500">
             <span className={`h-1.5 w-1.5 rounded-full ${isSubscribed ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
-            {isSubscribed ? 'Live · new orders appear instantly' : 'Connecting…'}
+            {isSubscribed ? 'Live · new orders ring the bell' : 'Connecting…'}
           </p>
         </div>
       </div>
 
       <div className="flex shrink-0 items-center gap-2">
-        {!soundUnlocked ? (
-          <button
-            type="button"
-            onClick={props.onUnlockSound}
-            aria-label="Turn on order sound"
-            className="flex h-11 items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-3 text-xs font-semibold text-amber-900 cursor-pointer"
-          >
-            <Bell className="h-4 w-4" /> <span className="hidden sm:inline">Turn on sound</span>
-          </button>
+        {soundOn ? (
+          <span className="flex h-11 items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 text-xs font-semibold text-emerald-800">
+            <BellRing className="h-4 w-4" aria-hidden /> <span className="hidden sm:inline">Bell on</span>
+          </span>
         ) : (
           <button
             type="button"
-            onClick={props.onToggleMute}
-            aria-label={soundMuted ? 'Unmute order sound' : 'Mute order sound'}
-            aria-pressed={!soundMuted}
-            className={`flex h-11 items-center gap-2 rounded-xl border px-3 text-xs font-semibold cursor-pointer ${
-              soundMuted ? 'border-neutral-200 bg-neutral-100 text-neutral-600' : 'border-emerald-200 bg-emerald-50 text-emerald-800'
-            }`}
+            onClick={() => void unlockAlertSound()}
+            aria-label="Turn on the order bell"
+            className="flex h-11 items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-3 text-xs font-semibold text-amber-900 cursor-pointer"
           >
-            {soundMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-            <span className="hidden sm:inline">{soundMuted ? 'Muted' : 'Sound on'}</span>
+            <BellRing className="h-4 w-4" /> <span className="hidden sm:inline">Turn on bell</span>
           </button>
         )}
         <button

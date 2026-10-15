@@ -138,7 +138,7 @@ export function CashbackBanner({ amount, account, walletBalance = 0, onSignIn }:
     <button
       type="button"
       onClick={onSignIn}
-      aria-label={`Sign in to claim ${rupees(amount)} cashback on this order`}
+      aria-label={`Sign in to claim ${CASHBACK_PERCENT}% cashback on this order`}
       className={`${shell} group cursor-pointer transition-transform duration-200 active:scale-[0.99]`}
     >
       {sheen}
@@ -148,10 +148,10 @@ export function CashbackBanner({ amount, account, walletBalance = 0, onSignIn }:
         </span>
         <span className="min-w-0 flex-1">
           <span className="block truncate text-[10px] font-medium uppercase tracking-[0.2em] text-rose-900/60">
-            {CASHBACK_PERCENT}% cashback
+            Your reward
           </span>
           <span className="mt-0.5 block text-[18px] leading-tight text-zinc-950" style={serif}>
-            Get <Amount value={amount} /> back
+            Get {CASHBACK_PERCENT}% cashback
           </span>
           <LiveLine lines={['Sign in to claim it', 'Use it on your next bill', 'One account, every venue']} />
         </span>

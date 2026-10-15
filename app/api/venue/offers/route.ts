@@ -1,3 +1,4 @@
+import { safeMessage } from '@/lib/utils/safe-message';
 import { NextResponse } from 'next/server';
 import { requireHost, adminDb } from '@/lib/auth/guards';
 import { withApiErrorBoundary } from '@/lib/middleware/error-handler';
@@ -49,7 +50,7 @@ export const GET = withApiErrorBoundary(async function GET(request: Request) {
     return NextResponse.json({ success: true, source: 'supabase', offers: data || [] });
   } catch (error: any) {
     console.error('[API Offers GET Error]:', error);
-    return NextResponse.json({ error: error.message || 'Failed to fetch offers' }, { status: 500 });
+    return NextResponse.json({ error: safeMessage(error, 'Failed to fetch offers') }, { status: 500 });
   }
 }, 'VenueOffersGET');
 
@@ -92,7 +93,7 @@ export const POST = withApiErrorBoundary(async function POST(request: Request) {
     return NextResponse.json({ success: true, source: 'supabase', offer: data });
   } catch (error: any) {
     console.error('[API Offers POST Error]:', error);
-    return NextResponse.json({ error: error.message || 'Failed to create offer' }, { status: 500 });
+    return NextResponse.json({ error: safeMessage(error, 'Failed to create offer') }, { status: 500 });
   }
 }, 'VenueOffersPOST');
 
@@ -134,7 +135,7 @@ export const PATCH = withApiErrorBoundary(async function PATCH(request: Request)
     return NextResponse.json({ success: true, source: 'supabase', offer: data });
   } catch (error: any) {
     console.error('[API Offers PATCH Error]:', error);
-    return NextResponse.json({ error: error.message || 'Failed to update offer' }, { status: 500 });
+    return NextResponse.json({ error: safeMessage(error, 'Failed to update offer') }, { status: 500 });
   }
 }, 'VenueOffersPATCH');
 
@@ -162,6 +163,6 @@ export const DELETE = withApiErrorBoundary(async function DELETE(request: Reques
     return NextResponse.json({ success: true, deletedId: id });
   } catch (error: any) {
     console.error('[API Offers DELETE Error]:', error);
-    return NextResponse.json({ error: error.message || 'Failed to delete offer' }, { status: 500 });
+    return NextResponse.json({ error: safeMessage(error, 'Failed to delete offer') }, { status: 500 });
   }
 }, 'VenueOffersDELETE');

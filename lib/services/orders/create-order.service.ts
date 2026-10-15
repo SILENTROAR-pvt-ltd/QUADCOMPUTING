@@ -4,22 +4,30 @@ import { findActiveRoomStayOrder } from './room-stay-order.util';
 import { executeOrderMutation } from './order-mutation.service';
 import { deductRecipeInventoryForOrder } from './recipe-deduction.service';
 import { loadGstStatus, stripTax } from '@/lib/services/billing/gst-policy';
+import { afterResponse } from '@/lib/utils/after-response';
 
 export async function createHostOrder(supabase: any, businessId: string, body: any): Promise<any> {
-  const { tableId, tableNumber } = await resolveTableTarget(supabase, businessId, body.tableId, body.tableNumber);
   const roomId = sanitizeUuid(body.roomId), guestId = sanitizeUuid(body.guestId);
   const locationId = sanitizeUuid(body.locationId), servedByStaffId = sanitizeUuid(body.servedByStaffId);
   const existingOrderId = sanitizeUuid(body.id || body.order_id);
   const paymentMethod = normalizePaymentMethod(body.paymentMethod);
-  const { masterOrderId, customerName, customerPhone } = await findActiveRoomStayOrder(supabase, roomId);
 
   let grandTotal = Number(body.grandTotal ?? body.subtotal ?? 0);
   const subtotal = Number(body.subtotal ?? grandTotal);
   let taxAmount = Number(body.taxAmount) || 0;
+
+  // The table, the room's open stay and the venue's GST status do not depend on each other: read together.
+  const [{ tableId, tableNumber }, { masterOrderId, customerName, customerPhone }, gst] = await Promise.all([
+    resolveTableTarget(supabase, businessId, body.tableId, body.tableNumber),
+    findActiveRoomStayOrder(supabase, roomId),
+    taxAmount > 0 ? loadGstStatus(supabase, businessId) : Promise.resolve(null),
+  ]);
   // GST only for a verified GSTIN (gst-policy.ts): otherwise the bill is saved without it.
-  if (taxAmount > 0 && !(await loadGstStatus(supabase, businessId)).canCharge) {
-    ({ taxAmount, grandTotal } = stripTax({ taxAmount, grandTotal }));
-  }
+  if (gst && !gst.canCharge) ({ taxAmount, grandTotal } = stripTax({ taxAmount, grandTotal }));
+
+  // A bill that settles in this same request keeps the order's own status until the settlement closes it, so a
+  // settlement that is refused leaves the table's order open instead of marked settled with the table still running.
+  const settlesNow = Boolean(body.settlement) && Boolean(existingOrderId);
 
   const orderPayload = {
     business_id: businessId,
@@ -44,12 +52,12 @@ export async function createHostOrder(supabase: any, businessId: string, body: a
     staff_name: body.staffName || null,
     room_id: roomId,
     guest_id: guestId,
-    status: body.status || 'SETTLED',
+    status: body.status || (settlesNow ? undefined : 'SETTLED'),
   };
 
   const order = await executeOrderMutation(supabase, orderPayload, existingOrderId);
   if (order?.id) {
-    void deductRecipeInventoryForOrder(supabase, businessId, order.id, body.items || [], order.status || orderPayload.status);
+    afterResponse('recipe-deduction', () => deductRecipeInventoryForOrder(supabase, businessId, order.id, body.items || [], order.status || orderPayload.status || 'SETTLED'));
   }
   return order;
 }

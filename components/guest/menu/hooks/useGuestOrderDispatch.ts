@@ -14,6 +14,9 @@ export function useGuestOrderDispatch(p: {
   const [isSendingToKitchen, setIsSendingToKitchen] = useState(false);
   const [isRequestingBill, setIsRequestingBill] = useState(false);
   const isSubmittingRef = useRef(false);
+  // One key per cart attempt. A retry after a dropped connection re-sends the same key, so the server returns the order
+  // it already created instead of making a second one. Any change to the cart makes a new key; success clears it.
+  const attemptRef = useRef<{ sig: string; key: string } | null>(null);
 
   const handlePlaceOrder = async (name: string, phone: string, notes: string, cb: (addon: boolean) => void, handle?: string) => {
     if (p.cartItems.length === 0 || isSubmittingRef.current) return;
@@ -51,9 +54,15 @@ export function useGuestOrderDispatch(p: {
           notes: [(c.selected_addons || []).map((a: any) => `${a.name} (+₹${a.price})`).join(', '), c.notes].filter(Boolean).join(' | ') || undefined,
         })),
       };
-      const res = await fetch('/api/guest/order', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      const sig = JSON.stringify([p.tableNumber, payload.table_note || '', payload.items.map((i) => [i.item_id, i.quantity, i.notes || ''])]);
+      if (attemptRef.current?.sig !== sig) {
+        const rand = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+        attemptRef.current = { sig, key: `go-${rand}` };
+      }
+      const res = await fetch('/api/guest/order', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...payload, idempotency_key: attemptRef.current.key }) });
       const data = await res.json();
       if (data.success) {
+        attemptRef.current = null;
         p.resetSettledState?.();
         try {
           const { useGuestLobbyStore } = await import('@/lib/store/guest-lobby.store');

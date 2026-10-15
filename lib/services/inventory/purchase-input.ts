@@ -25,10 +25,16 @@ export function parseLines(raw: unknown, needCost = false): Parsed<PurchaseLine[
     if (!Number.isFinite(unit_cost) || unit_cost < 0 || (needCost && l?.unit_cost === undefined)) {
       return { ok: false, error: `Enter the cost for ${l?.name || 'every item'}.` };
     }
-    lines.push({
+    const line: PurchaseLine = {
       item_id: String(l.item_id), name: text(l?.name, 80) || 'Item', unit: text(l?.unit, 12) || '',
       quantity: Math.round(quantity * 1000) / 1000, unit_cost: Math.round(unit_cost * 100) / 100,
-    });
+    };
+    if (l?.is_new === true) {
+      line.is_new = true;
+      line.category = text(l?.category, 40) || 'Raw stock';
+      if (!text(l?.name, 80)) return { ok: false, error: 'Give every new item a name.' };
+    }
+    lines.push(line);
   }
   if (new Set(lines.map((l) => l.item_id)).size !== lines.length) return { ok: false, error: 'An item appears twice in the order.' };
   return { ok: true, value: lines };
@@ -36,12 +42,16 @@ export function parseLines(raw: unknown, needCost = false): Parsed<PurchaseLine[
 
 export interface NewOrder { reference: string; vendor_id: string | null; vendor_name: string; vendor_phone: string | null; lines: PurchaseLine[]; note: string | null }
 
+/** A purchase already in hand (`receive_now`) may come from the market with no vendor; an order to send needs one. */
+export const MARKET_VENDOR = 'Market purchase';
+
 export function parseNewOrder(body: any): Parsed<NewOrder> {
-  const vendor_name = text(body?.vendor_name, 80);
+  const receiveNow = body?.receive_now === true;
+  const vendor_name = text(body?.vendor_name, 80) || (receiveNow ? MARKET_VENDOR : null);
   if (!vendor_name) return { ok: false, error: 'Choose a vendor.' };
   const reference = text(body?.reference, 30);
   if (!reference || !/^[A-Z0-9-]+$/i.test(reference)) return { ok: false, error: 'The order has no reference.' };
-  const lines = parseLines(body?.lines);
+  const lines = parseLines(body?.lines, receiveNow);
   if (!lines.ok) return lines;
   return {
     ok: true,

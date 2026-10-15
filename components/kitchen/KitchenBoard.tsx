@@ -5,7 +5,7 @@ import { AlertCircle } from 'lucide-react';
 import { useKitchenRealtime } from '@/lib/hooks/use-kitchen-realtime';
 import type { KitchenTicket } from '@/lib/utils/kitchen';
 import { resolveStation, type KitchenStation } from './kitchen-station';
-import { useKitchenChime } from './useKitchenChime';
+import { ringAlert } from '@/lib/host-alert-sound';
 import { KitchenBoardHeader } from './KitchenBoardHeader';
 import { KitchenBoardFilters, type BoardTab } from './KitchenBoardFilters';
 import { KitchenStationSetup } from './KitchenStationSetup';
@@ -29,7 +29,6 @@ export function KitchenBoard({ businessId, stationFilter = 'ALL', className = ''
   const [station, setStation] = useState<'ALL' | KitchenStation>(stationFilter);
   const [tab, setTab] = useState<BoardTab>('ACTIVE');
   const [nowMs, setNowMs] = useState(Date.now());
-  const { unlocked, muted, play, unlock, toggleMute } = useKitchenChime();
 
   useEffect(() => {
     const timer = setInterval(() => setNowMs(Date.now()), TICK_MS);
@@ -37,8 +36,9 @@ export function KitchenBoard({ businessId, stationFilter = 'ALL', className = ''
   }, []);
 
   const onNewTicket = useCallback((ticket: KitchenTicket) => {
-    if (ticket.status === 'PENDING') play();
-  }, [play]);
+    // The same bell as the control center rings; it ignores a second ring for the same event.
+    if (ticket.status === 'PENDING') ringAlert();
+  }, []);
 
   const { tickets, isLoading, isSubscribed, error, refetch, updateTicketStatus, toggleItemDone } =
     useKitchenRealtime({ businessId, onNewTicket });
@@ -67,10 +67,6 @@ export function KitchenBoard({ businessId, stationFilter = 'ALL', className = ''
       <KitchenBoardHeader
         isSubscribed={isSubscribed}
         isLoading={isLoading}
-        soundUnlocked={unlocked}
-        soundMuted={muted}
-        onUnlockSound={unlock}
-        onToggleMute={toggleMute}
         onRefresh={() => refetch()}
       />
 

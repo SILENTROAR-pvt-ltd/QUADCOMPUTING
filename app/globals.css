@@ -146,6 +146,30 @@ body {
   animation: marquee 28s linear infinite;
 }
 
+/* The offers rail: drifts from right to left and loops without a jump. The duration is set per list in the component. */
+@keyframes offers-rtl {
+  0% { transform: translateX(0%); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-offers-rtl {
+  animation: offers-rtl 30s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-offers-rtl { animation: none; }
+}
+/* A heart that blooms over a postcard that has just been double-tapped. */
+@keyframes lp-burst {
+  0% { transform: scale(0.4); opacity: 0; }
+  25% { transform: scale(1.15); opacity: 0.95; }
+  100% { transform: scale(1.3); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-\[lp-burst_0\.9s_ease-out_forwards\] { animation: none; opacity: 0; }
+}
+
 /* A light sweep across a highlighted banner. Transform-only, so it stays smooth on phones. */
 @keyframes sheen {
   0% { transform: translateX(-160%) skewX(-20deg); }

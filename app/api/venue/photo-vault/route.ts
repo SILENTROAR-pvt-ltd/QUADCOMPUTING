@@ -1,3 +1,4 @@
+import { safeMessage } from '@/lib/utils/safe-message';
 import { NextResponse } from 'next/server';
 import { requireHost, adminDb } from '@/lib/auth/guards';
 import { withApiErrorBoundary } from '@/lib/middleware/error-handler';
@@ -60,7 +61,7 @@ export const GET = withApiErrorBoundary(async function GET(request: Request) {
     return NextResponse.json({ success: true, source: 'supabase', photos: mapped });
   } catch (error: any) {
     console.error('[API Photo-Vault GET Error]:', error);
-    return NextResponse.json({ error: error.message || 'Failed to fetch photos' }, { status: 500 });
+    return NextResponse.json({ error: safeMessage(error, 'Failed to fetch photos') }, { status: 500 });
   }
 }, 'VenuePhotoVaultGET');
 
@@ -129,7 +130,7 @@ export const POST = withApiErrorBoundary(async function POST(request: Request) {
     });
   } catch (error: any) {
     console.error('[API Photo-Vault POST Error]:', error);
-    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ error: safeMessage(error, 'Internal Server Error') }, { status: 500 });
   }
 }, 'VenuePhotoVaultPOST');
 
@@ -174,7 +175,7 @@ export const PATCH = withApiErrorBoundary(async function PATCH(request: Request)
     return NextResponse.json({ success: true, source: 'supabase', item: data });
   } catch (error: any) {
     console.error('[API Photo-Vault PATCH Error]:', error);
-    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ error: safeMessage(error, 'Internal Server Error') }, { status: 500 });
   }
 }, 'VenuePhotoVaultPATCH');
 
@@ -209,6 +210,6 @@ export const DELETE = withApiErrorBoundary(async function DELETE(request: Reques
     return NextResponse.json({ success: true, deletedId: id });
   } catch (error: any) {
     console.error('[API Photo-Vault DELETE Error]:', error);
-    return NextResponse.json({ error: error.message || 'Failed to delete' }, { status: 500 });
+    return NextResponse.json({ error: safeMessage(error, 'Failed to delete') }, { status: 500 });
   }
 }, 'VenuePhotoVaultDELETE');

@@ -25,6 +25,17 @@ export interface ResolvedBusinessFailure {
 
 export type ResolvedBusinessResult = ResolvedBusinessSuccess | ResolvedBusinessFailure;
 
+// A guest phone polls the order and session status every few seconds, and each poll resolved the venue with a database
+// query. A venue's identity (id, name, slug) changes rarely, so a successful lookup by id is remembered for a minute
+// on this server instance. Failures are never remembered. Off under tests, which swap the database between cases.
+const VENUE_CACHE_MS = 60_000;
+const VENUE_CACHE_MAX = 500;
+const venueCache = new Map<string, { at: number; value: ResolvedBusinessSuccess }>();
+const cacheEnabled = () => process.env.NODE_ENV !== 'test';
+
+/** Forget remembered venues (a test, or a deploy that edits a venue and wants it visible at once). */
+export function clearBusinessCache() { venueCache.clear(); }
+
 export function normalizeSlug(str: string): string {
   return str
     .toLowerCase()
@@ -65,6 +76,11 @@ export async function resolveBusinessId(
 
   // 1. If it's a valid UUID, query directly by ID
   if (UUID_REGEX.test(identifier)) {
+    const key = identifier.toLowerCase();
+    const remembered = cacheEnabled() ? venueCache.get(key) : undefined;
+    if (remembered && Date.now() - remembered.at < VENUE_CACHE_MS) {
+      return { ...remembered.value, business: { ...remembered.value.business } };
+    }
     try {
       const { data: bizById, error: idError } = await supabase
         .from('businesses')
@@ -73,7 +89,7 @@ export async function resolveBusinessId(
         .maybeSingle();
 
       if (!idError && bizById) {
-        return {
+        const value: ResolvedBusinessSuccess = {
           success: true,
           businessId: bizById.id,
           business: {
@@ -83,6 +99,11 @@ export async function resolveBusinessId(
           },
           error: null,
         };
+        if (cacheEnabled()) {
+          if (venueCache.size >= VENUE_CACHE_MAX) venueCache.delete(venueCache.keys().next().value as string);
+          venueCache.set(key, { at: Date.now(), value });
+        }
+        return { ...value, business: { ...value.business } };
       }
 
 

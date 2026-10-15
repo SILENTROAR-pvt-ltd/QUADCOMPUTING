@@ -1,3 +1,4 @@
+import { safeMessage } from '@/lib/utils/safe-message';
 import { NextResponse } from 'next/server';
 import { requireHost } from '@/lib/auth/guards';
 import { executeCatalogDelete } from '@/lib/services/catalog-delete.service';
@@ -24,6 +25,6 @@ async function handleDelete(request: Request, auth: any) {
   } catch (error: any) {
     console.error('[Catalog Delete Fatal Error]', error);
     const status = error.message?.includes('Missing') ? 400 : 500;
-    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status });
+    return NextResponse.json({ error: safeMessage(error, 'Internal Server Error') }, { status });
   }
 }

@@ -7,6 +7,8 @@ export interface ReviewItem {
   rating: number; // 1-5
   comment: string;
   timestamp: string;
+  /** When it was written (ISO). The timestamp above is only a time of day. */
+  createdAt?: string;
   tags: string[];
   verified: boolean;
   images?: string[];
@@ -39,5 +41,5 @@ export interface ReviewSubmissionPayload {
   images?: string[];
 }
 
-export type ReviewFilterOption = 'all' | 'photos' | '5star' | '4star' | 'helpful';
-export type ReviewSortOption = 'latest' | 'highest' | 'helpful';
+export type ReviewFilterOption = 'all' | 'photos' | '5star' | '4star' | '3below';
+export type ReviewSortOption = 'latest' | 'highest';

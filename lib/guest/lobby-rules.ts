@@ -1,5 +1,6 @@
 // Vibers Lobby: what a guest may post, and the limits. Shared by the browser and the server.
 
+// 'want' is retired: old ones stay in the database (and can still be read), but no new one can be made.
 export const LOBBY_KINDS = ['message', 'moment', 'want'] as const;
 export type LobbyKind = (typeof LOBBY_KINDS)[number];
 
@@ -29,9 +30,9 @@ export function cleanLobbyContent(raw: unknown): string {
 
 /** The reason a post can't be saved, or null when it can. */
 export function lobbyPostError(input: { kind: unknown; content: string; hasMedia: boolean }): string | null {
-  if (!isLobbyKind(input.kind)) return 'Choose message, moment or want.';
+  if (!isLobbyKind(input.kind)) return 'Choose message or postcard.';
+  if (input.kind === 'want') return 'Wants have been retired. Share a message or a postcard instead.';
   if (input.kind === 'moment' && !input.hasMedia) return 'A moment needs a photo.';
-  if (input.kind === 'want' && !input.content) return 'Say what you are looking for.';
   if (!input.content && !input.hasMedia) return 'Write something to share.';
   return null;
 }

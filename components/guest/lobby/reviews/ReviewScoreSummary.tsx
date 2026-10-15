@@ -1,148 +1,57 @@
 'use client';
 
 import React from 'react';
-import { Star, ShieldCheck, Sparkles, Music, Coffee, HeartHandshake } from 'lucide-react';
-import { ScoreMetric, StarDistributionItem } from './review.types';
+import { PremiumStar } from '@/components/guest/menu/tracker/PremiumStar';
+import type { StarDistributionItem } from './review.types';
 
 interface ReviewScoreSummaryProps {
   overallScore: number;
   totalReviews: number;
-  metrics: ScoreMetric[];
   distribution: StarDistributionItem[];
-  selectedFilter: string;
-  onSelectStarFilter: (star: number | null) => void;
+  /** The star row currently used as a filter (5, 4 or 3 meaning "3 and below"), or null. */
+  activeStar: number | null;
+  onSelectStar: (star: number | null) => void;
 }
 
-export function ReviewScoreSummary({
-  overallScore,
-  totalReviews,
-  metrics,
-  distribution,
-  selectedFilter,
-  onSelectStarFilter,
-}: ReviewScoreSummaryProps) {
-  const getMetricIcon = (key: string) => {
-    switch (key) {
-      case 'ambiance':
-        return <Sparkles className="w-3.5 h-3.5 text-violet-600" />;
-      case 'acoustics':
-        return <Music className="w-3.5 h-3.5 text-neutral-500" />;
-      case 'beverages':
-        return <Coffee className="w-3.5 h-3.5 text-amber-400" />;
-      default:
-        return <HeartHandshake className="w-3.5 h-3.5 text-emerald-600" />;
-    }
-  };
+const SERIF = { fontFamily: "'Playfair Display', Georgia, serif" } as const;
 
+/** The venue's rating: the score in large type, lit stars, and one tappable bar per star count. Real reviews only. */
+export function ReviewScoreSummary({ overallScore, totalReviews, distribution, activeStar, onSelectStar }: ReviewScoreSummaryProps) {
+  const lit = Math.round(overallScore);
   return (
-    <div className="bg-white border border-neutral-200 rounded-3xl p-6 sm:p-8 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-8 shadow-[0_1px_3px_rgba(0,0,0,0.03)] relative overflow-hidden">
-
-      {/* 1. Large Editorial Score Card */}
-      <div className="flex flex-col items-start min-w-[200px] border-b lg:border-b-0 lg:border-r border-neutral-200 pb-6 lg:pb-0 lg:pr-8 relative z-10">
-        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 mb-2 shadow-xs">
-          <ShieldCheck className="w-3.5 h-3.5 text-emerald-700" />
-          <span className="text-[10px] uppercase tracking-[0.2em] font-semibold">
-            Verified Index
-          </span>
+    <div className="rounded-[24px] border border-neutral-200/80 bg-white p-5 shadow-[0_18px_34px_-26px_rgba(40,30,10,0.45)]">
+      <div className="flex items-center gap-5">
+        <div className="shrink-0 text-center">
+          <p className="text-[52px] leading-none text-zinc-950" style={SERIF}>{totalReviews === 0 ? '–' : overallScore.toFixed(1)}</p>
+          <div className="mt-2 flex justify-center gap-0.5" role="img" aria-label={totalReviews === 0 ? 'No ratings yet' : `${overallScore.toFixed(1)} out of 5`}>
+            {[1, 2, 3, 4, 5].map((n) => <PremiumStar key={n} filled={totalReviews > 0 && n <= lit} className="h-[17px] w-[17px]" />)}
+          </div>
+          <p className="mt-1.5 text-[11px] text-neutral-500">{totalReviews === 0 ? 'No ratings yet' : `${totalReviews} ${totalReviews === 1 ? 'review' : 'reviews'}`}</p>
         </div>
 
-        <div className="flex items-baseline gap-2">
-          <span className="font-serif text-5xl sm:text-6xl font-normal tracking-tight text-neutral-950 leading-none">
-            {totalReviews === 0 ? '—' : overallScore.toFixed(1)}
-          </span>
-          <span className="text-sm font-medium text-neutral-500 tracking-wide">/ 5.0</span>
-        </div>
-
-        {/* Ancient Light Cream Glowing Stars */}
-        <div className="flex items-center gap-1.5 mt-3">
-          {/* Stars reflect the real score — previously all five rendered filled
-              regardless, so a venue with no ratings still showed 5 gold stars. */}
-          {[...Array(5)].map((_, i) => {
-            const filled = i < Math.round(overallScore);
+        <div className="min-w-0 flex-1 space-y-1" aria-label="Ratings by number of stars">
+          {distribution.map((item) => {
+            // The 3, 2 and 1 star rows all filter to "3 and below", so each row has one honest action.
+            const target = item.stars >= 4 ? item.stars : 3;
+            const active = activeStar === target && (item.stars >= 4 || item.stars === 3);
             return (
-              <Star
-                key={i}
-                className={
-                  filled
-                    ? 'w-4 h-4 fill-amber-400 text-amber-400'
-                    : 'w-4 h-4 text-neutral-300'
-                }
-              />
+              <button
+                key={item.stars}
+                type="button"
+                onClick={() => onSelectStar(activeStar === target ? null : target)}
+                aria-pressed={active}
+                aria-label={`${item.stars} stars: ${item.count} ${item.count === 1 ? 'review' : 'reviews'}`}
+                className={`flex w-full items-center gap-2 rounded-full px-1.5 py-[3px] text-left transition-colors cursor-pointer ${active ? 'bg-neutral-100' : 'hover:bg-neutral-50'}`}
+              >
+                <span className="w-3 text-[11px] font-medium tabular-nums text-neutral-600">{item.stars}</span>
+                <span className="h-[5px] flex-1 overflow-hidden rounded-full bg-neutral-100">
+                  <span className="block h-full rounded-full bg-gradient-to-r from-[#f2c24b] to-[#c98a1a] transition-[width] duration-700" style={{ width: `${item.percentage}%` }} />
+                </span>
+                <span className="w-7 text-right text-[10.5px] tabular-nums text-neutral-400">{item.count}</span>
+              </button>
             );
           })}
-          <span className="text-xs text-neutral-600 font-medium ml-2">
-            {totalReviews === 0
-              ? 'No ratings yet'
-              : `${totalReviews} ${totalReviews === 1 ? 'rating' : 'ratings'}`}
-          </span>
         </div>
-      </div>
-
-      {/* 2. Google-Style Star Distribution Breakdown */}
-      <div className="min-w-[220px] sm:min-w-[260px] flex flex-col justify-center space-y-1.5 border-b lg:border-b-0 lg:border-r border-neutral-200 pb-6 lg:pb-0 lg:pr-8 relative z-10">
-        <span className="text-[10px] uppercase tracking-[0.2em] text-neutral-500 font-semibold mb-1 block">
-          Rating Distribution
-        </span>
-        {distribution.map((item) => {
-          const isFilterActive = selectedFilter === `${item.stars}star`;
-          return (
-            <button
-              key={item.stars}
-              type="button"
-              onClick={() => onSelectStarFilter(isFilterActive ? null : item.stars)}
-              className={`w-full flex items-center gap-2 group cursor-pointer text-left py-0.5 rounded-lg px-1.5 -mx-1.5 transition-colors ${
-                isFilterActive ? 'bg-neutral-50' : 'hover:bg-neutral-100'
-              }`}
-            >
-              <span className="w-4 text-[11px] font-mono font-medium text-neutral-600">
-                {item.stars}
-              </span>
-              <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-              <div className="flex-1 h-2 bg-neutral-100 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-amber-400 rounded-full transition-all duration-500 group-hover:brightness-110"
-                  style={{ width: `${item.percentage}%` }}
-                />
-              </div>
-              <span className="w-8 text-right font-mono text-[10px] text-neutral-500 group-hover:text-neutral-950">
-                {item.percentage}%
-              </span>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* 3. Micro-Metrics Breakdown */}
-      <div className="flex-1 grid grid-cols-2 gap-3 relative z-10">
-        {metrics.map((m) => {
-          const percentage = Math.round((m.score / m.maxScore) * 100);
-          return (
-            <div
-              key={m.key}
-              className="bg-neutral-50 border border-neutral-200 rounded-2xl p-3 flex flex-col justify-between transition-all hover:border-neutral-300 hover:bg-white"
-            >
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="p-1 rounded-lg bg-neutral-50 border border-neutral-200">
-                  {getMetricIcon(m.key)}
-                </span>
-                <span className="font-mono text-xs font-semibold text-neutral-950">
-                  {m.score.toFixed(2)}
-                </span>
-              </div>
-              <div>
-                <p className="text-[11px] font-medium text-neutral-600 truncate mb-1">
-                  {m.label}
-                </p>
-                <div className="w-full h-1 bg-neutral-50 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-amber-400 rounded-full transition-all duration-700"
-                    style={{ width: `${percentage}%` }}
-                  />
-                </div>
-              </div>
-            </div>
-          );
-        })}
       </div>
     </div>
   );

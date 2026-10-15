@@ -10,6 +10,14 @@ interface PollingProps {
   setMasterOrder: (o: any) => void; setKotStatus: (s: string) => void; setTicketNumber: (t: string) => void; setBillRequestedBanner: (v: boolean) => void;
 }
 
+// How often a guest's phone asks the server for the order and session status. Kitchen status changes and settlement
+// are PUSHED to the phone (useGuestRealtimeSync), so these polls are the safety net for a missed push and the way a
+// dish another device added to the table's bill shows up. They were 4s and 3.5s while ordering: with a few hundred
+// phones that was most of the database and egress load. Do not lower them without measuring.
+const STATUS_POLL_ACTIVE_MS = 10_000;
+const ORDER_POLL_ACTIVE_MS = 8_000;
+const POLL_IDLE_MS = 30_000;
+
 export function useGuestOrderPolling(props: PollingProps) {
   // Callbacks like markBillSettled are rebuilt whenever order state changes, and
   // every poll changes order state. Depending on them made each poll restart
@@ -74,7 +82,7 @@ export function useGuestOrderPolling(props: PollingProps) {
 
     void checkStatus(true);
     // Active orders poll faster; idle tables poll at relaxed interval
-    const interval = setInterval(() => void checkStatus(), isActive ? 4000 : 15000);
+    const interval = setInterval(() => void checkStatus(), isActive ? STATUS_POLL_ACTIVE_MS : POLL_IDLE_MS);
     return () => clearInterval(interval);
   }, [statusId, tableNumber, cafeParam, isActive]);
 
@@ -92,7 +100,7 @@ export function useGuestOrderPolling(props: PollingProps) {
     };
 
     void runPoll(true);
-    const interval = setInterval(() => void runPoll(), isActive ? 3500 : 15000);
+    const interval = setInterval(() => void runPoll(), isActive ? ORDER_POLL_ACTIVE_MS : POLL_IDLE_MS);
     // Catch up immediately when the guest returns to the tab.
     const onVisible = () => { if (!document.hidden) void runPoll(); };
     document.addEventListener('visibilitychange', onVisible);

@@ -240,7 +240,9 @@ export async function resetPinFailures(ip: string, businessId: string): Promise<
 // ---------------------------------------------------------------------------
 // Guest Order Spam Protection
 // ---------------------------------------------------------------------------
-export const GUEST_ORDER_LIMIT = 15; // 15 submissions
+// Guests at one venue share one Wi-Fi address, so this is a whole-venue cap, not a per-person one: 40 submissions a minute is above
+// any real lunch rush and still stops a script.
+export const GUEST_ORDER_LIMIT = 40; // 40 submissions
 export const GUEST_ORDER_WINDOW_MS = 60 * 1000; // per 1 minute
 
 export function getGuestOrderRateLimitKey(ip: string, businessOrTableId: string): string {

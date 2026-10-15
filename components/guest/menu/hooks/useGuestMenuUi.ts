@@ -22,7 +22,8 @@ export function useGuestMenuUi() {
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3000);
+    // Matches the gold line that runs down the toast (LuxuryToast).
+    setTimeout(() => setToastMessage(null), 3600);
   };
 
   const handleOpenCustomization = (item: MenuItem) => {

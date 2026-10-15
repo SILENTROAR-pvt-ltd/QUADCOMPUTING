@@ -61,7 +61,7 @@ export function useGuestOrderActions(props: {
       setSettledTotal(props.initialSettledTotal || 0);
       setCashbackCredited(props.initialCashbackCredited || 0);
     }
-  }, [props.initialOrder, props.initialItems, props.initialBillRequested, props.initialKotStatus, props.initialTicketNumber, props.initialBillSettled, props.initialSettledTotal]);
+  }, [props.initialOrder, props.initialItems, props.initialBillRequested, props.initialKotStatus, props.initialTicketNumber, props.initialBillSettled, props.initialSettledTotal, props.initialCashbackCredited]);
 
   // Remember which order this device was part of (see rememberKnownOrder).
   useEffect(() => {

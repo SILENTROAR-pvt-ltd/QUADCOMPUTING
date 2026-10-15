@@ -1,3 +1,4 @@
+import { safeMessage } from '@/lib/utils/safe-message';
 import { NextResponse } from 'next/server';
 import { requireHost } from '@/lib/auth/guards';
 import { withApiErrorBoundary } from '@/lib/middleware/error-handler';
@@ -57,6 +58,6 @@ export const GET = withApiErrorBoundary(async function GET(
     });
   } catch (error: any) {
     console.error('[API Room Orders GET]', error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: safeMessage(error, 'Internal Server Error') }, { status: 500 });
   }
 }, 'AccommodationsRoomOrdersGET');

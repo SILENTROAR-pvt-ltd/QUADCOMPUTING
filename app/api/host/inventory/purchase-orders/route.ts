@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireHost } from '@/lib/auth/guards';
 import { withApiErrorBoundary, handleApiError } from '@/lib/middleware/error-handler';
 import { parseLines, parseNewOrder } from '@/lib/services/inventory/purchase-input';
-import { cancelOrder, createOrder, listPurchasing, receiveOrder } from '@/lib/services/inventory/purchase-order.service';
+import { cancelOrder, createOrder, listPurchasing, receiveOrder, recordPurchaseNow } from '@/lib/services/inventory/purchase-order.service';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const fail = (r: { status: number; error: string }) => NextResponse.json({ error: r.error }, { status: r.status });
@@ -26,10 +26,15 @@ export const POST = withApiErrorBoundary(async function POST(request: Request) {
   try {
     const auth = await requireHost(request);
     if (auth.error) return auth.error;
-    const parsed = parseNewOrder(await request.json().catch(() => ({})));
+    const body = await request.json().catch(() => ({}));
+    const parsed = parseNewOrder(body);
     if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
-    const r = await createOrder(auth.supabase, auth.businessId, parsed.value);
-    return r.ok ? NextResponse.json({ order: r.value }) : fail(r);
+    // `receive_now`: the goods are already here, so the order is saved and booked into stock in one step.
+    const receiveNow = body?.receive_now === true;
+    const r = receiveNow
+      ? await recordPurchaseNow(auth.supabase, auth.businessId, parsed.value)
+      : await createOrder(auth.supabase, auth.businessId, parsed.value);
+    return r.ok ? NextResponse.json(receiveNow ? r.value : { order: r.value }) : fail(r);
   } catch (error) {
     return handleApiError(error, request, 'HostPurchaseOrdersPOST');
   }

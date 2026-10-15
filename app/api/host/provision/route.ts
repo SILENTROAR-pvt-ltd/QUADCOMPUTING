@@ -3,6 +3,7 @@ import { requireHost } from '@/lib/auth/guards';
 import { hostOnboardingSchema } from '@/lib/validations/onboarding';
 import { generateOwnerCafeId } from '@/lib/utils/ids';
 import { withApiErrorBoundary } from '@/lib/middleware/error-handler';
+import { safeMessage } from '@/lib/utils/safe-message';
 
 export const POST = withApiErrorBoundary(async function POST(request: Request) {
   try {
@@ -90,10 +91,8 @@ export const POST = withApiErrorBoundary(async function POST(request: Request) {
     // objects with a `message`, not real Error instances — `error instanceof
     // Error` is false for them, which was silently collapsing every real DB
     // failure down to the generic 'Invalid payload' fallback.
-    const message =
-      error instanceof Error
-        ? error.message
-        : (error as any)?.message || 'Invalid payload';
+    // The real error is logged below; the client gets the message only when it is a rule the host can act on.
+    const message = safeMessage(error, 'We could not set up your venue. Please try again.');
     console.error('[HostProvisionPOST] Provisioning failed:', error);
     return NextResponse.json(
       { success: false, error: message },

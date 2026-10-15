@@ -68,7 +68,7 @@ export function summarize(account: GuestAccount): GuestAccountSummary {
 
 export const ACCOUNT_COLUMNS = 'id, business_id, handle, display_name, phone, avatar, photo_path, traveller_type, intro, pin_hash, pin_salt, failed_attempts, locked_until';
 
-async function findAccount(db: any, businessId: string, handle: string): Promise<GuestAccount | null> {
+export async function findAccount(db: any, businessId: string, handle: string): Promise<GuestAccount | null> {
   const { data, error } = await db
     .from('guest_accounts')
     .select(ACCOUNT_COLUMNS)

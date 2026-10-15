@@ -43,6 +43,7 @@ export const VenueServiceModal: React.FC<VenueServiceModalProps> = ({
 
             {service.image_url && (
               <div className="h-44 w-full rounded-2xl overflow-hidden bg-zinc-100">
+                {/* eslint-disable-next-line @next/next/no-img-element -- the venue-uploaded photo; images.unoptimized is set, so next/image would not resize it either */}
                 <img
                   src={service.image_url}
                   alt={service.name}

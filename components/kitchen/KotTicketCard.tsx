@@ -30,8 +30,10 @@ export function KotTicketCard({ ticket, station, nowMs, onStatus, onToggleItem }
   const style = KOT_STATUS[ticket.status] ?? KOT_STATUS.PENDING;
   const timeline = kotTimeline(ticket, nowMs);
   const { place, addon } = splitPlace(ticket.table_or_room);
-  const qtyTotal = ticket.items.reduce((sum, it) => sum + (Number(it.qty || (it as any).quantity) || 1), 0);
-  const doneCount = ticket.items.filter((it) => it.completed).length;
+  // The board cleans tickets before they get here; this keeps one odd ticket from taking the whole screen down.
+  const items = Array.isArray(ticket.items) ? ticket.items : [];
+  const qtyTotal = items.reduce((sum, it) => sum + (Number(it.qty || (it as any).quantity) || 1), 0);
+  const doneCount = items.filter((it) => it.completed).length;
 
   const advance = async () => {
     if (!style.next) return;
@@ -69,9 +71,9 @@ export function KotTicketCard({ ticket, station, nowMs, onStatus, onToggleItem }
 
       <div className="flex-1 px-4 pt-3">
         <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400">
-          {ticket.items.length} {ticket.items.length === 1 ? 'dish' : 'dishes'} · {qtyTotal} qty{doneCount ? ` · ${doneCount} done` : ''}
+          {items.length} {items.length === 1 ? 'dish' : 'dishes'} · {qtyTotal} qty{doneCount ? ` · ${doneCount} done` : ''}
         </p>
-        <KotItems items={ticket.items} onToggle={(idx) => void onToggleItem(idx)} />
+        <KotItems items={items} onToggle={(idx) => void onToggleItem(idx)} />
       </div>
 
       <div className="border-t border-neutral-100 px-4 py-3">

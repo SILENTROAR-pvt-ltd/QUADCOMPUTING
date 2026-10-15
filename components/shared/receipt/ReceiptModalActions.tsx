@@ -1,95 +1,123 @@
 'use client';
 
 import React from 'react';
-import { Mail, MessageSquare, Printer, CheckCircle2 } from 'lucide-react';
+import { Printer, Loader2, Send, Check } from 'lucide-react';
 import type { InvoiceData } from '@/lib/utils/receipt-adapter';
+
+type Tender = 'UPI' | 'CASH' | 'CARD';
 
 interface Props {
   invoice: InvoiceData;
-  paymentMethod: 'UPI' | 'CASH' | 'CARD';
+  paymentMethod: Tender;
   upiConfirmed: boolean;
   isSaving: boolean;
-  onSetPaymentMethod: (pm: 'UPI' | 'CASH' | 'CARD') => void;
+  saveError?: string | null;
+  onSetPaymentMethod: (pm: Tender) => void;
   onSetUpiConfirmed: (c: boolean) => void;
-  onShareEmail: () => void;
-  onShareSMS: () => void;
   onPrint: () => void;
   onSaveOrder: () => void;
   onClose: () => void;
 }
 
+const TENDERS: Array<{ id: Tender; label: string }> = [
+  { id: 'UPI', label: 'UPI' },
+  { id: 'CASH', label: 'Cash' },
+  { id: 'CARD', label: 'Card' },
+];
+
+/** Where the bill goes once it is saved. Bills reach the guest on Vibers Connect; there is nothing to type in. */
+export function deliveryNote(invoice: InvoiceData): { title: string; hint: string } | null {
+  const isCounter = !invoice.table_id && !invoice.room_id && (!invoice.table_number || /takeaway|counter/i.test(invoice.table_number));
+  if (isCounter) return null;
+  const handle = invoice.guest_handle ? (invoice.guest_handle.startsWith('@') ? invoice.guest_handle : `@${invoice.guest_handle}`) : null;
+  return handle
+    ? { title: `Sent to ${handle} on Vibers Connect`, hint: 'They can view and download this bill the moment it is saved.' }
+    : { title: 'Sent to the guests on Vibers Connect', hint: 'Everyone at this table sees the bill on their phone as soon as it is saved.' };
+}
+
+/** Pay-and-save controls under the receipt: how it was paid, one clear primary action, and where the bill goes. */
 export function ReceiptModalActions({
-  invoice, paymentMethod, upiConfirmed, isSaving,
-  onSetPaymentMethod, onSetUpiConfirmed,
-  onShareEmail, onShareSMS, onPrint, onSaveOrder, onClose,
+  invoice, paymentMethod, upiConfirmed, isSaving, saveError,
+  onSetPaymentMethod, onSetUpiConfirmed, onPrint, onSaveOrder, onClose,
 }: Props) {
-  const pmOptions: Array<'UPI' | 'CASH' | 'CARD'> = ['UPI', 'CASH', 'CARD'];
-  return (
-    <div className="border-t border-neutral-200 bg-neutral-50 p-4 flex flex-col gap-3 print:hidden shrink-0">
-      {!invoice.isReadOnly && (
-        <>
-          <div className="flex bg-neutral-200/80 rounded-xl p-1 border border-neutral-200 shadow-2xs">
-            {pmOptions.map((pm) => (
-              <button
-                key={pm}
-                type="button"
-                onClick={() => onSetPaymentMethod(pm)}
-                className={`flex-1 rounded-lg py-2 text-xs font-bold tracking-wider transition-colors cursor-pointer ${
-                  paymentMethod === pm ? 'bg-white text-neutral-950 shadow-xs' : 'text-neutral-600 hover:text-neutral-900'
-                }`}
-              >
-                {pm}
-              </button>
-            ))}
-          </div>
+  const delivery = deliveryNote(invoice);
+  const waitingForUpi = paymentMethod === 'UPI' && !upiConfirmed;
 
-          {paymentMethod === 'UPI' && (
-            <label className="flex items-center gap-3 rounded-xl border border-neutral-200 bg-white px-4 py-2.5 cursor-pointer transition-colors hover:bg-neutral-50">
-              <input
-                type="checkbox"
-                checked={upiConfirmed}
-                onChange={(e) => onSetUpiConfirmed(e.target.checked)}
-                className="h-4 w-4 rounded border-neutral-300 text-neutral-900 accent-neutral-900 cursor-pointer"
-              />
-              <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-800">
-                Confirm UPI Payment Received via Soundbox / SMS
-              </span>
-            </label>
-          )}
-        </>
-      )}
-
-      <div className="flex w-full gap-2">
-        <button type="button" onClick={onShareEmail} className="flex-1 h-10 rounded-xl border border-neutral-200 bg-white px-4 text-xs font-bold uppercase tracking-wider text-neutral-700 hover:bg-neutral-100 flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs">
-          <Mail className="h-3.5 w-3.5 text-neutral-500" />
-          <span>Email</span>
-        </button>
-        <button type="button" onClick={onShareSMS} className="flex-1 h-10 rounded-xl border border-neutral-200 bg-white px-4 text-xs font-bold uppercase tracking-wider text-neutral-700 hover:bg-neutral-100 flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs">
-          <MessageSquare className="h-3.5 w-3.5 text-neutral-500" />
-          <span>SMS</span>
+  if (invoice.isReadOnly) {
+    return (
+      <div className="flex shrink-0 gap-2 border-t border-neutral-200 bg-white px-4 pt-3 pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)] print:hidden">
+        <button type="button" onClick={onClose} className="h-12 flex-1 rounded-2xl border border-neutral-200 bg-white text-sm font-semibold text-neutral-700 active:scale-[0.98] cursor-pointer">Close</button>
+        <button type="button" onClick={onPrint} className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-2xl bg-neutral-900 text-sm font-semibold text-white active:scale-[0.98] cursor-pointer">
+          <Printer className="h-4 w-4" aria-hidden /> Print
         </button>
       </div>
+    );
+  }
 
-      <div className="flex w-full gap-2">
-        <button type="button" onClick={onClose} disabled={isSaving} className="flex-1 h-10 rounded-xl border border-neutral-200 bg-white px-4 text-xs font-bold uppercase tracking-wider text-neutral-600 hover:bg-neutral-100 disabled:opacity-50 cursor-pointer shadow-2xs">
-          Close
-        </button>
-        <button type="button" onClick={onPrint} disabled={isSaving} className="flex-1 h-10 rounded-xl border border-neutral-200 bg-white px-4 text-xs font-bold uppercase tracking-wider text-neutral-700 hover:bg-neutral-100 disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs">
-          <Printer className="h-3.5 w-3.5 text-neutral-500" />
-          <span>Print</span>
-        </button>
-        {!invoice.isReadOnly && (
+  return (
+    <div className="shrink-0 space-y-3 border-t border-neutral-200 bg-white px-4 pt-3 pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)] shadow-[0_-12px_24px_-18px_rgba(0,0,0,0.25)] print:hidden">
+      <div role="radiogroup" aria-label="How was it paid" className="grid grid-cols-3 gap-1 rounded-2xl bg-neutral-100 p-1">
+        {TENDERS.map((t) => (
           <button
+            key={t.id}
             type="button"
-            onClick={onSaveOrder}
-            disabled={isSaving || (paymentMethod === 'UPI' && !upiConfirmed)}
-            className="flex-[2] h-10 rounded-xl bg-neutral-900 px-6 text-xs font-bold uppercase tracking-wider text-white shadow-sm hover:bg-neutral-800 disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer transition-all"
+            role="radio"
+            aria-checked={paymentMethod === t.id}
+            disabled={isSaving}
+            onClick={() => onSetPaymentMethod(t.id)}
+            className={`h-11 rounded-xl text-[13px] font-semibold transition-colors cursor-pointer disabled:opacity-60 ${paymentMethod === t.id ? 'bg-white text-neutral-950 shadow-sm' : 'text-neutral-500 active:bg-white/60'}`}
           >
-            {isSaving ? 'Saving Order...' : paymentMethod === 'UPI' && !upiConfirmed ? 'Awaiting UPI Confirmation' : (
-              <><CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" /><span>Save Order</span></>
-            )}
+            {t.label}
           </button>
-        )}
+        ))}
+      </div>
+
+      {paymentMethod === 'UPI' && (
+        <label className="flex min-h-[48px] cursor-pointer items-center gap-3 rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-2.5 active:bg-neutral-100">
+          <input
+            type="checkbox"
+            checked={upiConfirmed}
+            disabled={isSaving}
+            onChange={(e) => onSetUpiConfirmed(e.target.checked)}
+            className="h-5 w-5 shrink-0 cursor-pointer rounded border-neutral-300 accent-neutral-900"
+          />
+          <span className="text-[13px] font-medium leading-snug text-neutral-800">I have received the UPI payment</span>
+        </label>
+      )}
+
+      {delivery && (
+        <div className="flex items-center gap-2.5 rounded-2xl bg-[#f3f1ea] px-3.5 py-2.5">
+          <span aria-hidden className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-neutral-900 text-white"><Check className="h-3 w-3" /></span>
+          <p className="min-w-0 text-[12.5px] leading-snug text-neutral-700">
+            <span className="block font-semibold text-neutral-900">{delivery.title}</span>
+            <span className="hidden sm:inline">{delivery.hint}</span>
+          </p>
+        </div>
+      )}
+
+      {saveError && (
+        <p role="alert" className="rounded-2xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-[12.5px] font-medium leading-snug text-rose-700">{saveError}</p>
+      )}
+
+      <div className="flex gap-2">
+        <button type="button" onClick={onClose} disabled={isSaving} aria-label="Close without saving" className="h-14 rounded-2xl border border-neutral-200 bg-white px-5 text-sm font-semibold text-neutral-700 active:scale-[0.98] disabled:opacity-50 cursor-pointer">
+          Back
+        </button>
+        <button type="button" onClick={onPrint} disabled={isSaving} aria-label="Print bill" className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl border border-neutral-200 bg-white text-neutral-700 active:scale-[0.98] disabled:opacity-50 cursor-pointer">
+          <Printer className="h-5 w-5" aria-hidden />
+        </button>
+        <button
+          type="button"
+          onClick={onSaveOrder}
+          disabled={isSaving || waitingForUpi}
+          className="inline-flex h-14 min-w-0 flex-1 items-center justify-center gap-2 rounded-2xl bg-neutral-900 px-4 text-[15px] font-semibold text-white shadow-[0_14px_24px_-14px_rgba(0,0,0,0.6)] transition-all active:scale-[0.99] disabled:bg-neutral-300 disabled:text-neutral-500 disabled:shadow-none cursor-pointer"
+        >
+          {isSaving
+            ? <><Loader2 className="h-4 w-4 animate-spin" aria-hidden /> Saving…</>
+            : waitingForUpi
+              ? 'Confirm UPI to continue'
+              : <><Send className="h-4 w-4" aria-hidden /> <span className="truncate">{delivery ? 'Save & send to guest' : 'Save bill'}</span></>}
+        </button>
       </div>
     </div>
   );

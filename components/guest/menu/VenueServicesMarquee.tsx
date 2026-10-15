@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Sparkles, ArrowRight } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
+import { ServiceTile } from './ServiceTile';
 
 export interface VenueService {
   id: string | number;
@@ -18,7 +18,7 @@ interface VenueServicesMarqueeProps {
   onSelectService?: (service: VenueService) => void;
 }
 
-const DEFAULT_FALLBACK_SERVICES: VenueService[] = [];
+const SERIF = { fontFamily: "'Playfair Display', Georgia, serif" } as const;
 
 function normalizeServiceItem(item: any): VenueService {
   return {
@@ -85,69 +85,32 @@ export function VenueServicesMarquee({ services: propServices, onSelectService }
   }
 
   return (
-    <div className="w-full my-4 overflow-hidden">
-      <div className="flex items-center justify-between mb-2 px-1">
-        <div className="flex items-center gap-2">
-          <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-          <h3 className="text-xs font-semibold tracking-wider uppercase text-neutral-500">
-            Unlocked Venue Experiences & Services
-          </h3>
-        </div>
-        <span className="text-[11px] font-medium text-amber-600 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
-          VIP Access Active
-        </span>
+    <section aria-label="Venue experiences and services" className="my-5 w-full">
+      <div className="mb-3 px-0.5">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-[#8a6d2b]">At your service</p>
+        <h3 className="mt-1 text-[21px] leading-tight text-zinc-950" style={SERIF}>Experiences &amp; services</h3>
       </div>
 
-      {/* Marquee Wrapper with Hover Pause & Apple Glass Styling */}
-      <div className="relative w-full overflow-hidden group py-1">
-        {/* Gradient Fade Masks on Edges */}
-        <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-[#faf9f6] to-transparent z-10 pointer-events-none" />
-        <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-[#faf9f6] to-transparent z-10 pointer-events-none" />
-
-        <div className="flex gap-4 animate-marquee group-hover:[animation-play-state:paused] w-max">
-          {[...displayServices, ...displayServices].map((item, idx) => (
-            <div
-              key={`${item.id}-${idx}`}
-              onClick={() => onSelectService?.(item)}
-              className="flex items-center gap-3.5 p-3 rounded-2xl backdrop-blur-xl bg-white/90 border border-neutral-200/80 shadow-[0_10px_30px_rgba(0,0,0,0.04)] hover:shadow-xl hover:border-neutral-300 transition-all duration-300 cursor-pointer min-w-[300px] sm:min-w-[340px]"
-            >
-              {/* Thumbnail Image from Supabase */}
-              {item.image_url ? (
-                <img
-                  src={item.image_url}
-                  alt={item.title}
-                  className="w-12 h-12 rounded-xl object-cover shrink-0 shadow-sm border border-neutral-100"
-                />
-              ) : (
-                <div className="w-12 h-12 rounded-xl bg-neutral-900 text-white flex items-center justify-center shrink-0 shadow-sm">
-                  <Sparkles className="w-5 h-5" />
-                </div>
-              )}
-
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between mb-0.5">
-                  <span className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider truncate">
-                    {item.tag || 'Exclusive Stay'}
-                  </span>
-                  {item.price ? (
-                    <span className="text-xs font-bold text-neutral-900">
-                      ₹{item.price}
-                    </span>
-                  ) : null}
-                </div>
-                <h4 className="text-sm font-semibold text-neutral-900 truncate">
-                  {item.title}
-                </h4>
-                <p className="text-xs text-neutral-500 truncate">
-                  {item.description || 'Tap to explore details and book instantly.'}
-                </p>
-              </div>
-
-              <ArrowRight className="w-4 h-4 text-neutral-400 shrink-0 ml-1 group-hover:translate-x-0.5 transition-transform" />
-            </div>
+      {/* Drifts from right to left and loops. It stops under a finger or the pointer; with reduced motion it is a row to swipe. */}
+      <div className="group relative overflow-hidden motion-reduce:overflow-x-auto motion-reduce:[scrollbar-width:none]">
+        <div
+          className="flex w-max animate-offers-rtl group-hover:[animation-play-state:paused] group-active:[animation-play-state:paused] motion-reduce:animate-none"
+          style={{ animationDuration: `${Math.max(24, displayServices.length * 9)}s` }}
+        >
+          {[...displayServices, ...displayServices].map((item, i) => (
+            <ServiceTile
+              key={`${String(item.id)}-${i}`}
+              title={item.title}
+              tag={item.tag || 'Service'}
+              price={item.price}
+              image={item.image_url}
+              onOpen={() => onSelectService?.(item)}
+              className="mr-3 w-[236px] shrink-0 sm:w-[256px]"
+            />
           ))}
         </div>
-      </div>
-    </div>
+        <div aria-hidden className="pointer-events-none absolute inset-y-0 left-0 w-6 bg-gradient-to-r from-[#faf9f6] to-transparent" />
+        <div aria-hidden className="pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-[#faf9f6] to-transparent" />
+      </div>    </section>
   );
 }

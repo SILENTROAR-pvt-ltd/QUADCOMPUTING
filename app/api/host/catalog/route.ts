@@ -1,3 +1,4 @@
+import { safeMessage } from '@/lib/utils/safe-message';
 import { NextResponse } from 'next/server';
 import { requireHost } from '@/lib/auth/guards';
 import {
@@ -17,7 +18,7 @@ export const GET = withApiErrorBoundary(async function GET(request: Request) {
     return NextResponse.json(result);
   } catch (error: any) {
     console.error('[API Catalog GET]', error);
-    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ error: safeMessage(error, 'Internal Server Error') }, { status: 500 });
   }
 }, 'HostCatalogGET');
 
@@ -38,7 +39,7 @@ export const POST = withApiErrorBoundary(async function POST(request: Request) {
   } catch (error: any) {
     console.error('[API Catalog POST]', error);
     return NextResponse.json(
-      { error: error.message || 'Internal Server Error' },
+      { error: safeMessage(error, 'Internal Server Error') },
       { status: error.message?.includes('Missing') || error.message?.includes('Invalid') ? 400 : 500 }
     );
   }
@@ -67,6 +68,6 @@ export const DELETE = withApiErrorBoundary(async function DELETE(request: Reques
   } catch (error: any) {
     console.error('[API Catalog DELETE]', error);
     const status = error?.status === 400 || error?.status === 404 ? error.status : 500;
-    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status });
+    return NextResponse.json({ error: safeMessage(error, 'Internal Server Error') }, { status });
   }
 }, 'HostCatalogDELETE');

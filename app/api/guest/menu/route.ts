@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/supabase/admin';
 import { validateGuestAccess } from '@/lib/auth/guest-validate';
 import { withApiErrorBoundary } from '@/lib/middleware/error-handler';
+import { enforceRateLimit } from '@/lib/middleware/rate-limiter';
 
 
 
@@ -35,6 +36,9 @@ export const GET = withApiErrorBoundary(async function GET(request: Request) {
     if (validation.error) return validation.error;
     const { businessId: cafeParam, tableNumber } = validation;
     const tableParam = tableNumber || 'T-01';
+    // The whole menu is a large response and this route is public: cap it per venue address (a venue shares one).
+    const limited = await enforceRateLimit(request, 'guest_menu_get', 300, 60_000, cafeParam);
+    if (limited) return limited;
 
     const supabase = adminDb();
 
@@ -48,7 +52,7 @@ export const GET = withApiErrorBoundary(async function GET(request: Request) {
         .eq('business_id', cafeParam),
       supabase
         .from('catalog_items')
-        .select('*')
+        .select('id, name, description, price, category, item_type, image_url')
         .or(`business_id.eq.${cafeParam},location_id.eq.${cafeParam}`)
         .eq('is_available', true),
     ]);

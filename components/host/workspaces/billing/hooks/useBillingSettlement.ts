@@ -1,5 +1,6 @@
 import { useRef } from 'react';
 import type { InvoiceData } from '../InvoicePreviewModal';
+import type { SaveResult } from '@/components/shared/receipt/useDigitalReceiptActions';
 import { broadcastTableSettled, dispatchWalletRefreshEvents, clearOrderIdUrlParam } from './settlement-helper.util';
 
 interface UseBillingSettlementProps {
@@ -15,19 +16,21 @@ export function useBillingSettlement({
 }: UseBillingSettlementProps) {
   const isSettlingRef = useRef(false);
 
-  return async (onHistoryRefresh?: () => void, paymentMethod?: 'UPI' | 'CASH' | 'CARD') => {
+  return async (onHistoryRefresh?: () => void, paymentMethod?: 'UPI' | 'CASH' | 'CARD', saved?: SaveResult) => {
     if (isSettlingRef.current) return;
     isSettlingRef.current = true;
     const { selectedTableId: tableId, selectedTableNumber: tableNumber, activeSessionId: sessionId } = cart;
     const isTableOrder = Boolean(sessionId || tableId || (tableNumber && tableNumber !== 'Takeaway / Counter'));
 
     try {
-      if (isTableOrder) {
+      // The save request already settled a table bill (one trip to the server instead of two). Only a bill the
+      // server did not settle there goes through the table route here.
+      if (isTableOrder && !saved?.settled) {
         const response = await fetch('/api/host/sessions', {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            session_id: sessionId, order_id: cart.linkedOrderId, table_id: tableId, table_number: tableNumber,
+            session_id: sessionId, order_id: cart.linkedOrderId || saved?.orderId || undefined, table_id: tableId, table_number: tableNumber,
             action: 'settle_and_vacate', final_items: cart.selectedItems, subtotal: cart.subtotal,
             tax_amount: cart.gstAmount, grand_total: cart.grandTotal, discount_amount: cart.discountAmount,
             discount_type: cart.discountType, discount_value: cart.discountValue,
@@ -41,17 +44,19 @@ export function useBillingSettlement({
         });
         const result = await response.json();
         if (!response.ok || !result.success) throw new Error(result.error || 'Table settlement failed.');
-        await broadcastTableSettled(tableNumber, cart.grandTotal);
       }
       // Counter/takeaway bills: the platform fee is charged server-side when the order is saved.
 
+      // The till is free the moment the server has the bill: the screen clears and the table turns vacant at once,
+      // and the table list refreshes in the background.
+      if (isTableOrder) void broadcastTableSettled(tableNumber, cart.grandTotal);
       dispatchWalletRefreshEvents();
       setInvoicePreview(null);
       cart.resetCart();
       if (tableId || (tableNumber && tableNumber !== 'Takeaway / Counter')) {
-        await markTableVacant(tableId || tableNumber, isTableOrder);
+        void markTableVacant(tableId || tableNumber, isTableOrder).catch(() => {});
       } else {
-        await fetchTables();
+        void fetchTables();
       }
       setSuccessMessage(sessionId ? 'Bill settled. Table is now vacant.' : 'Bill saved and finalized successfully');
       window.setTimeout(() => setSuccessMessage(''), 3500);

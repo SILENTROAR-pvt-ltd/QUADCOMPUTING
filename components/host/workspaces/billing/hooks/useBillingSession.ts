@@ -169,6 +169,16 @@ export function useBillingSession({
     if (cart.linkedOrderId) {
       invoice.id = cart.linkedOrderId;
     }
+    if (cart.linkedGuestHandle) invoice.guest_handle = cart.linkedGuestHandle;
+    // A table or room bill is saved and settled by one request; the receipt only has to carry what the POS knows.
+    const isTableOrder = Boolean(cart.activeSessionId || cart.selectedTableId || (cart.selectedTableNumber && cart.selectedTableNumber !== 'Takeaway / Counter'));
+    if (isTableOrder) {
+      invoice.settlement = {
+        session_id: cart.activeSessionId || null,
+        redemption_code: cart.redemptionCode || null,
+        credit_cashback: cart.cashbackEnabled !== false,
+      };
+    }
     if (Number(cart.customAmount) > 0) {
       invoice.items.push({ id: 'custom', name: 'Custom Entry', price: Number(cart.customAmount), qty: 1 });
     }

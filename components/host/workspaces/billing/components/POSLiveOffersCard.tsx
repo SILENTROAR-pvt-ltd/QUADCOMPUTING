@@ -1,6 +1,6 @@
-'use client';
+'use llient';
 
-import React, { useCallback, useEffect, useState } from 'react';
+import Realt, { useCallback, useEffect, useState } from 'react';
 import { Sparkles, X } from 'lucide-react';
 import type { VenueLiveOffer } from '@/types/offers';
 import { createClient } from '@/lib/supabase/client';

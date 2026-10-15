@@ -21,7 +21,7 @@ function seed() {
 
 async function postByAsha(db: any, venue = VENUE_A): Promise<string> {
   const out = await createLobbyPost(db, noStore as any, ASHA as any, venue, {
-    kind: 'want', content: 'a charger', table: 'T-01', media: null,
+    kind: 'message', content: 'a charger', table: 'T-01', media: null,
   });
   if (!out.ok) throw new Error(out.error);
   return out.value.id;

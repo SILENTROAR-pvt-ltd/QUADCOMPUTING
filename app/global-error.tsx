@@ -3,6 +3,7 @@
 import * as Sentry from '@sentry/nextjs';
 import Error from 'next/error';
 import { useEffect } from 'react';
+import { isChunkLoadError, reloadOnceForChunkError } from '@/lib/utils/chunk-error';
 
 export default function GlobalError({
 	error,
@@ -11,6 +12,8 @@ export default function GlobalError({
 }) {
 	useEffect(() => {
 		Sentry.captureException(error);
+		// A page left open across a new deploy: load the new version once instead of showing an error.
+		if (isChunkLoadError(error)) reloadOnceForChunkError();
 	}, [error]);
 
 	return (

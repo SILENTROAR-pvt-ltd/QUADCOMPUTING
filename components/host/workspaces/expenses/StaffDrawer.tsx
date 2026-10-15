@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Phone, Trash2, X } from 'lucide-react';
-import type { PayrollRow } from '@/lib/services/expenses/payroll.util';
+import { isOwed, type PayrollRow } from '@/lib/services/expenses/payroll.util';
 import { periodLabel } from '@/lib/services/expenses/period.util';
 import { METHOD_LABEL, PAY_STYLE, ROLE_LABEL, inr, send, shortDate } from './expenses-format';
 
@@ -11,7 +11,7 @@ interface Props {
   onClose: () => void; onEdit: () => void; onPay: () => void; onAdvance: () => void; onChanged: (msg: string) => void;
 }
 type Entry = { id: string; kind: 'advance' | 'salary'; amount: number; date: string; notes: string | null; method: string | null };
-const btn = 'h-10 rounded-xl px-3 text-xs font-semibold cursor-pointer';
+const btn = 'h-12 rounded-xl px-3 text-[13px] font-semibold cursor-pointer active:scale-[0.98] sm:h-10 sm:text-xs';
 
 /** One employee: their month in money, every advance and payment, and what can be done next. */
 export function StaffDrawer({ row, period, version, onClose, onEdit, onPay, onAdvance, onChanged }: Props) {
@@ -60,9 +60,12 @@ export function StaffDrawer({ row, period, version, onClose, onEdit, onPay, onAd
               <div className="flex justify-between border-t border-neutral-200 pt-1 font-semibold text-neutral-950"><dt>Still to pay</dt><dd className="font-mono">{inr(Math.max(0, row.balance))}</dd></div>
             </dl>
           </div>
-          {!left && <div className="grid grid-cols-2 gap-2">
-            <button type="button" onClick={onPay} className={`${btn} bg-neutral-950 text-white hover:bg-neutral-800`}>Pay salary</button>
-            <button type="button" onClick={onAdvance} className={`${btn} border border-neutral-200 text-neutral-800 hover:bg-neutral-50`}>Record advance</button>
+          {/* Someone who has left is still settled: what they are owed for the days they worked is paid from here. */}
+          {(!left || isOwed(row)) && <div className={`grid gap-2 ${left ? 'grid-cols-1' : 'grid-cols-2'}`}>
+            <button type="button" onClick={onPay} className={`${btn} bg-neutral-950 text-white hover:bg-neutral-800`}>
+              {left ? `Settle ${inr(row.balance)}` : isOwed(row) ? `Pay ${inr(row.balance)}` : 'Pay salary'}
+            </button>
+            {!left && <button type="button" onClick={onAdvance} className={`${btn} border border-neutral-200 text-neutral-800 hover:bg-neutral-50`}>Record advance</button>}
           </div>}
           {error && <p role="alert" className="rounded-lg bg-rose-50 px-3 py-2 text-xs text-rose-800">{error}</p>}
           <div>
@@ -81,7 +84,7 @@ export function StaffDrawer({ row, period, version, onClose, onEdit, onPay, onAd
             )}
           </div>
         </div>
-        <footer className="flex gap-2 border-t border-neutral-200 p-4">
+        <footer className="flex gap-2 border-t border-neutral-200 px-4 pt-4 pb-[calc(env(safe-area-inset-bottom,0px)+1rem)]">
           <button type="button" onClick={onEdit} className={`${btn} flex-1 border border-neutral-200 text-neutral-800 hover:bg-neutral-50`}>Edit details</button>
           {left ? <button type="button" onClick={rejoin} className={`${btn} flex-1 border border-neutral-200 text-neutral-800 hover:bg-neutral-50`}>Re-join</button>
             : <button type="button" onClick={markLeft} className={`${btn} flex-1 text-rose-700 hover:bg-rose-50`}>Mark as left</button>}

@@ -13,6 +13,7 @@ const BIZ = 'aaaaaaaa-1111-4222-8333-444444444444';
 const OTHER_BIZ = 'cccccccc-1111-4222-8333-444444444444';
 const COFFEE = '0b0f2f1e-2d3c-4b5a-8c7d-9e0f1a2b3c4d';
 const FOREIGN_ITEM = '1c1f3f2e-3e4d-4c6b-9d8e-0f1a2b3c4d5e';
+const SOLD_OUT = '2d2e4f3a-4f5e-4d7c-8e9f-1a2b3c4d5e6f';
 
 let seq = 0;
 const unique = () => `k${Date.now()}-${seq++}`;
@@ -26,6 +27,7 @@ function newDb(opts: { balance?: number; subscription?: string; rpc?: (a: any) =
       catalog_items: [
         { id: COFFEE, business_id: BIZ, name: 'Cold Coffee', price: 150 },
         { id: FOREIGN_ITEM, business_id: OTHER_BIZ, name: 'Foreign Dish', price: 999 },
+        { id: SOLD_OUT, business_id: BIZ, name: 'Paneer Tikka', price: 220, is_available: false },
       ],
       orders: opts.orders ?? [],
       order_items: [],
@@ -67,6 +69,14 @@ describe('Guest order pipeline (guards in front of the atomic order function)', 
     expect(ctx.db.calls.rpc.map((c: any) => c.name)).toEqual(['submit_guest_order_atomic']);
   });
 
+  it('rejects a dish the host has switched off since the guest loaded the menu, and sends nothing to the kitchen', async () => {
+    const res = await order({ items: [{ item_id: COFFEE, quantity: 1 }, { item_id: SOLD_OUT, quantity: 1 }] }, freshIp());
+    const json = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(JSON.stringify(json)).toContain('Paneer Tikka');
+    expect(ctx.db.calls.rpc).toHaveLength(0);
+  });
   it('never stamps a guest onto the shared table session, and a guest without a sign-in owns no dish', async () => {
     await order({ guest_handle: '@reshav' }, freshIp());
     const args = ctx.db.calls.rpc[0].args;
@@ -118,13 +128,13 @@ describe('Guest order pipeline (guards in front of the atomic order function)', 
     expect(ctx.db.calls.rpc).toHaveLength(0);
   });
 
-  it('rate-limits a flood from one address at one venue (15 per minute), without blocking others', async () => {
+  it('rate-limits a flood from one address at one venue (40 per minute), without blocking others', async () => {
     const ip = freshIp();
     const statuses: number[] = [];
-    for (let i = 0; i < 16; i++) statuses.push((await order({}, ip)).status);
+    for (let i = 0; i < 41; i++) statuses.push((await order({}, ip)).status);
 
-    expect(statuses.slice(0, 15).every((s) => s === 200)).toBe(true);
-    expect(statuses[15]).toBe(429);
+    expect(statuses.slice(0, 40).every((s) => s === 200)).toBe(true);
+    expect(statuses[40]).toBe(429);
 
     expect((await order({}, freshIp())).status).toBe(200);
   });

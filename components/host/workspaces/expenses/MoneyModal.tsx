@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { PayrollRow } from '@/lib/services/expenses/payroll.util';
+import { isOwed, type PayrollRow } from '@/lib/services/expenses/payroll.util';
 import { periodLabel } from '@/lib/services/expenses/period.util';
 import { ExpenseModal, field, label } from './ExpenseModal';
 import { METHOD_LABEL, inr, send } from './expenses-format';
@@ -19,7 +19,8 @@ const today = () => new Date(Date.now() + 330 * 60_000).toISOString().slice(0, 1
 
 /** Pay salary for the month, or give an advance against it, with the balance shown as you type. */
 export function MoneyModal({ kind, rows, staffId, period, onClose, onSaved }: Props) {
-  const active = rows.filter((r) => r.status === 'ACTIVE' || r.id === staffId);
+  // Salary can be paid to someone who has left while they are still owed; an advance only goes to current staff.
+  const active = rows.filter((r) => r.status === 'ACTIVE' || r.id === staffId || (kind === 'salary' && isOwed(r)));
   const [id, setId] = useState(staffId || active[0]?.id || '');
   const row = rows.find((r) => r.id === id) || null;
   const [amount, setAmount] = useState(kind === 'salary' && row && row.balance > 0 ? String(row.balance) : '');
@@ -47,13 +48,13 @@ export function MoneyModal({ kind, rows, staffId, period, onClose, onSaved }: Pr
   };
 
   return (
-    <ExpenseModal title={kind === 'salary' ? 'Pay salary' : 'Record advance'}
-      subtitle={kind === 'salary' ? `Counts towards ${periodLabel(period)}.` : 'Taken off the salary still to pay this month.'}
-      onClose={onClose} onSubmit={submit} submitLabel={kind === 'salary' ? 'Record payment' : 'Record advance'} busy={busy} error={error}>
+    <ExpenseModal title={kind === 'salary' ? (row && row.status !== 'ACTIVE' ? 'Settle salary' : 'Pay salary') : 'Record advance'}
+      subtitle={kind === 'salary' ? `Counts towards ${periodLabel(period)}.${row && row.status !== 'ACTIVE' ? ' Their salary for the days they worked.' : ''}` : 'Taken off the salary still to pay this month.'}
+      onClose={onClose} onSubmit={submit} submitLabel={kind === 'salary' ? (row && row.balance > 0.5 && Number(amount) === row.balance ? `Mark ${inr(row.balance)} paid` : 'Record payment') : 'Record advance'} busy={busy} error={error}>
       <label className="block"><span className={label}>Employee</span>
         <select value={id} onChange={(e) => pick(e.target.value)} className={field} required>
           <option value="">Choose…</option>
-          {active.map((r) => <option key={r.id} value={r.id}>{r.name}{r.balance > 0 ? ` · ${inr(r.balance)} to pay` : ''}</option>)}
+          {active.map((r) => <option key={r.id} value={r.id}>{r.name}{r.status !== 'ACTIVE' ? ' (left)' : ''}{r.balance > 0 ? ` · ${inr(r.balance)} to pay` : ''}</option>)}
         </select>
       </label>
       {row && (

@@ -1,11 +1,24 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { InvoiceData } from '@/lib/utils/receipt-adapter';
+import { newUuid } from '@/lib/utils/uuid';
 
-export function useDigitalReceiptActions(invoice: InvoiceData, onSuccess?: (paymentMethod: 'UPI' | 'CASH' | 'CARD') => void) {
-  const [paymentMethod, setPaymentMethod] = useState<'UPI' | 'CASH' | 'CARD'>('UPI');
+export type Tender = 'UPI' | 'CASH' | 'CARD';
+export interface SaveResult { orderId: string | null; settled: boolean }
+
+const SAVE_TIMEOUT_MS = 30_000;
+
+export function useDigitalReceiptActions(
+  invoice: InvoiceData,
+  onSuccess?: (paymentMethod: Tender, result: SaveResult) => void | Promise<void>,
+) {
+  const [paymentMethod, setPaymentMethod] = useState<Tender>('UPI');
   const [upiConfirmed, setUpiConfirmed] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [isOnline, setIsOnline] = useState(true);
+  // One id for this bill: a second tap, or a retry after a slow network, updates the same order instead of adding another.
+  const orderIdRef = useRef<string>(invoice.id || newUuid());
+  const inFlight = useRef(false);
 
   useEffect(() => {
     setIsOnline(navigator.onLine);
@@ -17,15 +30,18 @@ export function useDigitalReceiptActions(invoice: InvoiceData, onSuccess?: (paym
   }, []);
 
   const handlePrint = () => window.print();
-  const handleShareEmail = () => prompt("Enter client's email address to dispatch the receipt:");
-  const handleShareSMS = () => prompt("Enter client's phone number to dispatch the receipt link:");
 
   const handleSaveOrder = async () => {
-    if (invoice.isReadOnly || !onSuccess) return;
+    if (invoice.isReadOnly || !onSuccess || inFlight.current) return;
+    inFlight.current = true;
     setIsSaving(true);
+    setSaveError(null);
+    // AbortSignal.timeout is missing on older phone browsers, so the timer is set by hand.
+    const abort = new AbortController();
+    const timer = setTimeout(() => abort.abort(), SAVE_TIMEOUT_MS);
     try {
       const payload = {
-        ...invoice, paymentMethod,
+        ...invoice, id: orderIdRef.current, paymentMethod,
         tableId: invoice.table_id || null,
         tableNumber: invoice.table_number || 'Takeaway / Counter',
         roomId: invoice.room_id || null, guestId: invoice.guest_id || null,
@@ -34,22 +50,29 @@ export function useDigitalReceiptActions(invoice: InvoiceData, onSuccess?: (paym
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
+        signal: abort.signal,
       });
-      if (res.ok) {
-        onSuccess(paymentMethod);
-      } else {
-        const err = await res.json().catch(() => ({}));
-        alert(err.error || 'Failed to save order to database.');
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data?.success === false) {
+        setSaveError(data?.error || 'The bill could not be saved. Please try again.');
+        return;
       }
-    } catch {
-      alert('Error recording order.');
+      // Waited for, so the button stays locked until the till has moved on; the modal closes from the caller.
+      await onSuccess(paymentMethod, { orderId: data?.order?.id ?? orderIdRef.current, settled: Boolean(data?.settled) });
+    } catch (e) {
+      const timedOut = e instanceof DOMException && (e.name === 'TimeoutError' || e.name === 'AbortError');
+      setSaveError(timedOut || !navigator.onLine
+        ? 'The connection is slow. Tap Save again: it will not create a second bill.'
+        : 'The bill could not be saved. Please try again.');
     } finally {
+      clearTimeout(timer);
+      inFlight.current = false;
       setIsSaving(false);
     }
   };
 
   return {
     paymentMethod, setPaymentMethod, upiConfirmed, setUpiConfirmed,
-    isSaving, isOnline, handlePrint, handleShareEmail, handleShareSMS, handleSaveOrder,
+    isSaving, saveError, isOnline, handlePrint, handleSaveOrder,
   };
 }

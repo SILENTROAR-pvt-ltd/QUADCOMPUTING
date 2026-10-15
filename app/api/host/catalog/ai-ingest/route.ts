@@ -1,3 +1,4 @@
+import { safeMessage } from '@/lib/utils/safe-message';
 import { NextResponse } from 'next/server';
 import { requireHost } from '@/lib/auth/guards';
 import { withApiErrorBoundary } from '@/lib/middleware/error-handler';
@@ -53,6 +54,6 @@ export const POST = withApiErrorBoundary(async function POST(request: Request) {
     return NextResponse.json({ items });
   } catch (error: any) {
     console.error('AI Ingest Error:', error);
-    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ error: safeMessage(error, 'Internal Server Error') }, { status: 500 });
   }
 }, 'HostCatalogAiIngestPOST');

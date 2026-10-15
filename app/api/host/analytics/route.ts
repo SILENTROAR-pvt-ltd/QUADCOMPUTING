@@ -1,3 +1,4 @@
+import { safeMessage } from '@/lib/utils/safe-message';
 import { NextResponse } from 'next/server';
 import { requireHost } from '@/lib/auth/guards';
 import { computeEodReport } from '@/lib/services/analytics.service';
@@ -14,6 +15,6 @@ export const GET = withApiErrorBoundary(async function GET(request: Request) {
   } catch (error: any) {
     console.error('[API Analytics]', error);
     const status = error.message === 'Unauthorized' ? 401 : error.message === 'Business not found' ? 404 : 500;
-    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status });
+    return NextResponse.json({ error: safeMessage(error, 'Internal Server Error') }, { status });
   }
 }, 'HostAnalyticsGET');

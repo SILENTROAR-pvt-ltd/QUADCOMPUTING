@@ -1,7 +1,20 @@
 // Turning a purchase list into a WhatsApp message to a vendor. Shared by the screen (which opens
 // WhatsApp straight from the tap, so the browser does not block it) and the server (which stores it).
 
-export interface PurchaseLine { item_id: string; name: string; unit: string; quantity: number; unit_cost: number }
+export interface PurchaseLine {
+  item_id: string;
+  name: string;
+  unit: string;
+  quantity: number;
+  unit_cost: number;
+  /**
+   * An item not in raw inventory yet, typed in by the host. Its id is made by the screen. The stock item is created
+   * when the delivery is received, so an order that never arrives leaves no empty item behind.
+   */
+  is_new?: boolean;
+  /** The category a new item is filed under when it is created. */
+  category?: string;
+}
 
 /**
  * A number WhatsApp accepts: country code and digits only. Ten-digit Indian mobiles get 91;

@@ -73,7 +73,9 @@ export function useGuestWallet(businessId: string = '') {
     window.addEventListener('focus', handleRefresh);
     window.addEventListener('guest-wallet:refresh', handleRefresh);
     window.addEventListener('storage', handleRefresh);
-    const interval = setInterval(fetchWallet, 15000);
+    // A wallet changes only at settlement or redemption, and both refresh it at once through the events above. This is
+    // the safety net, so it runs once a minute and not at all while the tab is hidden.
+    const interval = setInterval(() => { if (!document.hidden) fetchWallet(); }, 60_000);
     return () => {
       window.removeEventListener('focus', handleRefresh);
       window.removeEventListener('guest-wallet:refresh', handleRefresh);

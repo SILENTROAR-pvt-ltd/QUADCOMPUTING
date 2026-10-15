@@ -72,6 +72,7 @@ export function useGuestMenuSession({ tableParam, cafeParam }: { tableParam: str
     }).catch((err) => {
       setMenuItems((cur) => { if (!cur || cur.length === 0) setMenuError(err.message || 'Error loading table menu'); return cur; });
     }).finally(() => setIsLoadingMenu(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- loads the menu when the table or venue changes; businessName and the session are set by this effect and would refetch the menu in a loop
   }, [tableParam, cafeParam]);
 
   const { diningItems, venueServices, culinaryCategories } = useMemo(() => partitionMenuItems(menuItems), [menuItems]);

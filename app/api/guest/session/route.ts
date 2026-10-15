@@ -1,3 +1,4 @@
+import { safeMessage } from '@/lib/utils/safe-message';
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/supabase/admin';
 import {
@@ -35,7 +36,7 @@ export const POST = withApiErrorBoundary(async function POST(request: Request) {
   } catch (error: any) {
     console.error('API Guest Session Error:', error);
     const status = error.message?.includes('not found') ? 404 : (error.message?.includes('Missing') || error.message?.includes('Invalid') ? 400 : 500);
-    return NextResponse.json({ error: error.message || 'Internal server error' }, { status });
+    return NextResponse.json({ error: safeMessage(error, 'Internal server error') }, { status });
   }
 }, 'GuestSessionPOST')
 
@@ -47,6 +48,8 @@ export const GET = withApiErrorBoundary(async function GET(request: Request) {
 
     const validation = await validateGuestAccess(cafeParamRaw, tableParamRaw);
     if (validation.error) return validation.error;
+    const limited = await enforceRateLimit(request, 'guest_session_get', 1500, 60_000, validation.businessId);
+    if (limited) return limited;
 
     const supabase = adminDb();
     const result = await getGuestSession(request.url, supabase);
@@ -54,7 +57,7 @@ export const GET = withApiErrorBoundary(async function GET(request: Request) {
   } catch (error: any) {
     console.error('API Guest Session GET Error:', error);
     const status = error.message?.includes('not found') ? 404 : (error.message?.includes('Missing') || error.message?.includes('Invalid') ? 400 : 500);
-    return NextResponse.json({ error: error.message || 'Internal server error' }, { status });
+    return NextResponse.json({ error: safeMessage(error, 'Internal server error') }, { status });
   }
 }, 'GuestSessionGET')
 
@@ -82,6 +85,6 @@ export const PATCH = withApiErrorBoundary(async function PATCH(request: Request)
   } catch (error: any) {
     console.error('API Guest Session PATCH Error:', error);
     const status = error.message?.includes('not found') ? 404 : (error.message?.includes('Missing') || error.message?.includes('Invalid') ? 400 : 500);
-    return NextResponse.json({ error: error.message || 'Internal server error' }, { status });
+    return NextResponse.json({ error: safeMessage(error, 'Internal server error') }, { status });
   }
 }, 'GuestSessionPATCH')

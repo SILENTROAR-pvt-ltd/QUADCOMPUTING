@@ -14,7 +14,7 @@ import { BillsView } from './expenses/BillsView';
 import { BillFormModal } from './expenses/BillFormModal';
 
 type Modal = { kind: 'staff'; row?: PayrollRow } | { kind: 'salary' | 'advance'; row?: PayrollRow } | { kind: 'bill'; bill?: any; template?: any } | null;
-const nav = 'flex h-9 w-9 items-center justify-center rounded-xl border border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50 disabled:opacity-40 cursor-pointer';
+const nav = 'flex h-11 w-11 sm:h-9 sm:w-9 items-center justify-center rounded-xl border border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50 disabled:opacity-40 cursor-pointer';
 
 /** Staff pay and venue bills, month by month: who is owed what, what was paid, and what is due. */
 export function ExpensesWorkspace() {
@@ -57,10 +57,10 @@ export function ExpensesWorkspace() {
 
       <ExpensesKpis payroll={x.payroll} bills={x.bills} isLoading={x.isLoading} />
 
-      <div role="tablist" aria-label="Sections" className="inline-flex gap-1 rounded-xl bg-neutral-100 p-1">
+      <div role="tablist" aria-label="Sections" className="flex w-full gap-1 overflow-x-auto rounded-xl bg-neutral-100 p-1 sm:inline-flex sm:w-auto">
         {([['staff', 'Team & payroll'], ['bills', `Bills${x.bills?.summary.pending ? ' · to pay' : ''}`]] as const).map(([id, l]) => (
           <button key={id} type="button" role="tab" aria-selected={tab === id} onClick={() => setTab(id)}
-            className={`h-9 rounded-lg px-4 text-sm font-semibold cursor-pointer ${tab === id ? 'bg-white text-neutral-950 shadow-xs' : 'text-neutral-500 hover:text-neutral-900'}`}>{l}</button>
+            className={`h-10 flex-1 whitespace-nowrap rounded-lg px-4 text-sm font-semibold cursor-pointer sm:flex-none ${tab === id ? 'bg-white text-neutral-950 shadow-xs' : 'text-neutral-500 hover:text-neutral-900'}`}>{l}</button>
         ))}
       </div>
 
@@ -81,7 +81,7 @@ export function ExpensesWorkspace() {
       {modal?.kind === 'bill' && <BillFormModal bill={modal.bill} template={modal.template} onClose={() => setModal(null)} onSaved={done} />}
 
       {toast && (
-        <div role="status" className="fixed bottom-6 right-6 z-[120] flex max-w-sm items-center gap-3 rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-xs font-medium text-neutral-900 shadow-xl animate-in fade-in slide-in-from-bottom-5 duration-300">
+        <div role="status" className="fixed inset-x-4 bottom-4 z-[120] flex items-center gap-3 sm:inset-x-auto sm:bottom-6 sm:right-6 sm:max-w-sm rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-xs font-medium text-neutral-900 shadow-xl animate-in fade-in slide-in-from-bottom-5 duration-300">
           <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-500" /><span>{toast}</span>
           <button type="button" onClick={() => setToast(null)} aria-label="Dismiss" className="text-neutral-400 hover:text-neutral-900 cursor-pointer"><X className="h-3.5 w-3.5" /></button>
         </div>

@@ -25,7 +25,7 @@ export const POSTableGridItem: React.FC<POSTableGridItemProps> = ({
     <button
       type="button"
       onClick={() => onSelect(table)}
-      className={`rounded-xl border p-2 text-left transition-all relative cursor-pointer ${
+      className={`min-h-[56px] min-w-0 rounded-xl border p-2 text-left transition-all relative cursor-pointer active:scale-[0.97] ${
         isSelected
           ? 'border-neutral-400 bg-neutral-100 text-neutral-900 shadow-sm ring-2 ring-neutral-200'
           : isBillRequested

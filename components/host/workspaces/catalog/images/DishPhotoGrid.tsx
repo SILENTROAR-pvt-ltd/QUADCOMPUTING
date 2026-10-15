@@ -37,6 +37,7 @@ export function DishPhotoGrid({ candidates, dishName, busyId, onChoose }: DishPh
           <li key={`${c.source}-${c.id}`}>
             <button type="button" onClick={() => onChoose(c)} disabled={busyId !== null}
               className={`group relative w-full overflow-hidden rounded-xl border text-left transition disabled:opacity-60 cursor-pointer ${exact ? 'border-neutral-900' : 'border-neutral-200 hover:border-neutral-400'}`}>
+              {/* eslint-disable-next-line @next/next/no-img-element -- the venue-uploaded photo; images.unoptimized is set, so next/image would not resize it either */}
               <img src={c.url} alt={c.title || dishName} loading="lazy" className="aspect-[4/3] w-full object-cover" />
               <span className="block px-3 py-2">
                 <span className="block truncate text-xs font-medium text-neutral-900">{c.title || 'Untitled photo'}</span>

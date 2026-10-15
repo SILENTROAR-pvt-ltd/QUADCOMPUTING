@@ -37,7 +37,9 @@ export async function listLobbyPosts(db: any, businessId: string, q: LobbyQuery)
     .from('lobby_posts')
     .select('id, business_id, author_account_id, kind, content, table_number, media_path, created_at')
     .eq('business_id', businessId);
+  // Wants are retired: the whole feed leaves them out (asking for them by name still works, for anyone who linked to one).
   if (q.kind !== 'all') query = query.eq('kind', q.kind);
+  else query = query.neq('kind', 'want');
   if (q.mine) query = query.eq('author_account_id', q.viewerId);
   if (q.search) query = query.ilike('content', `*${q.search}*`);
   if (q.before) query = query.lt('created_at', q.before);

@@ -60,10 +60,10 @@ describe('Cashback at settlement goes only to the guest who ordered the whole bi
     expect(args.p_guest_id).toBeNull();
   });
 
-  it('keeps the guest-without-account rule for a bill no signed-in guest ordered on', async () => {
+  it('credits nobody on a walk-in bill: no signed-in guest, no wallet, even with a name on the order', async () => {
     const args = await settle(db([{ guest_handle: null }, { guest_handle: null }]));
     expect(args.p_guest_handle).toBeNull();
-    expect(args.p_guest_id).toBe('Harshit');
+    expect(args.p_guest_id).toBeNull();
   });
 
   it('credits nobody when the host switched cashback off', async () => {

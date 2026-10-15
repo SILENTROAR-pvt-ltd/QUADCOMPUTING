@@ -20,17 +20,28 @@ export async function settleAndVacateSession(body: any, supabase: any) {
   let resolvedTableId = IS_UUID(table_id) ? table_id : null, targetSessionId = IS_UUID(session_id) ? session_id : null;
   if (table_id && !rawTable && !resolvedTableId) { rawTable = String(table_id).trim(); normTable = normalizeTable(rawTable); }
 
-  try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const { data: b } = await supabase.from('businesses').select('id').eq('host_id', user.id).maybeSingle();
-      if (b?.id) businessId = b.id;
-    }
-  } catch {}
+  // The host route has already signed the caller in and put their business here, so the sign-in and business lookups
+  // (two more round trips) are only needed when a caller did not name the business.
+  if (!businessId) {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: b } = await supabase.from('businesses').select('id').eq('host_id', user.id).maybeSingle();
+        if (b?.id) businessId = b.id;
+      }
+    } catch {}
+  }
 
   if (!businessId) {
     throw new Error('Business ID is required to settle session');
   }
+
+  // The venue's standing and GST status do not depend on the table or the order, so they are read alongside the
+  // lookups below rather than after them. Both are checked before anything is written.
+  const guardPromise = import('@/lib/services/billing/venue-guard.service').then((m) => m.checkVenueBillingGuard(businessId, supabase));
+  const gstPromise = loadGstStatus(supabase, businessId);
+  guardPromise.catch(() => {});
+  gstPromise.catch(() => {});
 
   let resolvedOrder: any = null;
   if (order_id && IS_UUID(order_id)) {
@@ -93,9 +104,8 @@ export async function settleAndVacateSession(body: any, supabase: any) {
 
   // ── Venue Credit & Subscription Guard ──────────────────────────────────────
   // RULE (a): Zero guest checkout if venue wallet balance < 0 or subscription is inactive
-  if (businessId) {
-    const { checkVenueBillingGuard } = await import('@/lib/services/billing/venue-guard.service');
-    const guard = await checkVenueBillingGuard(businessId, supabase);
+  {
+    const guard = await guardPromise;
     if (!guard.allowed) {
       const err: any = new Error(guard.reason || 'Venue suspended');
       err.status = guard.status || 402;
@@ -143,8 +153,10 @@ export async function settleAndVacateSession(body: any, supabase: any) {
   const guestPhone = resolvedOrder?.customer_phone || body?.customer_phone || null;
   // Cashback goes only to a real guest identity and only when the host left the receipt's cashback switch on.
   // It used to fall back to a session/table id, minting wallet balances no guest can ever see or spend.
-  const creditCashback = body?.credit_cashback !== false && !ownerUnknown && !isSharedSignedInBill(owner);
-  const primaryGuestId = creditCashback ? (guestHandle || guestPhone || guestName || null) : null;
+  // Cashback exists only for a guest signed in on Vibers Connect: a walk-in (a name or phone on the bill, no account)
+  // has no wallet to receive it, so nothing is credited, whatever the receipt's switch says.
+  const creditCashback = body?.credit_cashback !== false && !ownerUnknown && !isSharedSignedInBill(owner) && Boolean(guestHandle);
+  const primaryGuestId = creditCashback ? guestHandle : null;
 
   // A wallet redemption must be able to fund this bill before anything is written: a
   // rejected code must leave the order open, not half-updated. The RPC re-checks the same rules.
@@ -177,7 +189,7 @@ export async function settleAndVacateSession(body: any, supabase: any) {
 
   // GST only for a verified GSTIN (gst-policy.ts). A bill sent with GST by a venue that may not charge
   // it is settled without it: the total drops by exactly that tax.
-  const gst = await loadGstStatus(supabase, businessId);
+  const gst = await gstPromise;
   if (!gst.canCharge && billing.tax_amount > 0) {
     settledTotal = stripTax({ taxAmount: billing.tax_amount, grandTotal: settledTotal }).grandTotal;
     billing.tax_amount = 0;
@@ -216,64 +228,77 @@ export async function settleAndVacateSession(body: any, supabase: any) {
   // The bill's owner, recorded once at settlement: the guest's invoices are read from this
   // (guest-bills.service), never from the table's shared session. Best-effort: the column
   // only exists once migration 20261010000017 is applied.
+  // The bookkeeping after the atomic settlement is independent of each other, so it runs together: the bill owner,
+  // the secondary cleanup, the stock deduction and the platform fee used to wait for one another, one round trip each.
   const ownerHandle = typeof guestHandle === 'string' ? guestHandle.trim().toLowerCase() : '';
-  if (finalOrderId && ownerHandle.startsWith('@')) {
+  const recordOwner = async () => {
+    if (!(finalOrderId && ownerHandle.startsWith('@'))) return;
     const { error: ownerErr } = await supabase.from('orders').update({ guest_handle: ownerHandle })
       .eq('id', finalOrderId).eq('business_id', businessId);
     if (ownerErr && !['42703', 'PGRST204'].includes(ownerErr.code)) console.error('[Settlement] Could not record the bill owner:', ownerErr);
-  }
+  };
 
   // Secondary cleanup: any other stray open order rows for this session/table (legacy
   // multi-row edge case). Best-effort — logged on failure, does not block settlement
   // since the primary order above is already atomically settled.
-  try {
-    // The settled order's own session must close too. The settlement closes the session it
-    // was given, which can be a different one; the order's session then stayed open for good,
-    // and the next guest at the table joined it.
-    const orderSessionId = resolvedOrder?.session_id;
-    if (IS_UUID(orderSessionId) && orderSessionId !== targetSessionId) {
-      await supabase.from('dine_in_sessions').update({ status: 'closed', updated_at: nowIso })
-        .eq('id', orderSessionId).eq('business_id', businessId);
+  const cleanUp = async () => {
+    try {
+      // The settled order's own session must close too. The settlement closes the session it
+      // was given, which can be a different one; the order's session then stayed open for good,
+      // and the next guest at the table joined it.
+      const orderSessionId = resolvedOrder?.session_id;
+      await Promise.all([
+        IS_UUID(orderSessionId) && orderSessionId !== targetSessionId
+          ? supabase.from('dine_in_sessions').update({ status: 'closed', updated_at: nowIso }).eq('id', orderSessionId).eq('business_id', businessId)
+          : null,
+        targetSessionId
+          ? supabase.from('orders').update({ status: 'settled' })
+            .eq('session_id', targetSessionId).neq('id', finalOrderId || '')
+            .not('status', 'in', '("settled","SETTLED","completed","COMPLETED","cancelled","CANCELLED")')
+          : null,
+        targetSessionId
+          ? supabase.from('bill_request_events').update({ settled_at: nowIso }).eq('session_id', targetSessionId).is('settled_at', null)
+          : null,
+        rawTable && tableOr
+          ? supabase.from('bill_request_events').update({ settled_at: nowIso }).eq('business_id', businessId).or(tableOr).is('settled_at', null)
+          : null,
+      ]);
+    } catch (cleanupErr) {
+      console.error('[Settlement] Secondary cleanup (stray orders / bill requests) failed:', cleanupErr);
     }
-    if (targetSessionId) {
-      await supabase.from('orders').update({ status: 'settled' })
-        .eq('session_id', targetSessionId).neq('id', finalOrderId || '')
-        .not('status', 'in', '("settled","SETTLED","completed","COMPLETED","cancelled","CANCELLED")');
-    }
-    if (targetSessionId) {
-      await supabase.from('bill_request_events').update({ settled_at: nowIso }).eq('session_id', targetSessionId).is('settled_at', null);
-    }
-    if (rawTable && tableOr) {
-      await supabase.from('bill_request_events').update({ settled_at: nowIso }).eq('business_id', businessId).or(tableOr).is('settled_at', null);
-    }
-  } catch (cleanupErr) {
-    console.error('[Settlement] Secondary cleanup (stray orders / bill requests) failed:', cleanupErr);
-  }
+  };
 
   // ── Recipe-driven inventory deduction ──────────────────────────────────────
   // Atomic RPC only — the non-atomic per-ingredient fallback was a stock-count race
   // condition and has been removed. A failure here does not block settlement (the
   // guest has already been billed) but is surfaced in the response for ops to reconcile.
-  let inventoryResult: any = { success: true };
-  if (finalOrderId) {
+  const deductStock = async (): Promise<any> => {
+    if (!finalOrderId) return { success: true };
     const { deductInventoryForOrder } = await import('@/lib/services/inventory/recipe-deduction.service');
     try {
-      inventoryResult = await deductInventoryForOrder(supabase, finalOrderId, businessId);
+      return await deductInventoryForOrder(supabase, finalOrderId, businessId);
     } catch (invErr: any) {
       console.error('[Settlement] Inventory deduction failed for order', finalOrderId, invErr);
-      inventoryResult = { success: false, error: invErr?.message || String(invErr) };
+      return { success: false, error: invErr?.message || String(invErr) };
     }
-  }
+  };
 
   // ── Platform fee deduction ─────────────────────────────────────────────────
   // By design the POS flow is never blocked by a fee-deduction failure (see
   // fee-guard.service.ts) — it always lands in venue_outstanding_bills as a fallback.
-  let platformFeeResult: any = null;
-  if (businessId && finalOrderId) {
+  const chargeFee = async (): Promise<any> => {
+    if (!(businessId && finalOrderId)) return null;
     const { evaluateFeeGuard } = await import('@/lib/services/wallet/fee-guard.service');
-    const feeIdempotencyKey = `SETTLE_${finalOrderId}`;
-    platformFeeResult = await evaluateFeeGuard(businessId, 'bill_generate', feeIdempotencyKey, supabase);
-  }
+    try {
+      return await evaluateFeeGuard(businessId, 'bill_generate', `SETTLE_${finalOrderId}`, supabase);
+    } catch (feeErr) {
+      // The bill is already settled; a failed fee read must not turn that into an error at the till.
+      console.error('[Settlement] Platform fee could not be evaluated for order', finalOrderId, feeErr);
+      return null;
+    }
+  };
+
+  const [, , inventoryResult, platformFeeResult] = await Promise.all([recordOwner(), cleanUp(), deductStock(), chargeFee()]);
 
   // Realtime notification to this venue's guest table (non-fatal UI nicety;
   // awaited so it finishes before the serverless response returns).

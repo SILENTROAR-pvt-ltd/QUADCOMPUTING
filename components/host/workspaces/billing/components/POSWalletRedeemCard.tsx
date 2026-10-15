@@ -67,14 +67,14 @@ export function POSWalletRedeemCard({
             </p>
           </div>
         </div>
-        <button type="button" onClick={onClearRedemption} className="text-[11px] text-neutral-500 hover:text-rose-600 font-medium">Remove</button>
+        <button type="button" onClick={onClearRedemption} className="h-10 px-2 text-[12px] text-neutral-500 hover:text-rose-600 font-medium cursor-pointer">Remove</button>
       </div>
     );
   }
 
   return (
     <div className="rounded-xl border border-neutral-200 bg-neutral-50/60 p-3 space-y-2">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-1">
         <label className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 flex items-center gap-1.5">
           <ShieldCheck className="w-3.5 h-3.5 text-neutral-700" /> Guest Wallet Cashback Redemption
         </label>
@@ -90,13 +90,13 @@ export function POSWalletRedeemCard({
           value={inputCode}
           onChange={(e) => setInputCode(e.target.value.toUpperCase())}
           placeholder="Code (e.g. QC-RDM-XXXX)"
-          className="flex-1 rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-xs font-mono tracking-wider focus:outline-none focus:border-black"
+          className="h-11 min-w-0 flex-1 rounded-xl border border-neutral-300 bg-white px-3 text-[16px] sm:text-sm font-mono tracking-wider focus:outline-none focus:border-black"
         />
         <button
           type="button"
           onClick={handleVerify}
           disabled={loading || !inputCode.trim()}
-          className="rounded-lg bg-neutral-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-black disabled:opacity-40 transition-colors flex items-center gap-1 shrink-0"
+          className="h-11 rounded-xl bg-neutral-900 px-4 text-[13px] font-semibold text-white hover:bg-black disabled:opacity-40 transition-colors flex items-center gap-1 shrink-0 cursor-pointer"
         >
           {loading && <Loader2 className="w-3 h-3 animate-spin" />}
           <span>Verify & Apply</span>

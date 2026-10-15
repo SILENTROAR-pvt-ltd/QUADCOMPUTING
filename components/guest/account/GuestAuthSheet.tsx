@@ -2,14 +2,16 @@
 
 import React, { useEffect, useState } from 'react';
 import { MailCheck, X } from 'lucide-react';
-import { applyGuestIdentity, fetchGuestAccountState, type GuestAccountSummary } from '@/lib/guest/guest-account-client';
+import { applyGuestIdentity, fetchGuestAccountState, GOOGLE_AUTH_ENABLED, type GuestAccountSummary } from '@/lib/guest/guest-account-client';
 import { createClient } from '@/lib/supabase/client';
 import { GUEST_BRAND } from '@/lib/brand';
-import { QuietButton } from './AuthFields';
+import { FormError, QuietButton } from './AuthFields';
 import { VibersSignInForm, type CredentialMode } from './VibersSignInForm';
 import { VibersProfileForm } from './VibersProfileForm';
+import { VibersPinSignInForm } from './VibersPinSignInForm';
+import { GoogleAuthButton } from './GoogleAuthButton';
 
-type Step = CredentialMode | 'profile' | 'check_email';
+type Step = CredentialMode | 'pin' | 'profile' | 'check_email';
 
 export interface GuestAuthSheetProps {
   isOpen: boolean;
@@ -20,17 +22,20 @@ export interface GuestAuthSheetProps {
   onSignedIn: (account: GuestAccountSummary) => void;
   /** When provided, guests may continue without an account (no cashback). */
   onBrowse?: () => void;
+  /** A message shown above the form, e.g. when Google sign-in did not complete. */
+  notice?: string;
 }
 
 const COPY: Record<Step, [string, (table: string) => string]> = {
   create: ['Create your Vibers account', (t) => `One account for every Vibers property. Earn 7% back on your bills, on any phone at Table ${t}.`],
   signin: ['Sign in', () => 'Use your Vibers account email and password. Hosts: it is the same login as Quad Computing.'],
+  pin: ['Sign in with your PIN', () => 'Your @handle and the 6-digit PIN you chose when you made your account. Works at every Vibers property.'],
   profile: ['Finish your profile', () => 'Once, for every property: your name, mobile and @handle.'],
   check_email: ['Check your email', () => 'Open the link we sent to confirm your account, then sign in here.'],
 };
 
 /** Guest sign-in: one Vibers account (the same Supabase login as QC), then a one-time profile. */
-export function GuestAuthSheet({ isOpen, venueId, tableNumber, initialMode = 'create', onClose, onSignedIn, onBrowse }: GuestAuthSheetProps) {
+export function GuestAuthSheet({ isOpen, venueId, tableNumber, initialMode = 'create', onClose, onSignedIn, onBrowse, notice }: GuestAuthSheetProps) {
   const [step, setStep] = useState<Step>(initialMode);
   const [sentTo, setSentTo] = useState('');
 
@@ -72,16 +77,28 @@ export function GuestAuthSheet({ isOpen, venueId, tableNumber, initialMode = 'cr
           </button>
         </div>
 
-        {(step === 'create' || step === 'signin') && (
+        {(step === 'create' || step === 'signin' || step === 'pin') && (
           <>
+            {notice && <div className="pt-3"><FormError message={notice} /></div>}
+            {GOOGLE_AUTH_ENABLED && <GoogleAuthButton />}
             <div role="tablist" className="mt-4 flex gap-1 rounded-2xl bg-zinc-100 p-1">
               <button type="button" role="tab" aria-selected={step === 'create'} className={tabClass(step === 'create')} onClick={() => setStep('create')}>New here</button>
-              <button type="button" role="tab" aria-selected={step === 'signin'} className={tabClass(step === 'signin')} onClick={() => setStep('signin')}>I have an account</button>
+              <button type="button" role="tab" aria-selected={step === 'signin' || step === 'pin'} className={tabClass(step === 'signin' || step === 'pin')} onClick={() => setStep('signin')}>I have an account</button>
             </div>
-            <VibersSignInForm
-              key={step} venueId={venueId} mode={step} onMode={setStep} onSignedIn={onSignedIn}
-              onNeedsProfile={() => setStep('profile')} onCheckEmail={(email) => { setSentTo(email); setStep('check_email'); }}
-            />
+            {step === 'pin' ? (
+              <>
+                <VibersPinSignInForm venueId={venueId} onSignedIn={onSignedIn} />
+                <div className="mt-1"><QuietButton onClick={() => setStep('signin')}>Use email and password instead</QuietButton></div>
+              </>
+            ) : (
+              <>
+                <VibersSignInForm
+                  key={step} venueId={venueId} mode={step} onMode={setStep} onSignedIn={onSignedIn}
+                  onNeedsProfile={() => setStep('profile')} onCheckEmail={(email) => { setSentTo(email); setStep('check_email'); }}
+                />
+                {step === 'signin' && <div className="mt-1"><QuietButton onClick={() => setStep('pin')}>Use @handle and PIN instead</QuietButton></div>}
+              </>
+            )}
           </>
         )}
 

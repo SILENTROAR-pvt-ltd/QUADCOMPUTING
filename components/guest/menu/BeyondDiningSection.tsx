@@ -2,83 +2,49 @@
 
 import React from 'react';
 import { MenuItem } from './types';
+import { ArrowRight } from 'lucide-react';
+import { SERVICE_SERIF } from './ServiceTile';
 
 interface BeyondDiningSectionProps {
   services: MenuItem[];
   onSelectService: (service: MenuItem) => void;
 }
 
-const DEFAULT_VENUE_SERVICES: MenuItem[] = [];
-
-export const BeyondDiningSection: React.FC<BeyondDiningSectionProps> = ({
-  services,
-  onSelectService,
-}) => {
-  const displayServices = services;
-
-  if (!displayServices || displayServices.length === 0) {
-    return null;
-  }
+/** What the venue offers beyond the table, at the foot of the menu, in the same tiles as "Experiences & services" above. */
+export const BeyondDiningSection: React.FC<BeyondDiningSectionProps> = ({ services, onSelectService }) => {
+  if (!services || services.length === 0) return null;
 
   return (
-    <div id="services-section" className="border-t border-zinc-200/80 pt-12 mt-12 pb-8 space-y-6">
-      <div className="space-y-1">
-        <span className="text-[10px] uppercase tracking-[0.25em] text-zinc-400 font-medium block">
-          BEYOND DINING
-        </span>
-        <h2 className="font-editorial text-2xl sm:text-3xl font-normal text-zinc-950 tracking-tight">
-          Explore Venue Services
-        </h2>
-        <p className="text-xs sm:text-sm text-zinc-500 font-light">
-          Extras the venue offers. Tap one to request it; it&apos;s added to your bill by the staff.
-        </p>
+    <section id="services-section" aria-label="Beyond dining" className="mt-12 border-t border-zinc-200/80 pb-8 pt-10">
+      <div className="mb-3 px-0.5">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-zinc-400">Beyond dining</p>
+        <h2 className="mt-1 text-[21px] leading-tight text-zinc-950" style={SERVICE_SERIF}>Explore venue services</h2>
+        <p className="mt-1.5 text-[12px] leading-snug text-zinc-500">Tap any to request it. Our team will add it to your bill.</p>
       </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-        {displayServices.map((service) => (
-          <div
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
+        {services.map((service) => (
+          <button
             key={service.id}
+            type="button"
             onClick={() => onSelectService(service)}
-            className="group rounded-2xl border border-zinc-200/80 bg-zinc-50/50 p-4 transition-all hover:bg-white hover:border-zinc-300 hover:shadow-sm cursor-pointer flex flex-col justify-between space-y-3"
+            className="group flex flex-col rounded-2xl border border-neutral-200/80 bg-white p-3 text-left shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_14px_28px_-20px_rgba(0,0,0,0.35)] active:scale-[0.98] cursor-pointer"
           >
-            <div className="space-y-2">
+            <span className="relative mb-2.5 block aspect-square w-full overflow-hidden rounded-xl bg-zinc-100">
               {service.image_url && (
-                <div className="h-36 sm:h-40 w-full overflow-hidden rounded-xl bg-zinc-100">
-                  <img
-                    src={service.image_url}
-                    alt={service.name}
-                    className="h-full w-full object-cover group-hover:scale-[1.02] transition-transform duration-300"
-                    loading="lazy"
-                  />
-                </div>
+                // eslint-disable-next-line @next/next/no-img-element -- the venue-uploaded photo; images.unoptimized is set, so next/image would not resize it either
+                <img src={service.image_url} alt="" loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" />
               )}
-              <div className="flex items-center justify-between pt-1">
-                <span className="text-[9px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-full bg-zinc-200/70 text-zinc-700">
-                  {service.category || 'Service'}
-                </span>
-                <span className="text-sm font-semibold text-zinc-900 tracking-tight font-sans">
-                  ₹{service.price}
-                </span>
-              </div>
-              <h4 className="font-editorial text-base sm:text-lg font-medium text-zinc-950 group-hover:text-black">
-                {service.name}
-              </h4>
-              {service.description && (
-                <p className="text-xs text-zinc-500 font-light line-clamp-2">
-                  {service.description}
-                </p>
-              )}
-            </div>
-
-            <button
-              type="button"
-              className="w-full rounded-xl border border-zinc-200 bg-white py-2 text-xs font-medium text-zinc-800 group-hover:border-black transition-colors cursor-pointer"
-            >
-              Inquire with Concierge →
-            </button>
-          </div>
+              <span className="absolute bottom-2 right-2 grid h-8 w-8 place-items-center rounded-full bg-zinc-950 text-white shadow-md transition-transform duration-300 group-hover:translate-x-0.5">
+                <ArrowRight className="h-4 w-4" aria-hidden />
+              </span>
+            </span>
+            <span className="px-0.5">
+              <span className="block truncate text-[9.5px] font-medium uppercase tracking-[0.18em] text-zinc-400">{service.category || 'Service'}</span>
+              <span className="mt-0.5 line-clamp-2 min-h-[2.2rem] text-[14px] leading-tight text-zinc-950" style={SERVICE_SERIF}>{service.name}</span>
+              <span className="mt-1 block text-[13px] font-semibold text-zinc-900">{service.price ? `₹${service.price}` : 'On request'}</span>
+            </span>
+          </button>
         ))}
-      </div>
-    </div>
+      </div>    </section>
   );
 };

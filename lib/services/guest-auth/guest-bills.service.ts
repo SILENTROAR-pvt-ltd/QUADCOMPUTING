@@ -400,6 +400,69 @@ export async function queryGuestInvoices(db: any, guestIds: string[], filters: I
   };
 }
 
+export interface SettledOrderBill {
+  id: string;
+  invoice_no: string;
+  venue: GuestVenue;
+  created_at: string;
+  table_number: string | null;
+  payment_method: string;
+  grand_total: number;
+  invoice: InvoiceData;
+}
+
+const tableKey = (v: unknown) => String(v ?? '').toLowerCase().replace(/^table\s*/, '').replace(/[^a-z0-9]/g, '');
+
+/** How long after settling a device may still fetch its own bill. */
+export const SETTLED_BILL_WINDOW_MS = 48 * 60 * 60 * 1000;
+
+/**
+ * The bill the venue generated for one settled order, in the shape the host's receipt renders (same items, discount, GST and
+ * invoice number). Only a device that can name the order id gets it, and only for the venue and table it asks about, so the
+ * next party at a table cannot read the previous party's bill. The guest's phone number is left off.
+ */
+export async function loadSettledOrderBill(db: any, businessId: string, orderId: string, table: string, now: Date = new Date()): Promise<SettledOrderBill | null> {
+  if (!UUID.test(orderId)) return null;
+  const { data: o, error } = await db.from('orders').select('*').eq('id', orderId).eq('business_id', businessId).maybeSingle();
+  if (error) throw error;
+  if (!o || !SETTLED_STATUSES.includes(String(o.status))) return null;
+  if (tableKey(o.table_number) !== tableKey(table)) return null;
+  const settledAt = Date.parse(o.updated_at || o.created_at);
+  if (Number.isFinite(settledAt) && now.getTime() - settledAt > SETTLED_BILL_WINDOW_MS) return null;
+
+  let items = itemsFromOrderJson(o);
+  if (items.length === 0) {
+    const { data: rows, error: itemErr } = await db.from('order_items').select('*').eq('order_id', orderId);
+    if (itemErr) throw itemErr;
+    items = itemsFromOrderRows(rows || []);
+  }
+  const venue = await loadVenueIdentity(db, businessId);
+  const grandTotal = num(o.grand_total) || num(o.total_amount);
+  return {
+    id: o.id,
+    invoice_no: invoiceNumber(o.id),
+    venue,
+    created_at: o.created_at,
+    table_number: text(o.table_number),
+    payment_method: text(o.payment_method) || 'SETTLED',
+    grand_total: grandTotal,
+    invoice: {
+      id: o.id,
+      created_at: o.created_at,
+      guest_name: text(o.customer_name) || undefined,
+      table_number: text(o.table_number) || undefined,
+      payment_method: text(o.payment_method) || 'SETTLED',
+      items,
+      subtotal: num(o.subtotal),
+      discountType: o.discount_type === 'percentage' ? 'percentage' : 'flat',
+      discountValue: num(o.discount_value),
+      discountAmount: num(o.discount_amount),
+      taxAmount: num(o.tax_amount),
+      grandTotal,
+      isReadOnly: true,
+    },
+  };
+}
 const CSV_HEADER = ['Date (IST)', 'Venue', 'Invoice', 'Table', 'Payment', 'Subtotal', 'Discount', 'GST', 'Total paid', 'Cashback', 'Wallet ID'];
 
 export function invoicesToCsv(invoices: GuestInvoice[]): string {

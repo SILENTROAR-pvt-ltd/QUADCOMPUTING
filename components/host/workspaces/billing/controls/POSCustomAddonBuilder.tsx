@@ -30,20 +30,20 @@ export function POSCustomAddonBuilder({ onAddCustomItem, setCustomAmount }: Prop
   };
 
   return (
-    <div className="rounded-2xl border border-zinc-200/90 bg-zinc-50/60 p-4 sm:p-5">
+    <div className="rounded-2xl border border-zinc-200/90 bg-zinc-50/60 p-3.5 sm:p-5">
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
           <span className="flex h-5 w-5 items-center justify-center rounded-md border border-zinc-200 bg-white text-zinc-700">
             <Plus className="h-3.5 w-3.5" />
           </span>
           <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-800">
-            Custom Entry / Ad-Hoc Add-on (₹)
+            Custom charge
           </h4>
         </div>
-        <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider">Instant Bill</span>
+        
       </div>
       <p className="text-[11px] text-zinc-500 mb-3.5">
-        Instantly add unlisted charges, rentals, or penalty fees directly to the active guest folio.
+        Add a charge that is not on the menu.
       </p>
 
       {/* Dual Input Form */}
@@ -53,27 +53,28 @@ export function POSCustomAddonBuilder({ onAddCustomItem, setCustomAmount }: Prop
             type="text"
             value={customItemName}
             onChange={(e) => setCustomItemName(e.target.value)}
-            placeholder="Description (e.g. Rental Bike, Airport Cab)..."
-            className="w-full rounded-xl border border-zinc-200 bg-white px-3.5 py-2.5 text-xs text-zinc-900 shadow-sm transition-all focus:border-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-200 placeholder:text-zinc-400"
+            placeholder="What for (e.g. Corkage)"
+            className="w-full h-11 rounded-xl border border-zinc-200 bg-white px-3.5 text-[16px] sm:text-sm text-zinc-900 shadow-sm transition-all focus:border-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-200 placeholder:text-zinc-400"
           />
         </div>
         <div className="sm:col-span-3 relative">
-          <span className="absolute left-3 top-2.5 text-zinc-400 font-mono text-xs font-bold">₹</span>
+          <span className="pointer-events-none absolute left-3 top-3 text-zinc-400 font-mono text-sm font-bold">₹</span>
           <input
             type="number"
+            inputMode="decimal"
             step="any"
             min="0"
             value={customItemPrice}
             onChange={(e) => setCustomItemPrice(e.target.value)}
             placeholder="0.00"
-            className="w-full rounded-xl border border-zinc-200 bg-white pl-7 pr-3 py-2.5 font-mono text-xs text-zinc-900 shadow-sm transition-all focus:border-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-200 placeholder:text-zinc-400"
+            className="w-full h-11 rounded-xl border border-zinc-200 bg-white pl-7 pr-3 font-mono text-[16px] sm:text-sm text-zinc-900 shadow-sm transition-all focus:border-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-200 placeholder:text-zinc-400"
           />
         </div>
         <div className="sm:col-span-3">
           <button
             type="submit"
             disabled={!customItemName.trim() || !customItemPrice || parseFloat(customItemPrice) <= 0}
-            className="w-full flex items-center justify-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3.5 py-2.5 text-xs font-medium text-zinc-800 shadow-sm transition-all hover:bg-zinc-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+            className="w-full h-11 flex items-center justify-center gap-1.5 rounded-xl border border-zinc-300 bg-white px-3.5 text-[13px] font-semibold text-zinc-800 shadow-sm transition-all hover:bg-zinc-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
           >
             <Plus className="h-3.5 w-3.5" />
             <span>Add to Bill</span>

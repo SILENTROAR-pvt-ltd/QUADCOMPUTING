@@ -76,6 +76,7 @@ export default function GuestVenueMenuPage() {
 
   useEffect(() => {
     fetchCatalog();
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- loads the venue's catalog when the venue changes, not on every render
   }, [rawCafeId]);
 
   const categories = useMemo(() => {

@@ -1,3 +1,4 @@
+import { safeMessage } from '@/lib/utils/safe-message';
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/supabase/admin';
 import { validateGuestAccess } from '@/lib/auth/guest-validate';
@@ -23,7 +24,7 @@ export const GET = withApiErrorBoundary(async function GET(request: Request) {
     return NextResponse.json({ success: true, reviews });
   } catch (error: any) {
     console.error('[API Reviews GET Error]', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: safeMessage(error, 'Internal Server Error') }, { status: 500 });
   }
 }, 'GuestReviewsGET');
 
@@ -59,10 +60,11 @@ export const POST = withApiErrorBoundary(async function POST(request: Request) {
       verified: false,
       helpfulCount: 0,
       timestamp: 'Just now',
+      createdAt: new Date().toISOString(),
     };
     return NextResponse.json({ success: true, review });
   } catch (error: any) {
     console.error('[API Reviews POST Error]', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: safeMessage(error, 'Internal Server Error') }, { status: 500 });
   }
 }, 'GuestReviewsPOST');

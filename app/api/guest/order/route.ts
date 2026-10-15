@@ -7,6 +7,7 @@ import { withIdempotency, generateIdempotencyKey } from '@/lib/services/api-idem
 import {
   getClientIp,
   checkGuestOrderRateLimit,
+  enforceRateLimit,
   rateLimitResponse,
 } from '@/lib/middleware/rate-limiter';
 import { withApiErrorBoundary, handleApiError } from '@/lib/middleware/error-handler';
@@ -24,6 +25,9 @@ export const GET = withApiErrorBoundary(async function GET(request: Request) {
 
     const validation = await validateGuestAccess(cafeParamRaw, tableParamRaw);
     if (validation.error) return validation.error;
+    // Venue-sized: every phone at the table polls this. Sets a ceiling against a runaway script, not a per-guest quota.
+    const limited = await enforceRateLimit(request, 'guest_order_get', 1500, 60_000, validation.businessId);
+    if (limited) return limited;
 
     const supabase = adminDb();
     const result = await getGuestActiveOrder(request.url, supabase);

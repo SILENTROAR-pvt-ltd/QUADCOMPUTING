@@ -6,10 +6,13 @@ export async function executeOrderMutation(
   existingOrderId: string | null
 ): Promise<any> {
   if (existingOrderId) {
+    // A field left undefined (the status of a table order that settles in the same request) is not touched.
+    const changes = Object.fromEntries(Object.entries(orderData).filter(([, value]) => value !== undefined));
     const { data: updated, error: updateError } = await supabase
       .from('orders')
-      .update(orderData)
+      .update(changes)
       .eq('id', existingOrderId)
+      .eq('business_id', orderData.business_id)
       .select()
       .maybeSingle();
 
@@ -20,6 +23,7 @@ export async function executeOrderMutation(
   const insertPayload = {
     id: existingOrderId || generatedId,
     ...orderData,
+    status: orderData.status ?? 'SETTLED',
     created_at: new Date().toISOString(),
   };
 

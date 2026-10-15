@@ -1,7 +1,9 @@
+import { safeMessage } from '@/lib/utils/safe-message';
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/supabase/admin';
 import { resolveBusinessId } from '@/lib/services/guest-order/business-resolver.service';
 import { withApiErrorBoundary } from '@/lib/middleware/error-handler';
+import { enforceRateLimit } from '@/lib/middleware/rate-limiter';
 
 // item_options exists in two shapes in deployed databases: the original
 // (catalog_item_id, option_name, additional_price) and the later one
@@ -51,6 +53,8 @@ export const GET = withApiErrorBoundary(async function GET(request: Request) {
     }
 
     const { businessId, business } = resolved;
+    const limited = await enforceRateLimit(request, 'guest_catalog_get', 300, 60_000, businessId);
+    if (limited) return limited;
     const supabase = adminDb();
 
     // 2. Query catalog_items filtered strictly by resolved business_id where is_available = true
@@ -85,7 +89,7 @@ export const GET = withApiErrorBoundary(async function GET(request: Request) {
     });
   } catch (error: any) {
     return NextResponse.json(
-      { error: error?.message || 'Internal server error fetching catalog' },
+      { error: safeMessage(error, 'Internal server error fetching catalog') },
       { status: 500 }
     );
   }

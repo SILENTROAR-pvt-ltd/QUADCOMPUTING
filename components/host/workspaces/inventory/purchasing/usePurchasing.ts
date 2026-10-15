@@ -53,6 +53,16 @@ export function usePurchasing(version: number) {
     }).then(load);
   };
 
+  /** The goods are already here: saved as an order and booked into stock in one request (no vendor means a market purchase). */
+  const recordNow = async (vendor: Vendor | null, lines: PurchaseLine[], note: string) => {
+    const j = await call('/api/host/inventory/purchase-orders', 'POST', {
+      reference: poReference(), vendor_id: vendor?.id ?? null, vendor_name: vendor?.name ?? '', vendor_phone: vendor?.phone ?? null,
+      lines, note, receive_now: true,
+    });
+    void load();
+    return j as { received: number; failed: string[] };
+  };
+
   const resend = (o: PurchaseOrder) => {
     const text = buildPurchaseMessage({ venueName, vendorName: o.vendor_name, reference: o.reference, lines: o.lines, note: o.note });
     window.open(whatsappUrl(o.vendor_phone, `Reminder: ${text}`), '_blank', 'noopener,noreferrer');
@@ -66,5 +76,5 @@ export function usePurchasing(version: number) {
 
   const cancel = async (id: string) => { await call('/api/host/inventory/purchase-orders', 'PATCH', { id, action: 'cancel' }); await load(); };
 
-  return { vendors, orders, venueName, error, loaded, onOrder, saveVendor, sendOrder, resend, receive, cancel };
+  return { vendors, orders, venueName, error, loaded, onOrder, saveVendor, sendOrder, recordNow, resend, receive, cancel };
 }

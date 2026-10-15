@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import type { KitchenTicket, KitchenItem } from '@/lib/utils/kitchen';
+import { normalizeKitchenTicket, normalizeKitchenTickets } from '@/lib/utils/kitchen-normalize';
 
 export interface OrderItemRecord {
   id: string;
@@ -68,8 +69,8 @@ export function useKitchenRealtime({
         throw new Error(`Failed to fetch kitchen tickets: HTTP ${res.status}`);
       }
       const data = await res.json();
-      const list: KitchenTicket[] = data.tickets || [];
-      setTickets(list);
+      // One malformed ticket (no dishes list, a broken row) must not blank the whole board.
+      setTickets(normalizeKitchenTickets(data.tickets));
     } catch (err: any) {
       console.error('[useKitchenRealtime fetch error]:', err);
       setError(err.message || 'Error fetching kitchen tickets');
@@ -236,7 +237,7 @@ export function useKitchenRealtime({
         // Reconcile with server response if returned
         if (data.ticket) {
           setTickets((prev) =>
-            prev.map((t) => (t.id === ticketId ? { ...t, ...data.ticket } : t))
+            prev.map((t) => (t.id === ticketId ? normalizeKitchenTicket({ ...t, ...data.ticket }) : t))
           );
         }
         return true;

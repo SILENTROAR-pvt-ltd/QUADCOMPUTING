@@ -32,6 +32,7 @@ export function CustomizationDrawerHeader({ item, onClose }: CustomizationDrawer
       {/* Dish Preview Header */}
       <div className="flex items-start gap-4 pb-4 border-b border-neutral-800">
         {item.image_url ? (
+          // eslint-disable-next-line @next/next/no-img-element -- the venue-uploaded photo; images.unoptimized is set, so next/image would not resize it either
           <img
             src={item.image_url}
             alt={item.name}

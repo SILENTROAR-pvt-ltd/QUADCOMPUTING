@@ -161,7 +161,7 @@ export function POSTableSelector({
               <button
                 type="button"
                 onClick={() => onMarkVacant(activeTable)}
-                className="text-[10px] font-bold text-neutral-700 hover:text-neutral-900 hover:bg-neutral-100 uppercase tracking-wider bg-white px-2.5 py-1 rounded-lg border border-neutral-200 transition-all cursor-pointer shadow-sm active:scale-95"
+                className="h-9 text-[10px] font-bold text-neutral-700 hover:text-neutral-900 hover:bg-neutral-100 uppercase tracking-wider bg-white px-3 rounded-lg border border-neutral-200 transition-all cursor-pointer shadow-sm active:scale-95"
                 title="Clear active order and mark table vacant"
               >
                 Mark Vacant
@@ -170,7 +170,7 @@ export function POSTableSelector({
             <button
               type="button"
               onClick={handleSelectTakeaway}
-              className="text-[10px] font-bold text-neutral-500 hover:text-neutral-900 uppercase tracking-wider bg-neutral-100 px-2 py-1 rounded-lg border border-neutral-200 transition-colors shrink-0 cursor-pointer"
+              className="h-9 text-[10px] font-bold text-neutral-500 hover:text-neutral-900 uppercase tracking-wider bg-neutral-100 px-3 rounded-lg border border-neutral-200 transition-colors shrink-0 cursor-pointer"
             >
               Reset
             </button>
@@ -183,7 +183,7 @@ export function POSTableSelector({
         <button
           type="button"
           onClick={handleSelectTakeaway}
-          className={`w-full rounded-xl border px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer ${
+          className={`w-full min-h-11 rounded-xl border px-3 py-2 text-[11px] font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99] ${
             !selectedTableId && !selectedRoomId
               ? 'border-neutral-300 bg-neutral-100 text-neutral-900 shadow-sm font-semibold'
               : 'border-neutral-200 bg-neutral-50 text-neutral-600 hover:text-neutral-900 hover:border-neutral-300'
@@ -192,7 +192,7 @@ export function POSTableSelector({
           Takeaway / Quick Counter
         </button>
 
-        <div className="max-h-36 overflow-y-auto pr-1 grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+        <div className="grid max-h-[38dvh] grid-cols-3 gap-1.5 overflow-y-auto overscroll-contain pr-1 lg:max-h-44 lg:grid-cols-3">
           {activeTab === 'tables' &&
             tables.map((table) => (
               <POSTableGridItem

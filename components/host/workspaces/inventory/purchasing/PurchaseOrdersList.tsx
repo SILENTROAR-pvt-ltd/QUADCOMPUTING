@@ -18,7 +18,7 @@ const STATUS = {
   received: { label: 'Received', chip: 'bg-emerald-50 text-emerald-800 ring-emerald-200' },
   cancelled: { label: 'Cancelled', chip: 'bg-neutral-100 text-neutral-600 ring-neutral-200' },
 } as const;
-const btn = 'inline-flex h-9 items-center gap-1.5 rounded-xl px-3 text-xs font-semibold cursor-pointer';
+const btn = 'inline-flex h-11 items-center gap-1.5 rounded-xl px-3 text-xs font-semibold cursor-pointer active:scale-[0.98] sm:h-10';
 
 /** Orders sent to vendors: open ones can be chased on WhatsApp, received into stock, or cancelled. */
 export function PurchaseOrdersList({ orders, onReceive, onResend, onCancel }: Props) {
@@ -51,16 +51,19 @@ export function PurchaseOrdersList({ orders, onReceive, onResend, onCancel }: Pr
               <span className={`rounded-md px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset ${s.chip}`}>{s.label}</span>
             </div>
             <p className="mt-2 text-sm text-neutral-700">
-              {o.lines.map((l) => `${l.name} ${qty(l.received_quantity ?? l.quantity, l.unit)}`).join(' · ')}
+              {o.lines.map((l) => `${l.name}${l.is_new ? ' (new)' : ''} ${qty(l.received_quantity ?? l.quantity, l.unit)}`).join(' · ')}
             </p>
             {o.note && <p className="mt-1 text-[11px] text-neutral-500">{o.note}</p>}
-            <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-              <span className="text-xs text-neutral-500">About {inr(o.estimated_total)}</span>
+            {o.status === 'sent' && o.lines.some((l) => l.is_new) && (
+              <p className="mt-1 text-[11px] text-emerald-700">New items are added to your raw inventory when you receive this order.</p>
+            )}
+            <div className="mt-3 space-y-2">
+              <span className="block text-xs text-neutral-500">About {inr(o.estimated_total)}</span>
               {o.status === 'sent' && (
-                <div className="flex flex-wrap gap-2">
-                  <button type="button" onClick={() => { if (confirm(`Cancel order ${o.reference}?`)) void onCancel(o); }} className={`${btn} text-neutral-500 hover:bg-neutral-100`}><XCircle className="h-4 w-4" /> Cancel</button>
-                  <button type="button" onClick={() => onResend(o)} className={`${btn} border border-neutral-200 text-neutral-800 hover:bg-neutral-50`}><MessageCircle className="h-4 w-4" /> Remind</button>
-                  <button type="button" onClick={() => onReceive(o)} className={`${btn} bg-neutral-950 text-white hover:bg-neutral-800`}><PackageCheck className="h-4 w-4" /> Receive delivery</button>
+                <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-end">
+                  <button type="button" onClick={() => onReceive(o)} className={`${btn} col-span-2 h-12 justify-center bg-neutral-950 text-sm text-white hover:bg-neutral-800 sm:col-span-1 sm:h-10`}><PackageCheck className="h-4 w-4" /> Receive delivery</button>
+                  <button type="button" onClick={() => onResend(o)} className={`${btn} justify-center border border-neutral-200 text-neutral-800 hover:bg-neutral-50`}><MessageCircle className="h-4 w-4" /> Remind</button>
+                  <button type="button" onClick={() => { if (confirm(`Cancel order ${o.reference}?`)) void onCancel(o); }} className={`${btn} justify-center text-neutral-500 hover:bg-neutral-100`}><XCircle className="h-4 w-4" /> Cancel</button>
                 </div>
               )}
             </div>

@@ -12,6 +12,7 @@ import { MobileNavDrawer } from './control-center/MobileNavDrawer';
 import { WorkspaceViewRouter } from './control-center/WorkspaceViewRouter';
 import { useStaffAlerts } from './control-center/useStaffAlerts';
 import { StaffAlertsTray } from './control-center/StaffAlertsTray';
+import { HostAlertSound } from './control-center/HostAlertSound';
 import { useVenueTabGuard } from './control-center/useVenueTabGuard';
 
 interface ControlCenterWorkspaceProps {
@@ -61,7 +62,7 @@ export default function ControlCenterWorkspace({
   // render if it was missing or foreign, so this is always the venue shown in the URL.
   const venueId = initialBusinessId;
   const venueName = initialBusinessName;
-  const { pendingKotCount } = usePendingKot(venueId);
+  const { pendingKotCount, kotArrivals } = usePendingKot(venueId);
   const staffAlerts = useStaffAlerts(venueId);
 
   const handleTabChange = (tab: ControlCenterTab | 'analytics') => {
@@ -93,6 +94,8 @@ export default function ControlCenterWorkspace({
       </div>
 
       <StaffAlertsTray alerts={staffAlerts.alerts} freshIds={staffAlerts.freshIds} onResolve={staffAlerts.resolve} />
+      {/* On every tab: the bell for new orders and guest calls. */}
+      <HostAlertSound alerts={staffAlerts.alerts} freshIds={staffAlerts.freshIds} kotArrivals={kotArrivals} />
     </div>
   );
 }

@@ -53,6 +53,16 @@ if (env.RATE_LIMIT_REQUIRE_REDIS === '1') {
   warnings.push('UPSTASH_REDIS_REST_URL/TOKEN not configured: rate limiting will fall back to per-instance memory store');
 }
 
+// Without a DSN nothing reaches Sentry: a production error would go unseen. A warning, not a failure, so a deploy is
+// never blocked for it; set VERIFY_SENTRY_REQUIRED=1 to make it a hard requirement.
+if (!env.NEXT_PUBLIC_SENTRY_DSN && !env.SENTRY_DSN) {
+  const msg = 'NEXT_PUBLIC_SENTRY_DSN is not set: production errors will not be reported to Sentry';
+  if (env.VERIFY_SENTRY_REQUIRED === '1') errors.push(msg); else warnings.push(msg);
+}
+if (strict && !env.UPSTASH_REDIS_REST_URL) {
+  warnings.push('Production without Upstash: rate limits and duplicate-order guards are per server instance, not shared between instances');
+}
+
 if (!env.LLM_API_KEY) warnings.push('LLM_API_KEY is not set: menu scan and dish-photo matching run without the language model (exact matching still works)');
 
 for (const name of Object.keys(env)) {

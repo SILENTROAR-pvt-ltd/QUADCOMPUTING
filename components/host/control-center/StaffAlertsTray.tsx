@@ -5,7 +5,7 @@ import { Bell, Check, ChefHat, ConciergeBell, Receipt, Sparkles, AlertTriangle, 
 import type { StaffAlert } from './useStaffAlerts';
 
 const TYPE_META: Record<string, { label: string; icon: React.FC<{ className?: string }>; tone: string }> = {
-  WAITER: { label: 'Called the waiter', icon: ConciergeBell, tone: 'bg-sky-50 text-sky-700 border-sky-200' },
+  WAITER: { label: 'Wants the waiter', icon: ConciergeBell, tone: 'bg-sky-50 text-sky-700 border-sky-200' },
   CHEF: { label: 'Wants the chef', icon: ChefHat, tone: 'bg-amber-50 text-amber-700 border-amber-200' },
   BILL: { label: 'Requested the bill', icon: Receipt, tone: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
   SERVICE: { label: 'Service request', icon: Sparkles, tone: 'bg-violet-50 text-violet-700 border-violet-200' },
@@ -69,11 +69,11 @@ export function StaffAlertsTray({ alerts, freshIds, onResolve }: Props) {
                   <p className="text-sm font-semibold text-neutral-900">
                     {a.table_number ? `Table ${a.table_number}` : 'Venue'} <span className="font-normal text-neutral-500">· {meta.label}</span>
                   </p>
-                  {a.message && <p className="text-xs text-neutral-600 truncate">{a.message}</p>}
+                  {a.message && <p className="mt-0.5 break-words rounded-lg bg-neutral-50 px-2 py-1 text-[13px] font-medium leading-snug text-neutral-900">“{a.message}”</p>}
                   <p className="text-[11px] text-neutral-400">{timeAgo(a.created_at, now)}</p>
                 </div>
                 <button type="button" onClick={() => onResolve(a.id)} aria-label="Mark as handled"
-                  className="shrink-0 inline-flex items-center gap-1 rounded-lg border border-neutral-200 px-2 py-1 text-[11px] font-medium text-neutral-700 hover:bg-neutral-100 cursor-pointer">
+                  className="shrink-0 inline-flex h-10 items-center gap-1 rounded-xl border border-neutral-200 px-3 text-[12px] font-semibold text-neutral-700 hover:bg-neutral-100 active:scale-95 cursor-pointer">
                   <Check className="w-3 h-3" /> Done
                 </button>
               </li>

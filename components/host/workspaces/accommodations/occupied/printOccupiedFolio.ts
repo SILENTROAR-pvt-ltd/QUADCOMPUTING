@@ -1,4 +1,5 @@
 import type { PhysicalRoom } from '@/types';
+import { escapeHtml as esc } from '@/lib/utils/escape-html';
 
 interface PrintFolioOptions {
   room: PhysicalRoom;
@@ -22,14 +23,14 @@ export function printOccupiedFolio({ room, billingSummary, orders }: PrintFolioO
 
   const itemsHtml = orders.flatMap(o => (Array.isArray(o.items) ? o.items : [])).map(it => `
     <div style="display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px dashed #eee;">
-      <span>${it.qty}x ${it.name}</span>
+      <span>${esc(it.qty)}x ${esc(it.name)}</span>
       <span>₹${(it.price * it.qty).toFixed(2)}</span>
     </div>
   `).join('');
 
   const addonsHtml = (Array.isArray(room.selected_addons) ? room.selected_addons : []).map((a: any) => `
     <div style="display:flex; justify-content:space-between; padding:4px 0;">
-      <span>${a.name} (${a.billingType || 'addon'})</span>
+      <span>${esc(a.name)} (${esc(a.billingType || 'addon')})</span>
       <span>₹${Number(a.price).toFixed(2)}</span>
     </div>
   `).join('');
@@ -38,7 +39,7 @@ export function printOccupiedFolio({ room, billingSummary, orders }: PrintFolioO
     <!DOCTYPE html>
     <html>
       <head>
-        <title>Guest Folio - Room ${room.room_number}</title>
+        <title>Guest Folio - Room ${esc(room.room_number)}</title>
         <style>
           body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 30px; color: #111; max-width: 600px; margin: 0 auto; }
           h1 { font-size: 20px; margin-bottom: 4px; }
@@ -51,11 +52,11 @@ export function printOccupiedFolio({ room, billingSummary, orders }: PrintFolioO
       <body>
         <div class="header">
           <h1>INTERIM GUEST FOLIO</h1>
-          <p style="margin:0; font-size:12px;">Room ${room.room_number} • ${room.category?.name || 'Accommodation'}</p>
+          <p style="margin:0; font-size:12px;">Room ${esc(room.room_number)} • ${esc(room.category?.name || 'Accommodation')}</p>
         </div>
         <div class="meta">
-          <p><strong>Guest:</strong> ${room.guest_name || 'In-House Guest'}</p>
-          <p><strong>Contact:</strong> ${room.guest_phone || 'N/A'}</p>
+          <p><strong>Guest:</strong> ${esc(room.guest_name || 'In-House Guest')}</p>
+          <p><strong>Contact:</strong> ${esc(room.guest_phone || 'N/A')}</p>
           <p><strong>Check-In:</strong> ${room.check_in_time ? new Date(room.check_in_time).toLocaleString() : 'N/A'}</p>
         </div>
 

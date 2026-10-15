@@ -168,7 +168,9 @@ export function usePOSCart(activeItems: CatalogItem[] = []) {
   const grandTotal = Math.round(taxableAmount + gstAmount);
   // Same base the settlement function credits: the full bill before discount and before tax.
   // A discount or a wallet redemption does not reduce the guest's cashback.
-  const cashbackAmount = cashbackEnabled ? Math.round(subtotal * 0.07 * 100) / 100 : 0;
+  // Only a guest signed in on Vibers Connect has a wallet to receive it: a walk-in bill earns none.
+  const cashbackAllowed = Boolean(linkedGuestHandle);
+  const cashbackAmount = cashbackEnabled && cashbackAllowed ? Math.round(subtotal * 0.07 * 100) / 100 : 0;
 
   const handleAddItemToCart = useCallback((item: CatalogItemPayload) => {
     setSelectedItems((prev) => {
@@ -271,7 +273,8 @@ export function usePOSCart(activeItems: CatalogItem[] = []) {
     gstAmount,
     gstRateLabel,
     grandTotal,
-    cashbackEnabled,
+    cashbackEnabled: cashbackEnabled && cashbackAllowed,
+    cashbackAllowed,
     setCashbackEnabled,
     cashbackAmount,
     linkedGuestHandle,

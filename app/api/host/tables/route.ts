@@ -1,3 +1,4 @@
+import { safeMessage } from '@/lib/utils/safe-message';
 import { NextResponse } from 'next/server';
 import { requireHost } from '@/lib/auth/guards';
 import {
@@ -23,7 +24,7 @@ export const GET = withApiErrorBoundary(async function GET(request: Request) {
   } catch (error: any) {
     console.error('[API Tables GET]', error);
     return NextResponse.json(
-      { error: error.message || 'Internal Server Error' },
+      { error: safeMessage(error, 'Internal Server Error') },
       { status: 500 }
     );
   }
@@ -52,7 +53,7 @@ export const POST = withApiErrorBoundary(async function POST(request: Request) {
   } catch (error: any) {
     console.error('[API Tables POST]', error);
     return NextResponse.json(
-      { error: error.message || 'Internal Server Error' },
+      { error: safeMessage(error, 'Internal Server Error') },
       { status: error.message?.includes('required') ? 400 : 500 }
     );
   }
@@ -81,7 +82,7 @@ export const PATCH = withApiErrorBoundary(async function PATCH(request: Request)
   } catch (error: any) {
     console.error('[API Tables PATCH]', error);
     return NextResponse.json(
-      { error: error.message || 'Internal Server Error' },
+      { error: safeMessage(error, 'Internal Server Error') },
       { status: error.message?.includes('required') ? 400 : 500 }
     );
   }
@@ -110,7 +111,7 @@ export const DELETE = withApiErrorBoundary(async function DELETE(request: Reques
   } catch (error: any) {
     console.error('[API Tables DELETE]', error);
     return NextResponse.json(
-      { error: error.message || 'Internal Server Error' },
+      { error: safeMessage(error, 'Internal Server Error') },
       { status: 500 }
     );
   }

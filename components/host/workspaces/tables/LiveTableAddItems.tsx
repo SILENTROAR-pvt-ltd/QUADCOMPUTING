@@ -76,14 +76,14 @@ export function LiveTableAddItems({ venueId, tableNumber, onAdded }: LiveTableAd
           placeholder="Search the menu"
           aria-label="Search the menu"
           maxLength={60}
-          className="w-full rounded-xl border border-neutral-200 bg-white py-2.5 pl-9 pr-3 text-sm focus:border-neutral-900 focus:outline-none"
+          className="h-11 w-full rounded-xl border border-neutral-200 bg-white pl-9 pr-3 text-[16px] sm:text-sm focus:border-neutral-900 focus:outline-none"
         />
       </div>
 
       <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1" role="group" aria-label="Category">
         {categories.map((c) => (
           <button key={c} type="button" onClick={() => setCategory(c)} aria-pressed={category === c}
-            className={`shrink-0 rounded-full border px-3 py-1 text-[11px] font-semibold cursor-pointer ${category === c ? 'border-neutral-950 bg-neutral-950 text-white' : 'border-neutral-200 bg-white text-neutral-700'}`}>
+            className={`h-9 shrink-0 rounded-full border px-3.5 text-[12px] font-semibold cursor-pointer ${category === c ? 'border-neutral-950 bg-neutral-950 text-white' : 'border-neutral-200 bg-white text-neutral-700'}`}>
             {c}
           </button>
         ))}
@@ -94,21 +94,21 @@ export function LiveTableAddItems({ venueId, tableNumber, onAdded }: LiveTableAd
       ) : visible.length === 0 ? (
         <p className="text-xs text-neutral-500">No menu items match.</p>
       ) : (
-        <ul className="max-h-72 divide-y divide-neutral-100 overflow-y-auto rounded-xl border border-neutral-200 bg-white">
+        <ul className="max-h-[48dvh] divide-y divide-neutral-100 overflow-y-auto rounded-xl border border-neutral-200 bg-white">
           {visible.map((item) => {
             const qty = cart[item.id] ?? 0;
             return (
-              <li key={item.id} className="flex items-center justify-between gap-3 px-3 py-2">
+              <li key={item.id} className="flex items-center justify-between gap-3 px-3 py-2.5">
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium text-neutral-950">{item.name}</p>
                   <p className="text-[11px] text-neutral-500">{item.category} · {inr(item.price)}</p>
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
                   {qty > 0 && (
-                    <button type="button" onClick={() => setQty(item.id, qty - 1)} aria-label={`Remove one ${item.name}`} className="flex h-8 w-8 items-center justify-center rounded-lg border border-neutral-200 cursor-pointer"><Minus className="h-3.5 w-3.5" /></button>
+                    <button type="button" onClick={() => setQty(item.id, qty - 1)} aria-label={`Remove one ${item.name}`} className="flex h-10 w-10 items-center justify-center rounded-xl border border-neutral-200 cursor-pointer active:bg-neutral-100"><Minus className="h-3.5 w-3.5" /></button>
                   )}
                   {qty > 0 && <span className="w-6 text-center font-mono text-sm font-bold">{qty}</span>}
-                  <button type="button" onClick={() => setQty(item.id, qty + 1)} aria-label={`Add one ${item.name}`} className="flex h-8 w-8 items-center justify-center rounded-lg bg-neutral-950 text-white cursor-pointer"><Plus className="h-3.5 w-3.5" /></button>
+                  <button type="button" onClick={() => setQty(item.id, qty + 1)} aria-label={`Add one ${item.name}`} className="flex h-10 w-10 items-center justify-center rounded-xl bg-neutral-950 text-white cursor-pointer active:bg-neutral-800"><Plus className="h-3.5 w-3.5" /></button>
                 </div>
               </li>
             );
@@ -123,7 +123,7 @@ export function LiveTableAddItems({ venueId, tableNumber, onAdded }: LiveTableAd
         type="button"
         onClick={send}
         disabled={sending || lines.length === 0}
-        className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl bg-neutral-950 py-3 text-xs font-semibold uppercase tracking-wider text-white hover:bg-neutral-800 disabled:opacity-40"
+        className="sticky bottom-0 flex h-14 w-full cursor-pointer items-center justify-center gap-2 rounded-2xl bg-neutral-950 text-[14px] font-semibold text-white shadow-[0_14px_24px_-14px_rgba(0,0,0,0.6)] active:scale-[0.99] disabled:bg-neutral-300 disabled:shadow-none"
       >
         {sending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
         {lines.length === 0 ? 'Pick items to add' : `Add ${lines.reduce((n, l) => n + l.qty, 0)} to table · ${inr(total)}`}

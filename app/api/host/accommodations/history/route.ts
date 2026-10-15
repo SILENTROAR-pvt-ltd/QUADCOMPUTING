@@ -1,3 +1,4 @@
+import { safeMessage } from '@/lib/utils/safe-message';
 import { NextResponse } from 'next/server';
 import { requireHost } from '@/lib/auth/guards';
 import { calculateNights, computeStayHistoryMetrics } from '@/lib/utils/accommodations';
@@ -122,6 +123,6 @@ export const GET = withApiErrorBoundary(async function GET(request: Request) {
     });
   } catch (error: any) {
     console.error('[API Accommodations History GET Exception]', error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: safeMessage(error, 'Internal Server Error') }, { status: 500 });
   }
 }, 'AccommodationsHistoryGET');

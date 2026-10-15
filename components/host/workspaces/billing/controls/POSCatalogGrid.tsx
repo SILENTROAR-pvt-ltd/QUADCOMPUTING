@@ -49,7 +49,7 @@ export function POSCatalogGrid({
       item_type: ai.kind === 'food_beverage' ? 'food' : (ai.kind === 'accommodation' ? 'room' : 'service'),
       description: ai.description || '',
     }));
-  }, [activeItems]);
+  }, [activeItems, offersAccommodation]);
 
   const [catalog, setCatalog] = useState<CatalogItemPayload[]>(initialCatalog);
   const [categories, setCategories] = useState<string[]>(['All', 'F&B', 'Room Add-ons', 'Services']);
@@ -97,7 +97,7 @@ export function POSCatalogGrid({
               const categorySet = new Set(baseCategories);
               uniqueItems.forEach((item) => item.category && categorySet.add(item.category));
               setCategories(Array.from(categorySet));
-              if (!offersAccommodation && selectedCategory === 'Room Add-ons') setSelectedCategory('All');
+              if (!offersAccommodation) setSelectedCategory((current) => (current === 'Room Add-ons' ? 'All' : current));
               setIsLoading(false);
             }
             return;
@@ -131,7 +131,7 @@ export function POSCatalogGrid({
           if (item.category) catSet.add(item.category);
         });
         setCategories(Array.from(catSet));
-        if (!offersAccommodation && selectedCategory === 'Room Add-ons') setSelectedCategory('All');
+        if (!offersAccommodation) setSelectedCategory((current) => (current === 'Room Add-ons' ? 'All' : current));
         setIsLoading(false);
       }
     }
@@ -240,25 +240,25 @@ export function POSCatalogGrid({
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
         <div>
           <h3 className="font-serif text-xl font-medium text-black tracking-tight">Catalog & Add-on Services</h3>
-          <p className="text-xs text-zinc-500 mt-0.5">Click any service to add or increment in checkout cart.</p>
+          <p className="text-xs text-zinc-500 mt-0.5">Tap an item to add it. Tap again to add one more.</p>
         </div>
 
         {/* Quick Search Bar */}
         <div className="relative w-full sm:w-64">
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-zinc-400" />
+          <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-zinc-400" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             // Browser spellcheck extensions add attributes to this input before React hydrates.
             suppressHydrationWarning
-            placeholder="Search services & add-ons..."
-            className="w-full rounded-xl border border-zinc-200 bg-white pl-9 pr-8 py-2 text-xs text-zinc-900 placeholder:text-zinc-400 transition-all focus:border-zinc-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-zinc-200"
+            placeholder="Search the menu"
+            className="w-full h-11 rounded-xl border border-zinc-200 bg-white pl-9 pr-10 text-[16px] sm:text-sm text-zinc-900 placeholder:text-zinc-400 transition-all focus:border-zinc-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-zinc-200"
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery('')}
-              className="absolute right-2.5 top-2.5 text-zinc-400 hover:text-black cursor-pointer"
+              className="absolute right-0 top-0 grid h-11 w-11 place-items-center text-zinc-400 hover:text-black cursor-pointer" aria-label="Clear search"
               title="Clear search"
             >
               <X className="h-4 w-4" />
@@ -268,7 +268,7 @@ export function POSCatalogGrid({
       </div>
 
       {/* Horizontal Category Tabs */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-2 no-scrollbar">
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-2 no-scrollbar min-w-0">
         {categories.map((cat) => {
           const count = categoryCounts[cat] ?? 0;
           const isSelected = selectedCategory === cat;
@@ -276,7 +276,7 @@ export function POSCatalogGrid({
             <button
               key={cat}
               onClick={() => setSelectedCategory(cat)}
-              className={`shrink-0 flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all cursor-pointer ${
+              className={`shrink-0 flex h-10 items-center gap-1.5 rounded-xl px-3.5 text-[13px] sm:text-xs font-medium transition-all cursor-pointer active:scale-95 ${
                 isSelected
                   ? 'border border-zinc-300 bg-white text-zinc-900 shadow-sm'
                   : 'border border-transparent bg-zinc-100 text-zinc-600 hover:bg-zinc-200 hover:text-zinc-900'
@@ -294,7 +294,7 @@ export function POSCatalogGrid({
       </div>
 
       {/* Scrollable Dynamic Grid */}
-      <div className="mt-3.5 max-h-[310px] overflow-y-auto pr-1">
+      <div className="mt-3 max-h-[56dvh] overflow-y-auto overscroll-contain pr-1 lg:max-h-[330px]">
         {isLoading ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
             {[...Array(6)].map((_, i) => (
@@ -302,16 +302,16 @@ export function POSCatalogGrid({
             ))}
           </div>
         ) : filteredItems.length > 0 ? (
-          <div className="grid auto-rows-[112px] grid-cols-2 gap-2.5 sm:grid-cols-3">
+          <div className="grid auto-rows-[104px] grid-cols-2 gap-2 sm:auto-rows-[112px] sm:grid-cols-3 sm:gap-2.5">
             {filteredItems.map((item) => {
               const inCartQty = cartQtyMap.get(item.id) || 0;
               const canEditPrice = isEditableService(item);
               return (
-                <div key={item.id} className="relative h-[112px]">
+                <div key={item.id} className="relative h-full min-w-0">
                   <button
                     type="button"
                     onClick={() => handleItemClick(item)}
-                    className={`group relative flex h-full w-full flex-col justify-between overflow-hidden rounded-xl border p-3.5 text-left transition-all cursor-pointer ${
+                    className={`group relative flex h-full w-full flex-col justify-between overflow-hidden rounded-xl border p-3 text-left transition-all cursor-pointer active:scale-[0.97] ${
                       inCartQty > 0
                         ? 'border-zinc-400 bg-zinc-50 shadow-sm'
                         : 'border-zinc-200/90 bg-zinc-50/50 hover:border-zinc-300 hover:bg-white hover:shadow-md'
@@ -345,7 +345,7 @@ export function POSCatalogGrid({
                         setPriceDraft(String(item.price));
                         setPriceError('');
                       }}
-                      className="absolute right-2 top-2 z-10 rounded-md border border-zinc-200 bg-white p-1.5 text-zinc-500 shadow-sm transition-colors hover:bg-zinc-100 hover:text-zinc-900"
+                      className="absolute right-1.5 top-1.5 z-10 grid h-9 w-9 place-items-center rounded-lg border border-zinc-200 bg-white text-zinc-500 shadow-sm transition-colors hover:bg-zinc-100 hover:text-zinc-900"
                     >
                       <Pencil className="h-3 w-3" />
                     </button>
@@ -373,7 +373,7 @@ export function POSCatalogGrid({
             <h3 id="service-price-title" className="text-base font-semibold">Edit service price</h3>
             <p className="mt-1 truncate text-sm text-neutral-600">{priceEditorItem.name}</p>
             <label htmlFor="service-price" className="mt-4 block text-xs font-medium text-neutral-700">Price (₹)</label>
-            <input id="service-price" type="number" min="0" step="0.01" value={priceDraft} onChange={(event) => setPriceDraft(event.target.value)} className="mt-1 w-full rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 focus:border-neutral-400 focus:outline-none focus:ring-1 focus:ring-neutral-200" autoFocus />
+            <input id="service-price" type="number" inputMode="decimal" min="0" step="0.01" value={priceDraft} onChange={(event) => setPriceDraft(event.target.value)} className="mt-1 w-full h-11 rounded-lg border border-neutral-200 bg-white px-3 text-[16px] sm:text-sm text-neutral-900 focus:border-neutral-400 focus:outline-none focus:ring-1 focus:ring-neutral-200" autoFocus />
             {priceError && <p role="alert" className="mt-2 text-xs text-rose-600">{priceError}</p>}
             <div className="mt-5 flex justify-end gap-2">
               <button type="button" onClick={() => setPriceEditorItem(null)} disabled={isSavingPrice} className="rounded-lg border border-neutral-200 bg-neutral-100 px-3 py-2 text-xs font-medium text-neutral-800 hover:bg-neutral-200 disabled:opacity-50">Cancel</button>

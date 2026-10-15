@@ -3,6 +3,7 @@
 import React from 'react';
 import dynamic from 'next/dynamic';
 import type { ControlCenterTab } from '../ControlCenterHeader';
+import { WorkspaceErrorBoundary } from './WorkspaceErrorBoundary';
 
 // Each workspace is its own bundle, so a host opening one tab does not download the other nine.
 // The skeleton shows while the chunk arrives; the view itself is unchanged.
@@ -36,18 +37,21 @@ export function WorkspaceViewRouter({ activeTab, venueId, onNavigate }: Workspac
 
   return (
     <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full pb-28">
-      <div className="animate-in fade-in duration-300">
-        {activeTab === 'billing' && <BillingWorkspace onNavigate={handleNav} />}
-        {activeTab === 'tables' && <LiveTablesWorkspace venueId={venueId} onNavigate={handleNav} />}
-        {activeTab === 'kitchen' && <KitchenWorkspace cafeId={venueId} />}
-        {activeTab === 'catalog' && <CatalogWorkspace cafeId={venueId} onNavigate={handleNav} />}
-        {activeTab === 'accommodations' && <AccommodationsWorkspace onNavigate={handleNav} />}
-        {activeTab === 'inventory' && <InventoryWorkspace />}
-        {activeTab === 'expenses' && <ExpensesWorkspace />}
-        {(activeTab === 'dashboard' || (activeTab as string) === 'analytics') && <DashboardWorkspace venueId={venueId} />}
-        {activeTab === 'wallet' && <WalletWorkspace venueId={venueId} onNavigate={handleNav} />}
-        {activeTab === 'profile' && <ProfileWorkspace onNavigate={handleNav} />}
-      </div>
+      {/* A crash in one view is contained here: the sidebar and the other tabs keep working. */}
+      <WorkspaceErrorBoundary label={String(activeTab)} resetKey={String(activeTab)}>
+        <div className="animate-in fade-in duration-300">
+          {activeTab === 'billing' && <BillingWorkspace onNavigate={handleNav} />}
+          {activeTab === 'tables' && <LiveTablesWorkspace venueId={venueId} onNavigate={handleNav} />}
+          {activeTab === 'kitchen' && <KitchenWorkspace cafeId={venueId} />}
+          {activeTab === 'catalog' && <CatalogWorkspace cafeId={venueId} onNavigate={handleNav} />}
+          {activeTab === 'accommodations' && <AccommodationsWorkspace onNavigate={handleNav} />}
+          {activeTab === 'inventory' && <InventoryWorkspace />}
+          {activeTab === 'expenses' && <ExpensesWorkspace />}
+          {(activeTab === 'dashboard' || (activeTab as string) === 'analytics') && <DashboardWorkspace venueId={venueId} />}
+          {activeTab === 'wallet' && <WalletWorkspace venueId={venueId} onNavigate={handleNav} />}
+          {activeTab === 'profile' && <ProfileWorkspace onNavigate={handleNav} />}
+        </div>
+      </WorkspaceErrorBoundary>
     </main>
   );
 }

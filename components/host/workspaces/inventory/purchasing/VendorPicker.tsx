@@ -12,7 +12,7 @@ interface Props {
   onSave: (name: string, phone: string) => Promise<Vendor>;
 }
 
-const field = 'h-10 w-full rounded-xl border border-neutral-200 bg-white px-3 text-sm outline-none focus:border-neutral-900';
+const field = 'h-11 w-full rounded-xl border border-neutral-200 bg-white px-3 text-[16px] outline-none focus:border-neutral-900 sm:text-sm';
 
 /** Choose the vendor to order from, add a new one, or fix a vendor's WhatsApp number. */
 export function VendorPicker({ vendors, value, onChange, onSave }: Props) {

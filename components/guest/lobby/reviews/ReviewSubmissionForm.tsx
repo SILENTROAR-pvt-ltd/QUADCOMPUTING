@@ -1,243 +1,148 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
-import { Star, Send, Check, ImagePlus, X } from 'lucide-react';
-import Image from 'next/image';
+import React, { useEffect, useState } from 'react';
+import { Loader2, X } from 'lucide-react';
+import { PremiumStar } from '@/components/guest/menu/tracker/PremiumStar';
 import { AVAILABLE_REVIEW_TAGS } from './reviews.constants';
-import { ReviewSubmissionPayload } from './review.types';
+import { RATING_WORDS } from './review-look';
+import type { ReviewSubmissionPayload } from './review.types';
 
 interface ReviewSubmissionFormProps {
   currentUserName: string;
   currentUserTable: string;
-  onSubmit: (payload: ReviewSubmissionPayload) => void;
-  onCancel?: () => void;
+  venueName?: string;
+  /** Resolves with an error message when the review could not be saved. */
+  onSubmit: (payload: ReviewSubmissionPayload) => Promise<string | null>;
+  onCancel: () => void;
 }
 
-export function ReviewSubmissionForm({
-  currentUserName,
-  currentUserTable,
-  onSubmit,
-  onCancel,
-}: ReviewSubmissionFormProps) {
-  const [rating, setRating] = useState<number>(5);
-  const [hoverRating, setHoverRating] = useState<number>(0);
+const SERIF = { fontFamily: "'Playfair Display', Georgia, serif" } as const;
+const COMMENT_MAX = 600;
+
+/**
+ * Writing a review, as a sheet over the page: tap the stars, say what stood out, add a few words if you like. Nothing is
+ * pre-filled (no rating, no tags), and the review is only shown as posted once the venue has saved it.
+ */
+export function ReviewSubmissionForm({ currentUserName, currentUserTable, venueName, onSubmit, onCancel }: ReviewSubmissionFormProps) {
+  const [rating, setRating] = useState(0);
+  const [hover, setHover] = useState(0);
+  const [tags, setTags] = useState<string[]>([]);
   const [comment, setComment] = useState('');
-  const [selectedTags, setSelectedTags] = useState<string[]>(['Atmosphere']);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [attachedImages, setAttachedImages] = useState<string[]>([]);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const toggleTag = (tag: string) => {
-    setSelectedTags((prev) =>
-      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
-    );
-  };
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && !busy) onCancel(); };
+    window.addEventListener('keydown', onKey);
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = previous; };
+  }, [onCancel, busy]);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
+  const shown = hover || rating;
+  const ready = rating > 0 && (comment.trim().length > 0 || tags.length > 0);
 
-    Array.from(files).forEach((file) => {
-      if (!file.type.startsWith('image/')) return;
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (event.target?.result && typeof event.target.result === 'string') {
-          setAttachedImages((prev) => [...prev, event.target!.result as string]);
-        }
-      };
-      reader.readAsDataURL(file);
-    });
-
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  };
-
-  const removeImage = (index: number) => {
-    setAttachedImages((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!comment.trim()) return;
-
-    const resolvedAuthor = currentUserName && currentUserName !== 'You' && currentUserName !== 'Guest'
-      ? currentUserName
-      : (typeof window !== 'undefined' ? localStorage.getItem('guest_handle') || currentUserName : currentUserName);
-
-    setTimeout(() => {
-      onSubmit({
-        author: resolvedAuthor || 'Guest',
-        table: currentUserTable || 'T-01',
-        rating,
-        comment: comment.trim(),
-        tags: selectedTags,
-        images: attachedImages.length > 0 ? attachedImages : undefined,
-      });
-      setComment('');
-      setAttachedImages([]);
-      setIsSubmitting(false);
-    }, 350);
+    if (!ready || busy) return;
+    setBusy(true);
+    setError(null);
+    const failure = await onSubmit({
+      author: currentUserName && currentUserName !== 'You' ? currentUserName : 'Guest',
+      table: currentUserTable || 'T-01',
+      rating,
+      comment: comment.trim(),
+      tags,
+    });
+    setBusy(false);
+    if (failure) setError(failure);
   };
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="bg-white border border-neutral-200 rounded-3xl p-5 sm:p-7 space-y-5 shadow-[0_1px_3px_rgba(0,0,0,0.03)] relative overflow-hidden animate-in fade-in-50 duration-200"
-    >
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-neutral-200 pb-4">
-        <div>
-          <h3 className="font-serif text-lg sm:text-xl font-normal text-neutral-950">
-            Share Your Experience
-          </h3>
-          <p className="text-xs text-neutral-500 mt-0.5">
-            Rating as <span className="text-neutral-950 font-medium">{currentUserName}</span> at{' '}
-            <span className="text-neutral-950 font-mono px-1.5 py-0.5 rounded-md bg-neutral-50 border border-neutral-200">
-              {currentUserTable}
-            </span>
-          </p>
-        </div>
-
-        {/* Glowing Ancient Light Cream Stars */}
-        <div className="flex items-center gap-1 bg-neutral-50 px-3 py-1.5 rounded-2xl border border-neutral-200">
-          {[1, 2, 3, 4, 5].map((star) => (
-            <button
-              key={star}
-              type="button"
-              onClick={() => setRating(star)}
-              onMouseEnter={() => setHoverRating(star)}
-              onMouseLeave={() => setHoverRating(0)}
-              className="p-1 cursor-pointer transition-transform hover:scale-125 active:scale-95"
-              aria-label={`Rate ${star} stars`}
-            >
-              <Star
-                className={`w-5 h-5 transition-all ${
-                  star <= (hoverRating || rating)
-                    ? 'fill-amber-400 text-amber-400'
-                    : 'fill-transparent text-neutral-300'
-                }`}
-              />
-            </button>
-          ))}
-          <span className="text-xs font-mono font-semibold text-amber-400 ml-1.5">
-            {hoverRating || rating}.0
-          </span>
-        </div>
-      </div>
-
-      {/* Experience Tags Multi-select */}
-      <div className="space-y-2">
-        <label className="text-[11px] uppercase tracking-wider text-neutral-500 font-semibold block">
-          Select Experience Tags
-        </label>
-        <div className="flex flex-wrap gap-1.5">
-          {AVAILABLE_REVIEW_TAGS.map((tag) => {
-            const isSelected = selectedTags.includes(tag);
-            return (
-              <button
-                key={tag}
-                type="button"
-                onClick={() => toggleTag(tag)}
-                className={`text-xs px-3 py-1.5 rounded-xl border transition-all cursor-pointer ${
-                  isSelected
-                    ? 'bg-neutral-950 text-white font-semibold border-neutral-950'
-                    : 'bg-neutral-50 text-neutral-600 border-neutral-200 hover:border-neutral-300 hover:bg-neutral-100'
-                }`}
-              >
-                {tag}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Editorial Comment Textarea */}
-      <div className="space-y-2">
-        <textarea
-          rows={3}
-          value={comment}
-          onChange={(e) => setComment(e.target.value)}
-          placeholder="How was the food, service and atmosphere?"
-          className="w-full bg-neutral-50 border border-neutral-200 rounded-2xl px-4 py-3 text-xs sm:text-sm text-neutral-950 placeholder-neutral-400 focus:outline-none focus:border-neutral-900 resize-none transition-all"
-          required
-        />
-      </div>
-
-      {/* Image Upload & Live Thumbnail Previews */}
-      <div className="space-y-2">
-        <div className="flex items-center gap-3">
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleFileChange}
-            accept="image/*"
-            multiple
-            className="hidden"
-          />
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-neutral-50 hover:bg-neutral-100 border border-neutral-200 hover:border-neutral-300 text-neutral-600 hover:text-neutral-950 text-xs font-medium transition-colors cursor-pointer active:scale-95"
-          >
-            <ImagePlus className="w-4 h-4 text-neutral-500" />
-            <span>Add Photos</span>
+    <div className="fixed inset-0 z-[120] flex items-end justify-center bg-zinc-950/45 sm:items-center sm:p-6" onClick={() => { if (!busy) onCancel(); }}>
+      <form
+        onSubmit={submit}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="review-title"
+        onClick={(e) => e.stopPropagation()}
+        className="flex max-h-[94dvh] w-full max-w-md flex-col overflow-y-auto rounded-t-[28px] bg-[#faf8f2] px-5 pb-[calc(env(safe-area-inset-bottom,0px)+1.25rem)] pt-5 shadow-2xl sm:rounded-[28px]"
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-neutral-400">Your visit</p>
+            <h2 id="review-title" className="mt-1 text-[24px] leading-tight text-zinc-950" style={SERIF}>How was {venueName || 'your visit'}?</h2>
+          </div>
+          <button type="button" onClick={onCancel} disabled={busy} aria-label="Close" className="grid h-9 w-9 place-items-center rounded-full text-zinc-500 hover:bg-black/5 disabled:opacity-40 cursor-pointer">
+            <X className="h-4 w-4" />
           </button>
-          <span className="text-[11px] text-neutral-500">
-            JPG, PNG or WebP up to 10MB
-          </span>
         </div>
 
-        {attachedImages.length > 0 && (
-          <div className="flex items-center gap-2.5 flex-wrap pt-2">
-            {attachedImages.map((img, idx) => (
-              <div
-                key={idx}
-                className="relative w-16 h-16 rounded-xl overflow-hidden border border-neutral-200 group shadow-md"
+        <div className="mt-5 rounded-[22px] border border-neutral-200/80 bg-white px-4 py-5 text-center">
+          <div role="radiogroup" aria-label="Your rating" className="flex justify-center gap-1.5" onMouseLeave={() => setHover(0)}>
+            {[1, 2, 3, 4, 5].map((n) => (
+              <button
+                key={n}
+                type="button"
+                role="radio"
+                aria-checked={rating === n}
+                aria-label={`${n} ${n === 1 ? 'star' : 'stars'}`}
+                onClick={() => setRating(n)}
+                onMouseEnter={() => setHover(n)}
+                className="grid h-12 w-12 place-items-center rounded-full transition-transform duration-200 hover:scale-110 active:scale-90 cursor-pointer"
               >
-                <Image
-                  src={img}
-                  alt={`Attachment ${idx + 1}`}
-                  fill
-                  className="object-cover"
-                  unoptimized
-                />
-                <button
-                  type="button"
-                  onClick={() => removeImage(idx)}
-                  className="absolute top-1 right-1 p-1 rounded-full bg-black/75 text-white hover:bg-rose-500 transition-colors cursor-pointer"
-                  aria-label="Remove image"
-                >
-                  <X className="w-2.5 h-2.5" />
-                </button>
-              </div>
+                <PremiumStar filled={n <= shown} className="h-10 w-10" />
+              </button>
             ))}
           </div>
-        )}
-      </div>
+          <p className="mt-1.5 h-5 text-[14px] italic text-zinc-600" style={SERIF}>{RATING_WORDS[shown]}</p>
+        </div>
 
-      {/* Actions */}
-      <div className="flex items-center justify-end gap-3 pt-2 border-t border-neutral-200">
-        {onCancel && (
-          <button
-            type="button"
-            onClick={onCancel}
-            className="px-4 py-2 text-xs font-medium text-neutral-500 hover:text-neutral-950 transition-colors cursor-pointer"
-          >
-            Cancel
-          </button>
-        )}
+        <div className="mt-5">
+          <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-neutral-400">{rating > 0 && rating <= 3 ? 'What could be better?' : 'What stood out?'}</p>
+          <div className="mt-2.5 flex flex-wrap gap-1.5">
+            {AVAILABLE_REVIEW_TAGS.map((tag) => {
+              const on = tags.includes(tag);
+              return (
+                <button
+                  key={tag}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => setTags((cur) => (on ? cur.filter((x) => x !== tag) : [...cur, tag]))}
+                  className={`rounded-full border px-3.5 py-2 text-[12.5px] font-medium transition-colors cursor-pointer ${on ? 'border-zinc-950 bg-zinc-950 text-white' : 'border-neutral-200 bg-white text-zinc-700 hover:border-neutral-300'}`}
+                >
+                  {tag}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="mt-5">
+          <textarea
+            value={comment}
+            maxLength={COMMENT_MAX}
+            onChange={(e) => setComment(e.target.value)}
+            rows={4}
+            aria-label="Your review"
+            placeholder="Tell us about your visit, in your own words (optional)"
+            className="w-full resize-none rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-[14px] leading-relaxed text-zinc-900 placeholder:text-neutral-400 focus:border-zinc-900 focus:outline-none"
+          />
+          <p className="mt-1 text-right text-[11px] text-neutral-400">{comment.length}/{COMMENT_MAX}</p>
+        </div>
+
+        {error && <p role="alert" className="mt-1 text-center text-[12.5px] font-medium text-rose-600">{error}</p>}
+
         <button
           type="submit"
-          disabled={isSubmitting || !comment.trim()}
-          className="inline-flex items-center gap-2 bg-neutral-950 text-white hover:bg-neutral-800 disabled:opacity-50 disabled:cursor-not-allowed px-5 py-2.5 rounded-xl text-xs font-bold tracking-wide transition-all cursor-pointer active:scale-95"
+          disabled={!ready || busy}
+          className="mt-3 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-zinc-950 text-[14px] font-semibold text-white shadow-[0_14px_26px_-14px_rgba(0,0,0,0.7)] transition-colors hover:bg-zinc-800 active:scale-[0.99] disabled:opacity-40 cursor-pointer"
         >
-          {isSubmitting ? (
-            <Check className="w-3.5 h-3.5 animate-bounce" />
-          ) : (
-            <Send className="w-3.5 h-3.5" />
-          )}
-          <span>{isSubmitting ? 'Publishing...' : 'Publish Feedback'}</span>
+          {busy && <Loader2 className="h-4 w-4 animate-spin" />} {busy ? 'Sending…' : 'Share my review'}
         </button>
-      </div>
-    </form>
+        <p className="mt-2.5 text-center text-[11px] leading-snug text-neutral-400">Shown with your name and table, {currentUserName && currentUserName !== 'You' ? currentUserName : 'Guest'} · {currentUserTable || 'T-01'}.</p>
+      </form>
+    </div>
   );
 }
 

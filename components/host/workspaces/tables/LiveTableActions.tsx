@@ -10,6 +10,7 @@ interface LiveTableActionsProps {
   hasBill: boolean;
   total: number;
   busy: 'settle' | 'release' | null;
+  locked?: boolean;
   error: string | null;
   onSettle: (tender: Tender) => void;
   onRelease: () => void;
@@ -20,7 +21,7 @@ const TENDERS: Tender[] = ['CASH', 'UPI', 'CARD'];
 type Confirm = 'settle' | 'release' | null;
 
 /** Settle the bill and free the table, or free an empty/unstarted table. Both ask first. */
-export function LiveTableActions({ tableNumber, hasBill, total, busy, error, onSettle, onRelease, onOpenBilling }: LiveTableActionsProps) {
+export function LiveTableActions({ tableNumber, hasBill, total, busy, locked = false, error, onSettle, onRelease, onOpenBilling }: LiveTableActionsProps) {
   const [tender, setTender] = useState<Tender>('CASH');
   const [confirm, setConfirm] = useState<Confirm>(null);
   const working = busy !== null;
@@ -32,12 +33,12 @@ export function LiveTableActions({ tableNumber, hasBill, total, busy, error, onS
   };
 
   return (
-    <div className="space-y-3">
-      {hasBill && (
-        <div role="radiogroup" aria-label="Payment method" className="grid grid-cols-3 gap-1 rounded-xl bg-neutral-100 p-1">
+    <div className="space-y-2.5">
+      {hasBill && !confirm && (
+        <div role="radiogroup" aria-label="Payment method" className="grid grid-cols-3 gap-1 rounded-2xl bg-neutral-100 p-1">
           {TENDERS.map((t) => (
             <button key={t} type="button" role="radio" aria-checked={tender === t} onClick={() => setTender(t)}
-              className={`h-8 rounded-lg text-[11px] font-semibold cursor-pointer ${tender === t ? 'bg-white text-neutral-950 shadow-xs' : 'text-neutral-500'}`}>
+              className={`h-10 rounded-xl text-[13px] font-semibold cursor-pointer ${tender === t ? 'bg-white text-neutral-950 shadow-xs' : 'text-neutral-500 active:bg-white/60'}`}>
               {t === 'UPI' ? 'UPI' : t.charAt(0) + t.slice(1).toLowerCase()}
             </button>
           ))}
@@ -45,33 +46,37 @@ export function LiveTableActions({ tableNumber, hasBill, total, busy, error, onS
       )}
 
       {confirm ? (
-        <div role="alertdialog" aria-label="Confirm" className="space-y-3 rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
-          <p className="text-xs font-medium text-neutral-900">
+        <div role="alertdialog" aria-label="Confirm" className="space-y-3 rounded-2xl border border-neutral-200 bg-neutral-50 p-3.5">
+          <p className="text-[13px] font-medium leading-snug text-neutral-900">
             {confirm === 'settle'
               ? `Settle ${inr(total)} by ${tender.toLowerCase()} and free table ${tableNumber}?`
               : `Free table ${tableNumber}? Unstarted items on it will be removed.`}
           </p>
           <div className="grid grid-cols-2 gap-2">
-            <button type="button" onClick={() => setConfirm(null)} className="h-9 cursor-pointer rounded-xl border border-neutral-200 bg-white text-xs font-semibold text-neutral-700 hover:bg-neutral-100">Cancel</button>
-            <button type="button" onClick={doConfirm} disabled={working} className="inline-flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-xl bg-neutral-950 text-xs font-semibold text-white hover:bg-neutral-800 disabled:opacity-50">
-              {working && <Loader2 className="h-3 w-3 animate-spin" />} Confirm
+            <button type="button" onClick={() => setConfirm(null)} className="h-12 cursor-pointer rounded-2xl border border-neutral-200 bg-white text-[13px] font-semibold text-neutral-700 active:bg-neutral-100">Cancel</button>
+            <button type="button" onClick={doConfirm} disabled={working} className="inline-flex h-12 cursor-pointer items-center justify-center gap-1.5 rounded-2xl bg-neutral-950 text-[13px] font-semibold text-white active:bg-neutral-800 disabled:opacity-50">
+              {working && <Loader2 className="h-3.5 w-3.5 animate-spin" />} Confirm
             </button>
           </div>
         </div>
       ) : (
         <div className="grid gap-2">
           {hasBill && (
-            <button type="button" onClick={() => setConfirm('settle')} disabled={working}
-              className="flex h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-2xl bg-neutral-950 text-xs font-semibold uppercase tracking-wider text-white hover:bg-neutral-800 disabled:opacity-40">
-              <CreditCard className="h-3.5 w-3.5" /> Settle & free table
+            <button type="button" onClick={() => setConfirm('settle')} disabled={working || locked}
+              className="flex h-14 w-full cursor-pointer items-center justify-center gap-2 rounded-2xl bg-neutral-950 text-[14px] font-semibold text-white shadow-[0_14px_24px_-14px_rgba(0,0,0,0.6)] active:scale-[0.99] disabled:bg-neutral-300 disabled:shadow-none">
+              {locked
+                ? <><Loader2 className="h-4 w-4 animate-spin" /> Updating the bill…</>
+                : busy === 'settle'
+                  ? <><Loader2 className="h-4 w-4 animate-spin" /> Settling…</>
+                  : <><CreditCard className="h-4 w-4" /> Settle &amp; free table</>}
             </button>
           )}
           <button type="button" onClick={() => setConfirm('release')} disabled={working}
-            className="flex h-10 w-full cursor-pointer items-center justify-center gap-2 rounded-2xl border border-neutral-200 bg-white text-xs font-semibold text-neutral-800 hover:bg-neutral-50 disabled:opacity-40">
-            <LogOut className="h-3.5 w-3.5" /> Mark vacant
+            className="flex h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-2xl border border-neutral-200 bg-white text-[13px] font-semibold text-neutral-800 active:bg-neutral-50 disabled:opacity-40">
+            <LogOut className="h-4 w-4" /> Mark vacant
           </button>
           {hasBill && (
-            <button type="button" onClick={onOpenBilling} className="cursor-pointer text-center text-[11px] font-medium text-neutral-500 hover:text-neutral-900">
+            <button type="button" onClick={onOpenBilling} className="min-h-10 cursor-pointer text-center text-[12px] font-medium text-neutral-500 hover:text-neutral-900">
               Discount, wallet or split in billing
             </button>
           )}

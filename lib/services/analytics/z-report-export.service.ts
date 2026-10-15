@@ -6,10 +6,15 @@ export interface ZReportExportMetadata {
   address?: string;
 }
 
+const PLAIN_NUMBER = /^-?\d+(\.\d+)?$/;
+
 function escapeCsvField(val: string | number | null | undefined): string {
   if (val === null || val === undefined) return '""';
-  const str = String(val);
-  if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+  let str = String(val);
+  // Text that starts with = + - @ (or a tab or CR) runs as a formula when the file is opened in Excel or Sheets. A venue
+  // or staff name typed by a user can reach this file, so it is shown as text instead. Numbers, even negative, are left alone.
+  if (typeof val !== 'number' && !PLAIN_NUMBER.test(str) && /^[=+\-@\t\r]/.test(str)) str = `'${str}`;
+  if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
     return `"${str.replace(/"/g, '""')}"`;
   }
   return str;

@@ -27,6 +27,7 @@ export async function listVenueReviews(db: any, businessId: string) {
       images: r.images || [],
       verified: r.verified ?? true,
       helpfulCount: Number(r.helpful_count || 0),
+      createdAt: r.created_at ?? null,
       timestamp: r.created_at
         ? new Date(r.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         : 'Recently',

@@ -182,6 +182,7 @@ export function useGuestLobbyRealtime({
       if (reconnectTimeout) clearTimeout(reconnectTimeout);
       void supabase.removeChannel(channel);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- the lobby channel is re-subscribed only when the venue, session, table or name changes; the chat state it reads would resubscribe it on every message
   }, [cafeId, currentSessionId, currentUserTable, currentUserName]);
 
   const handleSendInvitation = async (

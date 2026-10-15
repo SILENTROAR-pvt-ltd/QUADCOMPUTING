@@ -43,7 +43,7 @@ export function POSDigitalReceipt({
   const isBillRequested = activeSessionStatus === 'bill_requested';
 
   return (
-    <div className="sticky top-8 rounded-2xl sm:rounded-3xl bg-white p-4 sm:p-7 text-neutral-900 shadow-sm border border-neutral-200">
+    <div className="rounded-3xl bg-white p-4 text-neutral-900 shadow-sm border border-neutral-200 sm:p-6 lg:p-7">
       <div className="flex items-center justify-between">
         <h3 className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-400">Digital Receipt</h3>
         {isSessionActive && (
@@ -65,7 +65,7 @@ export function POSDigitalReceipt({
         </div>
       )}
 
-      <div className="mt-5 min-h-[140px] space-y-3 text-sm text-neutral-700">
+      <div className="mt-4 min-h-[96px] space-y-1 text-sm text-neutral-700 lg:mt-5 lg:min-h-[140px] lg:space-y-3">
         {selectedItems.map((item) => (
           <POSReceiptItemRow key={item.id} item={item} onIncrement={incrementItem} onDecrement={decrementItem} onRemove={removeItem} />
         ))}
@@ -108,10 +108,10 @@ export function POSDigitalReceipt({
 
       <button
         type="button" onClick={handleGenerateBill} disabled={selectedItems.length === 0 && !customAmount}
-        className="mt-6 w-full rounded-xl py-3.5 text-[11px] font-bold uppercase tracking-wider bg-neutral-900 hover:bg-neutral-800 text-white transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm disabled:opacity-40"
+        className="mt-5 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-neutral-900 text-[14px] font-semibold text-white shadow-[0_14px_24px_-14px_rgba(0,0,0,0.6)] transition-all hover:bg-neutral-800 active:scale-[0.99] disabled:bg-neutral-300 disabled:shadow-none cursor-pointer"
       >
         <Receipt className="h-4 w-4" />
-        <span>{isBillRequested ? 'Review & Settle (Bill Requested)' : isSessionActive ? 'Review & Settle Table Bill' : 'Generate & Finalize Bill'}</span>
+        <span>{isBillRequested ? 'Review & settle (bill requested)' : isSessionActive ? 'Review & settle table bill' : 'Generate & finalize bill'}</span>
       </button>
     </div>
   );

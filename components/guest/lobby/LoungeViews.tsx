@@ -26,6 +26,7 @@ export function LoungeViews({ view, venueId, venueName, table, guestName, canPos
         venueId={venueId}
         venueName={venueName}
         table={table}
+        guestName={guestName}
         canPost={canPost}
         onRequestJoin={onRequestJoin}
       />
@@ -47,7 +48,7 @@ export function LoungeViews({ view, venueId, venueName, table, guestName, canPos
       />
     );
   }
-  return <VenueReviewPortal currentUserTable={table} currentUserName={guestName} cafeId={venueId} />;
+  return <VenueReviewPortal currentUserTable={table} currentUserName={guestName} cafeId={venueId} venueName={venueName} />;
 }
 
 export default LoungeViews;

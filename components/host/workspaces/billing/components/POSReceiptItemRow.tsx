@@ -18,37 +18,40 @@ interface Props {
 
 export function POSReceiptItemRow({ item, onIncrement, onDecrement, onRemove }: Props) {
   return (
-    <div className="group flex justify-between py-1.5 items-center">
-      <div className="flex gap-3 items-center min-w-0">
-        <div className="flex items-center rounded-md bg-neutral-100 border border-neutral-200 shrink-0">
+    <div className="group flex items-center justify-between gap-2 border-b border-neutral-100 py-2 last:border-b-0">
+      <div className="flex min-w-0 items-center gap-2.5">
+        <div className="flex shrink-0 items-center rounded-xl border border-neutral-200 bg-neutral-100">
           <button
             type="button"
             onClick={() => onDecrement(item.id)}
-            className="px-2 py-1 text-neutral-500 hover:text-neutral-900 hover:bg-neutral-200 transition-colors rounded-l-md cursor-pointer"
+            aria-label={`One less ${item.name}`}
+            className="grid h-9 w-9 place-items-center rounded-l-xl text-lg leading-none text-neutral-600 transition-colors hover:bg-neutral-200 active:bg-neutral-300 cursor-pointer"
           >
-            -
+            −
           </button>
-          <span className="px-2 py-1 text-neutral-900 font-mono text-[11px] min-w-[20px] text-center">
+          <span className="min-w-[24px] text-center font-mono text-[13px] font-semibold text-neutral-900">
             {item.qty}
           </span>
           <button
             type="button"
             onClick={() => onIncrement(item.id)}
-            className="px-2 py-1 text-neutral-500 hover:text-neutral-900 hover:bg-neutral-200 transition-colors rounded-r-md cursor-pointer"
+            aria-label={`One more ${item.name}`}
+            className="grid h-9 w-9 place-items-center rounded-r-xl text-lg leading-none text-neutral-600 transition-colors hover:bg-neutral-200 active:bg-neutral-300 cursor-pointer"
           >
             +
           </button>
         </div>
-        <span className="text-neutral-900 text-[13px] truncate">{item.name}</span>
+        <span className="line-clamp-2 text-[13.5px] leading-tight text-neutral-900">{item.name}</span>
       </div>
-      <div className="flex items-center gap-3 shrink-0">
+      <div className="flex shrink-0 items-center gap-1">
         <span className="font-mono text-[13px] text-neutral-700">
           {(item.price * item.qty).toFixed(2)}
         </span>
         <button
           type="button"
           onClick={() => onRemove(item.id)}
-          className="text-[10px] text-neutral-300 opacity-0 group-hover:opacity-100 hover:text-red-500 transition-opacity p-1 cursor-pointer"
+          aria-label={`Remove ${item.name}`}
+          className="grid h-9 w-9 place-items-center rounded-full text-[12px] text-neutral-400 transition-colors hover:text-red-500 active:bg-neutral-100 lg:opacity-0 lg:group-hover:opacity-100 lg:focus-visible:opacity-100 cursor-pointer"
         >
           ✕
         </button>

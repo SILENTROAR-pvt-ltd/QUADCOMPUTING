@@ -1,3 +1,4 @@
+import { safeMessage } from '@/lib/utils/safe-message';
 import { NextResponse } from 'next/server';
 import { requireHost } from '@/lib/auth/guards';
 import { withApiErrorBoundary, handleApiError } from '@/lib/middleware/error-handler';
@@ -29,7 +30,7 @@ export const POST = withApiErrorBoundary(async function POST(request: Request) {
     return NextResponse.json({ ...result, agent: useAgent ? 'on' : 'off' }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     if (error instanceof PhotoVaultNotReady) {
-      return NextResponse.json({ success: false, error: error.message }, { status: 503 });
+      return NextResponse.json({ success: false, error: safeMessage(error, 'Internal Server Error') }, { status: 503 });
     }
     return handleApiError(error, request, 'HostCatalogAutoFillImagesPOST');
   }

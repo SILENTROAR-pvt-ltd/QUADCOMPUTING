@@ -223,8 +223,7 @@ describe('PHASE 2C: Advanced Analytics, Z-Reports & Financial Reconciliation', (
     expect(report.operations.average_order_value).toBe(262.5);
   });
 
-  it('generates an Indian GST compliant CSV export with GSTR-1 sections', () => {
-    const sampleReport: ZReportData = {
+  const buildSampleReport = (): ZReportData => ({
       business_id: 'aed7ace0-d1b5-4525-b5c6-403ad6fcc269',
       date: '2026-10-06',
       time_range: {
@@ -264,7 +263,10 @@ describe('PHASE 2C: Advanced Analytics, Z-Reports & Financial Reconciliation', (
         { hour: '12:00', count: 10, sales: 4000 },
         { hour: '13:00', count: 15, sales: 5975 },
       ],
-    };
+  });
+
+  it('generates an Indian GST compliant CSV export with GSTR-1 sections', () => {
+    const sampleReport = buildSampleReport();
 
     const csv = generateZReportCSV(sampleReport, {
       businessName: 'Venus Cafe Oldmanali',
@@ -280,5 +282,12 @@ describe('PHASE 2C: Advanced Analytics, Z-Reports & Financial Reconciliation', (
     expect(csv).toContain('Venue Wallet Redemption');
     expect(csv).toContain('Average Order Value (AOV)');
     expect(csv).toContain('12:00,10,4000.00');
+  });
+
+  it('shows a venue name that looks like a formula as text, never as a formula', () => {
+    const csv = generateZReportCSV(buildSampleReport(), { businessName: '=HYPERLINK("http://evil.test","Pay here")', gstNumber: '@SUM(A1)' });
+    expect(csv).toContain(`Venue Name,"'=HYPERLINK(""http://evil.test"",""Pay here"")"`);
+    expect(csv).toContain("GSTIN,'@SUM(A1)");
+    expect(csv).not.toMatch(/^(Venue Name|GSTIN),[=+\-@]/m);
   });
 });

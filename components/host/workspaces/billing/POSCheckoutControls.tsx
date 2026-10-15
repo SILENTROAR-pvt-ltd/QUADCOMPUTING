@@ -42,7 +42,7 @@ export function POSCheckoutControls({
   gstEnabled, setGstEnabled, gstAllowed = false, gstReason = null, redemptionCode, setRedemptionCode, verifiedRedemption, setVerifiedRedemption,
 }: Props) {
   return (
-    <div className="rounded-2xl sm:rounded-3xl border border-zinc-200 bg-white p-4 sm:p-7 shadow-sm space-y-7">
+    <div className="min-w-0 rounded-3xl border border-zinc-200 bg-white p-3.5 sm:p-6 lg:p-7 shadow-sm space-y-5 sm:space-y-7">
       <POSCatalogGrid cafeId={cafeId} activeItems={activeItems} cartItems={cartItems} onAddItemToCart={onAddItemToCart} addItem={addItem} />
       <hr className="border-zinc-100" />
       <POSCustomAddonBuilder onAddCustomItem={onAddCustomItem} setCustomAmount={setCustomAmount} />

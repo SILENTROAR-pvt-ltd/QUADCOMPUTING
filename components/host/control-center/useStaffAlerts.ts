@@ -17,6 +17,7 @@ export interface StaffAlert {
 export function useStaffAlerts(venueId?: string) {
   const [alerts, setAlerts] = useState<StaffAlert[]>([]);
   const knownIds = useRef<Set<string>>(new Set());
+  const loadedOnce = useRef(false);
   const [freshIds, setFreshIds] = useState<Set<string>>(new Set());
 
   const fetchAlerts = useCallback(async () => {
@@ -26,8 +27,10 @@ export function useStaffAlerts(venueId?: string) {
       const data = await res.json();
       const list: StaffAlert[] = data.notifications || [];
       const incoming = list.filter((a) => !knownIds.current.has(a.id)).map((a) => a.id);
-      // Don't flag the very first load as "new".
-      if (knownIds.current.size > 0 && incoming.length) setFreshIds(new Set(incoming));
+      // The very first load is not "new". (It used to be skipped by "nothing was known yet", which also swallowed
+      // the first call of the day on a quiet venue.)
+      if (loadedOnce.current && incoming.length) setFreshIds(new Set(incoming));
+      loadedOnce.current = true;
       knownIds.current = new Set(list.map((a) => a.id));
       setAlerts(list);
     } catch {}
@@ -50,9 +53,9 @@ export function useStaffAlerts(venueId?: string) {
     if (!venueId) return;
     void fetchAlerts();
 
-    // Realtime is the primary signal (RLS lets the host read its venue's rows);
-    // the poll only covers a dropped socket and pauses in background tabs.
-    const interval = setInterval(() => { if (!document.hidden) void fetchAlerts(); }, 20000);
+    // Realtime is the primary signal (RLS lets the host read its venue's rows); the poll covers a dropped socket. It keeps
+    // running in a background tab (the browser slows it there) so a guest's call still rings on a screen nobody is looking at.
+    const interval = setInterval(() => { void fetchAlerts(); }, 15000);
     const onVisible = () => { if (!document.hidden) void fetchAlerts(); };
     document.addEventListener('visibilitychange', onVisible);
 

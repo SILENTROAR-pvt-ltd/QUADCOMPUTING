@@ -23,6 +23,12 @@ export function salaryFor(base: number, join: string, end: string | null, period
   return worked >= days ? { payable: r2(base), days: null } : { payable: r2((base * worked) / days), days: worked };
 }
 
+/**
+ * Money is still owed to this person for the month, so there is something to settle. It does not depend on whether they
+ * work here now: a joiner is owed for the days since they joined and a leaver for the days they worked.
+ */
+export const isOwed = (row: Pick<PayrollRow, 'balance'>) => row.balance > 0.5;
+
 function payStatus(payable: number, settled: number): PayStatus {
   if (payable <= 0 && settled <= 0) return 'none';
   if (settled > payable + 0.5) return 'overpaid';

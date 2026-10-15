@@ -21,16 +21,32 @@ export async function getGuestActiveOrder(requestUrl: string, supabase: any) {
   let activeOrder: any = null, items: any[] = [], isSettled = false, settledTotal = 0, isBillRequested = false;
   let cashbackCredited = 0;
 
-  const { data: dbOrders, error: ordersErr } = await supabase.from('orders').select('*').eq('business_id', resolvedBizId)
-    .or(tableOr)
-    .not('status', 'in', `(${CLOSED_STATUSES.map((s) => `"${s}"`).join(',')})`).order('created_at', { ascending: false }).limit(1);
+  // A guest phone calls this every few seconds, so its database reads run at the same time wherever one does not
+  // need another's answer: the table's open order and its session are independent, and so are the order's dishes and
+  // its kitchen ticket. This was five reads one after another; it is now two rounds.
+  const [ordersRes, sessionRes] = await Promise.all([
+    supabase.from('orders').select('*').eq('business_id', resolvedBizId)
+      .or(tableOr)
+      .not('status', 'in', `(${CLOSED_STATUSES.map((s) => `"${s}"`).join(',')})`).order('created_at', { ascending: false }).limit(1),
+    supabase.from('dine_in_sessions').select('id, status').eq('business_id', resolvedBizId)
+      .or(`table_number.eq.${table_number},table_number.eq.Table ${table_number},table_number.eq.T-${normTable}`)
+      .in('status', ['open', 'bill_requested']).order('updated_at', { ascending: false }).limit(1).maybeSingle(),
+  ]);
+  const { data: dbOrders, error: ordersErr } = ordersRes;
   if (ordersErr) throw ordersErr;
 
+  // With an open order the guest always sees it as live, so its kitchen ticket is needed: fetch it with the dishes.
+  let prefetchedTicket: any = null;
   if (dbOrders && dbOrders.length > 0) {
     activeOrder = dbOrders[0];
-    const { data: orderItems, error: itemsErr } = await supabase.from('order_items').select('*').eq('order_id', activeOrder.id).order('created_at', { ascending: true });
+    const [itemsRes, ticket] = await Promise.all([
+      supabase.from('order_items').select('*').eq('order_id', activeOrder.id).order('created_at', { ascending: true }),
+      resolveLatestKitchenTicket(supabase, resolvedBizId, table_number, normTable, activeOrder.id),
+    ]);
+    const { data: orderItems, error: itemsErr } = itemsRes;
     if (itemsErr) throw itemsErr;
     items = orderItems && orderItems.length > 0 ? orderItems : Array.isArray(activeOrder.items) ? activeOrder.items : [];
+    prefetchedTicket = ticket;
   }
 
   // Only check settled state if there is NO active order, and only for a device
@@ -78,9 +94,7 @@ export async function getGuestActiveOrder(requestUrl: string, supabase: any) {
     }
   }
 
-  const { data: dbSession, error: sessionErr } = await supabase.from('dine_in_sessions').select('id, status').eq('business_id', resolvedBizId)
-    .or(`table_number.eq.${table_number},table_number.eq.Table ${table_number},table_number.eq.T-${normTable}`)
-    .in('status', ['open', 'bill_requested']).order('updated_at', { ascending: false }).limit(1).maybeSingle();
+  const { data: dbSession, error: sessionErr } = sessionRes;
   if (sessionErr) throw sessionErr;
   if (dbSession?.status === 'bill_requested') isBillRequested = true;
 
@@ -96,7 +110,11 @@ export async function getGuestActiveOrder(requestUrl: string, supabase: any) {
   }
 
   const hasActive = Boolean(activeOrder) && !isSettled;
-  const latestTicket = hasActive ? await resolveLatestKitchenTicket(supabase, resolvedBizId, table_number, normTable, activeOrder.id) : null;
+  // The ticket was fetched with the dishes when the table had an open order; only a bill that arrived through the
+  // settled path (no open order) would reach here without one, and that path never has a live ticket.
+  const latestTicket = hasActive
+    ? (prefetchedTicket ?? await resolveLatestKitchenTicket(supabase, resolvedBizId, table_number, normTable, activeOrder.id))
+    : null;
   const normalizedItems = hasActive ? normalizeCumulativeItems(items) : [];
   const derivedKot = hasActive ? (latestTicket?.status ||
     (activeOrder?.status && ['preparing', 'ready', 'served'].includes(activeOrder.status.toLowerCase()) ? activeOrder.status.toUpperCase() : 'PENDING')) : null;

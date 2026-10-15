@@ -43,10 +43,10 @@ describe('Vibers Lobby: what a guest may post', () => {
     expect(cleanLobbyContent('x'.repeat(900))).toHaveLength(500);
   });
 
-  it('refuses unknown kinds, a moment without a photo, a want without words, and empty posts', () => {
+  it('refuses unknown kinds, a moment without a photo, any new want, and empty posts', () => {
     expect(lobbyPostError({ kind: 'shout', content: 'hi', hasMedia: false })).toMatch(/Choose/);
     expect(lobbyPostError({ kind: 'moment', content: 'nice view', hasMedia: false })).toMatch(/photo/);
-    expect(lobbyPostError({ kind: 'want', content: '', hasMedia: false })).toMatch(/looking for/);
+    expect(lobbyPostError({ kind: 'want', content: 'a charger please', hasMedia: false })).toMatch(/retired/);
     expect(lobbyPostError({ kind: 'message', content: '', hasMedia: false })).toMatch(/Write something/);
     expect(lobbyPostError({ kind: 'moment', content: '', hasMedia: true })).toBeNull();
   });
@@ -109,7 +109,8 @@ describe('Vibers Lobby: the feed', () => {
 
   it('shows only this venue, newest first', async () => {
     const page = await q();
-    expect(page.posts.map((p) => p.id)).toEqual(['p3', 'p2', 'p1']);
+    // p2 is an old want: the feed no longer shows wants.
+    expect(page.posts.map((p) => p.id)).toEqual(['p3', 'p1']);
   });
 
   it('filters by kind', async () => {
@@ -127,10 +128,10 @@ describe('Vibers Lobby: the feed', () => {
   });
 
   it('pages with a cursor and reports when more exist', async () => {
-    const first = await q({ limit: 2 });
-    expect(first.posts.map((p) => p.id)).toEqual(['p3', 'p2']);
+    const first = await q({ limit: 1 });
+    expect(first.posts.map((p) => p.id)).toEqual(['p3']);
     expect(first.has_more).toBe(true);
-    const second = await q({ limit: 2, before: first.next_before });
+    const second = await q({ limit: 1, before: first.next_before });
     expect(second.posts.map((p) => p.id)).toEqual(['p1']);
     expect(second.has_more).toBe(false);
   });

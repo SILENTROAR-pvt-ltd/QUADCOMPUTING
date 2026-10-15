@@ -40,6 +40,11 @@ export interface InvoiceData {
   isReadOnly?: boolean;
   served_by_staff_id?: string;
   staff_name?: string;
+  /**
+   * Set by the POS for a table or room bill: the order is then saved and settled in one request. Carries what only the
+   * POS knows about the table's running session.
+   */
+  settlement?: { session_id?: string | null; redemption_code?: string | null; credit_cashback?: boolean };
 }
 
 /**

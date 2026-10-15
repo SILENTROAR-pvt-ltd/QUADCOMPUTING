@@ -15,17 +15,25 @@ export const GET = withApiErrorBoundary(async function GET(request: Request) {
     const requested = parseInt(searchParams.get('limit') || '', 10);
     const limit = Number.isFinite(requested) ? Math.min(Math.max(requested, 1), 1000) : 500;
     const offset = Math.max(parseInt(searchParams.get('offset') || '0', 10) || 0, 0);
+    // Keyset paging: `before` is the created_at of the last row already loaded. It costs the same on page 1 and page 500,
+    // where OFFSET re-reads every skipped row. `offset` still works for existing callers.
+    const before = searchParams.get('before');
+    const beforeValid = before && !Number.isNaN(Date.parse(before)) ? new Date(before).toISOString() : null;
 
-    const { data: orders, error } = await supabase
+    let query = supabase
       .from('orders')
       .select('*')
       .eq('business_id', businessId)
-      .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1);
+      .order('created_at', { ascending: false });
+    query = beforeValid
+      ? query.lt('created_at', beforeValid).limit(limit)
+      : query.range(offset, offset + limit - 1);
+    const { data: orders, error } = await query;
 
     if (error) throw error;
 
-    return NextResponse.json({ orders, truncated: (orders?.length ?? 0) === limit, limit, offset });
+    const nextBefore = orders && orders.length === limit ? (orders[orders.length - 1] as any).created_at ?? null : null;
+    return NextResponse.json({ orders, truncated: (orders?.length ?? 0) === limit, limit, offset, nextBefore });
   } catch (error: any) {
     console.error('[API Orders History GET]', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });

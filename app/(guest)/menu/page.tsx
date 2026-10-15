@@ -2,13 +2,13 @@
 
 import React, { Suspense, useEffect, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { motion, AnimatePresence } from 'framer-motion';
 import { MenuHeader } from '@/components/guest/menu/MenuHeader';
 import { MenuSkeleton } from '@/components/guest/menu/MenuSkeleton';
 import { DiningFilters } from '@/components/guest/menu/DiningFilters';
 import { ServiceCallBar } from '@/components/guest/menu/ServiceCallBar';
 import { DiningFeed } from '@/components/guest/menu/DiningFeed';
 import { BeyondDiningSection } from '@/components/guest/menu/BeyondDiningSection';
+import { LuxuryToast } from '@/components/guest/menu/LuxuryToast';
 import { ActiveBillView } from '@/components/guest/menu/ActiveBillView';
 import { BillWalletRedeem } from '@/components/guest/menu/BillWalletRedeem';
 import { FloatingCartBar } from '@/components/guest/menu/FloatingCartBar';
@@ -99,6 +99,7 @@ function GuestMenuContent() {
       }, 300);
       return () => clearTimeout(timer);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- runs only when the ?section= link changes; goTab and state change every render and would re-scroll the page
   }, [sectionParam]);
 
   if (state.isLoadingMenu) return <MenuSkeleton />;
@@ -121,21 +122,7 @@ function GuestMenuContent() {
   // overflow-x-clip, not hidden: hidden would make the root a scroll box and break the sticky filter bar.
   return (
     <div className="min-h-[100dvh] w-full max-w-full overflow-x-clip bg-[#faf9f6] text-neutral-900 font-sans selection:bg-neutral-900 selection:text-white pb-36 sm:pb-40">
-      {/* Apple-Level Luxury Toast Notification */}
-      <AnimatePresence>
-        {state.toastMessage && (
-          <motion.div
-            initial={{ opacity: 0, y: -20, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -15, scale: 0.95 }}
-            transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-            className="fixed top-6 left-1/2 -translate-x-1/2 z-[200] flex items-center gap-2.5 bg-neutral-950/95 text-white backdrop-blur-xl border border-neutral-800/90 px-5 py-3 rounded-full text-xs font-medium shadow-2xl tracking-wide max-w-[90vw]"
-          >
-            <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
-            <span>{state.toastMessage}</span>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <LuxuryToast message={state.toastMessage} />
 
       <MenuHeader
         tableNo={state.tableNumber}
@@ -151,8 +138,6 @@ function GuestMenuContent() {
       <div className="pt-1 pb-2">
         <GuestAccountStrip venueId={venueId} tableNumber={state.tableNumber} />
       </div>
-
-      {state.activeTab === 'menu' && <OfferTicker venueId={venueId} tableNumber={state.tableNumber} />}
 
       <main className="max-w-5xl mx-auto px-4 sm:px-6 pt-2 pb-36 sm:pb-40">
         {state.activeTab === 'menu' ? (
@@ -183,6 +168,10 @@ function GuestMenuContent() {
                   billSettled={state.billSettled && state.settledTotal > 0}
                   settledTotal={state.settledTotal}
                   cashbackCredited={state.cashbackCredited}
+                  venueId={venueId}
+                  orderId={state.masterOrder?.id}
+                  signedIn={Boolean(titleAccount)}
+                  cafeName={state.businessName}
                   onExploreServices={() => {
                     state.setShowBeyondDining(true);
                     setTimeout(() => {
@@ -192,18 +181,21 @@ function GuestMenuContent() {
                   onRefresh={state.handleManualTrackerRefresh}
                   isRefreshing={state.isRefreshingTracker}
                 />
-                <VenueServicesMarquee
-                  services={state.venueServices}
-                  onSelectService={(service) => {
-                    state.setShowBeyondDining(true);
-                    state.showToast(`Selected: ${service.title}`);
-                    setTimeout(() => {
-                      document.getElementById('services-section')?.scrollIntoView({ behavior: 'smooth' });
-                    }, 150);
-                  }}
-                />
               </>
             )}
+
+            <OfferTicker venueId={venueId} tableNumber={state.tableNumber} />
+
+            <VenueServicesMarquee
+              services={state.venueServices}
+              onSelectService={(service) => {
+                state.setShowBeyondDining(true);
+                state.showToast(`Selected: ${service.title}`);
+                setTimeout(() => {
+                  document.getElementById('services-section')?.scrollIntoView({ behavior: 'smooth' });
+                }, 150);
+              }}
+            />
 
             {likesView && (
               <GuestFavouritesRail
@@ -345,9 +337,10 @@ function GuestMenuContent() {
         businessName={state.businessName}
         isAddonOrderSuccess={state.isAddonOrderSuccess}
         onCloseOrderCelebration={() => state.setOrderCelebration(false)}
-        onTrackOrder={() => {
+        onExploreServices={() => {
           state.setOrderCelebration(false);
-          goTab('live_order');
+          state.setShowBeyondDining(true);
+          setTimeout(() => document.getElementById('services-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 200);
         }}
         onExploreLounge={() => {
           state.setOrderCelebration(false);

@@ -38,7 +38,7 @@ export async function submitGuestOrder(body: any, supabase: any) {
       : Promise.resolve({ data: null, error: null }),
     lookupExistingOrder(supabase, resolvedBizId, rawTableNumber, normTable),
     // Verified prices come from catalog_items by id AND business_id, never from the client.
-    supabase.from('catalog_items').select('id, name, price, item_type, category, metadata, station').eq('business_id', resolvedBizId).in('id', itemIds),
+    supabase.from('catalog_items').select('id, name, price, item_type, category, metadata, station, is_available').eq('business_id', resolvedBizId).in('id', itemIds),
     // Until the station migration is applied the setting is unreadable, and every station is treated as running.
     supabase.from('businesses').select('kitchen_stations').eq('id', resolvedBizId).maybeSingle(),
     loadGstStatus(supabase, resolvedBizId),
@@ -93,6 +93,18 @@ export async function submitGuestOrder(body: any, supabase: any) {
     (catalogRes.data || []).map((ci: any) => [ci.id, ci])
   );
   const stations = enabledStations(stationRes.data?.kitchen_stations);
+
+  // The menu a guest holds can be minutes old. A dish the host has switched off since then must not reach the kitchen.
+  // Only an explicit `false` blocks it: a row without the flag (null) still orders as before.
+  const unavailable = incomingItems
+    .map((item: any) => catalogMap.get(item.item_id || item.id))
+    .filter((ci: any) => ci && ci.is_available === false);
+  if (unavailable.length > 0) {
+    const names = Array.from(new Set(unavailable.map((ci: any) => ci.name))).join(', ');
+    const err: any = new Error(`Invalid order: ${names} is no longer available. Please remove it from your order.`);
+    err.status = 400;
+    throw err;
+  }
 
   const newItemsFormatted = incomingItems.map((item: any, idx: number) => {
     const rawId = item.item_id || item.id || null;

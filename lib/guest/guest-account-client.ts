@@ -3,6 +3,7 @@
 import { walletAuthHeaders } from '@/lib/utils/wallet-secret';
 import { createClient } from '@/lib/supabase/client';
 import { friendlyAuthError } from '@/lib/auth/auth-messages';
+import { AUTH_NEXT_COOKIE } from '@/lib/auth/safe-next';
 
 export interface GuestAccountSummary {
   handle: string;
@@ -53,6 +54,28 @@ export async function signInVibers(email: string, password: string): Promise<{ o
   }
 }
 
+/** Google sign-in is shown only once the provider is switched on in Supabase and NEXT_PUBLIC_GOOGLE_AUTH=on is set. */
+export const GOOGLE_AUTH_ENABLED = process.env.NEXT_PUBLIC_GOOGLE_AUTH === 'on';
+
+/**
+ * One tap with Google. The page the guest is on (table and venue in its query) is kept in a short-lived cookie so the
+ * callback can send them back to it; the redirect URL itself stays a plain /auth/callback.
+ */
+export async function signInWithGoogle(): Promise<{ ok: false; error: string } | { ok: true }> {
+  try {
+    const back = `${window.location.pathname}${window.location.search}`;
+    document.cookie = `${AUTH_NEXT_COOKIE}=${encodeURIComponent(back)}; path=/; max-age=600; SameSite=Lax${window.location.protocol === 'https:' ? '; Secure' : ''}`;
+    const { error } = await createClient().auth.signInWithOAuth({
+      provider: 'google',
+      // A venue phone can be shared or passed round: always let the person pick the Google account.
+      options: { redirectTo: `${window.location.origin}/auth/callback`, queryParams: { prompt: 'select_account' } },
+    });
+    return error ? { ok: false, error: friendlyAuthError(error.message) } : { ok: true };
+  } catch (e: any) {
+    return { ok: false, error: friendlyAuthError(e?.message) };
+  }
+}
+
 /** Creates the Vibers account. `confirmed` is false when the project asks for email confirmation first. */
 export async function signUpVibers(email: string, password: string): Promise<{ ok: true; confirmed: boolean } | { ok: false; error: string; exists?: boolean }> {
   try {
@@ -81,10 +104,30 @@ export async function connectAfterSignIn(venueId: string): Promise<AfterSignIn> 
   return { kind: 'error', error: 'You are signed in, but this venue could not be reached. Please try again.' };
 }
 
+/** Sign in with the @handle and 6-digit PIN chosen when the profile was made. Works at every property. */
+export async function signInWithPin(venueId: string, handle: string, pin: string): Promise<Outcome> {
+  const outcome = await post('/api/guest/auth/login', { venue_id: venueId, handle, pin });
+  if (outcome.ok) applyGuestIdentity(outcome.account);
+  return outcome;
+}
+
+export type HandleStatus = 'available' | 'taken' | 'legacy' | 'invalid' | 'unknown';
+
+/** Whether an @handle is free, for the profile form. 'unknown' on any failure: saving still checks for real. */
+export async function checkHandle(handle: string): Promise<HandleStatus> {
+  try {
+    const res = await fetch(`/api/guest/auth/handle-check?handle=${encodeURIComponent(handle)}`, { cache: 'no-store' });
+    const data = await res.json().catch(() => ({}));
+    return res.ok && data?.success ? (data.status as HandleStatus) : 'unknown';
+  } catch {
+    return 'unknown';
+  }
+}
+
 /** The signed-in person's Vibers profile (handle, name, phone), then their guest session at this venue. */
 export function createVibersProfile(
   venueId: string,
-  input: { name: string; phone: string; handle: string; traveller_type?: string | null; intro?: string; legacy_pin?: string }
+  input: { name: string; phone: string; handle: string; traveller_type?: string | null; intro?: string; legacy_pin?: string; new_pin?: string }
 ) {
   return post('/api/guest/auth/vibers-profile', { venue_id: venueId, ...input });
 }

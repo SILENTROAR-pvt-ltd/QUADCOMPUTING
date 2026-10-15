@@ -1,3 +1,4 @@
+import { safeMessage } from '@/lib/utils/safe-message';
 import { NextResponse } from 'next/server';
 import { requireHost } from '@/lib/auth/guards';
 import { withApiErrorBoundary } from '@/lib/middleware/error-handler';
@@ -65,7 +66,7 @@ export const GET = withApiErrorBoundary(async function GET(request: Request) {
     });
   } catch (error: any) {
     console.error('[API Accommodations Rooms GET]', error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: safeMessage(error, 'Internal Server Error') }, { status: 500 });
   }
 }, 'AccommodationsRoomsGET');
 
@@ -116,7 +117,7 @@ export const POST = withApiErrorBoundary(async function POST(request: Request) {
     return NextResponse.json({ success: true, room: newRoom });
   } catch (error: any) {
     console.error('[API Accommodations Rooms POST]', error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: safeMessage(error, 'Internal Server Error') }, { status: 500 });
   }
 }, 'AccommodationsRoomsPOST');
 
@@ -156,7 +157,7 @@ export const PATCH = withApiErrorBoundary(async function PATCH(request: Request)
     return NextResponse.json({ success: true, room: updatedRoom });
   } catch (error: any) {
     console.error('[API Accommodations Rooms PATCH]', error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: safeMessage(error, 'Internal Server Error') }, { status: 500 });
   }
 }, 'AccommodationsRoomsPATCH');
 
@@ -197,6 +198,6 @@ export const DELETE = withApiErrorBoundary(async function DELETE(request: Reques
     return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error('[API Accommodations Rooms DELETE]', error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: safeMessage(error, 'Internal Server Error') }, { status: 500 });
   }
 }, 'AccommodationsRoomsDELETE');

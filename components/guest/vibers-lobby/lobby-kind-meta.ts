@@ -11,13 +11,13 @@ export interface KindMeta {
 
 export const KIND_META: Record<LobbyKind, KindMeta> = {
   message: { label: 'Message', hint: 'Say hello to the room', Icon: MessageCircle, badge: 'bg-neutral-100 text-neutral-700' },
-  moment: { label: 'Moment', hint: 'Share a photo from the cafe', Icon: Camera, badge: 'bg-amber-50 text-amber-800' },
-  want: { label: 'Want', hint: 'Ask for something', Icon: Hand, badge: 'bg-emerald-50 text-emerald-800' },
+  moment: { label: 'Postcard', hint: 'Share a photo from the cafe', Icon: Camera, badge: 'bg-amber-50 text-amber-800' },
+  // Retired: old wants are kept out of the feed, and none can be made. The entry stays so a stray one still draws.
+  want: { label: 'Want', hint: '', Icon: Hand, badge: 'bg-emerald-50 text-emerald-800' },
 };
 
 export const FEED_FILTERS: Array<{ id: LobbyFilter; label: string }> = [
   { id: 'all', label: 'All' },
-  { id: 'moment', label: 'Moments' },
-  { id: 'want', label: 'Wants' },
+  { id: 'moment', label: 'Postcards' },
   { id: 'message', label: 'Messages' },
 ];

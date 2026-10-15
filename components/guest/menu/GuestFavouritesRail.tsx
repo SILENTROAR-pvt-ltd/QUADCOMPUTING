@@ -49,6 +49,7 @@ export function GuestFavouritesRail({ items, likes, venueName, getItemCartQuanti
               <div className="group h-full rounded-2xl border border-white/80 bg-white/90 p-2 shadow-[0_12px_30px_-18px_rgba(244,63,94,0.55)] backdrop-blur">
                 <div className="relative aspect-[4/3] overflow-hidden rounded-xl bg-zinc-100">
                   {item.image_url
+                    // eslint-disable-next-line @next/next/no-img-element -- the venue-uploaded photo; images.unoptimized is set, so next/image would not resize it either
                     ? <img src={item.image_url} alt={item.name} loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
                     : <div className="flex h-full w-full items-center justify-center text-2xl text-zinc-400" style={serif}>{item.name.charAt(0)}</div>}
                   <span className="absolute left-2 top-2 rounded-full bg-zinc-950/80 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur">#{rank + 1}</span>

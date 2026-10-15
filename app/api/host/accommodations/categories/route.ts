@@ -1,3 +1,4 @@
+import { safeMessage } from '@/lib/utils/safe-message';
 import { NextResponse } from 'next/server';
 import { requireHost } from '@/lib/auth/guards';
 import {
@@ -20,7 +21,7 @@ export const GET = withApiErrorBoundary(async function GET(request: Request) {
     return NextResponse.json(result);
   } catch (error: any) {
     console.error('[API Accommodations Categories GET]', error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: safeMessage(error, 'Internal Server Error') }, { status: 500 });
   }
 }, 'AccommodationsCategoriesGET');
 
@@ -36,7 +37,7 @@ export const POST = withApiErrorBoundary(async function POST(request: Request) {
   } catch (error: any) {
     console.error('[API Accommodations Categories POST Error]', error);
     const status = error.message?.includes('required') ? 400 : 500;
-    return NextResponse.json({ success: false, error: error.message }, { status });
+    return NextResponse.json({ success: false, error: safeMessage(error, 'Internal Server Error') }, { status });
   }
 }, 'AccommodationsCategoriesPOST');
 
@@ -54,7 +55,7 @@ export const DELETE = withApiErrorBoundary(async function DELETE(request: Reques
     return NextResponse.json(result, { status: result.success ? 200 : result.status || 400 });
   } catch (error: any) {
     console.error('[API Accommodations Categories DELETE Error]', error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: safeMessage(error, 'Internal Server Error') }, { status: 500 });
   }
 }, 'AccommodationsCategoriesDELETE');
 
@@ -69,7 +70,7 @@ export const PATCH = withApiErrorBoundary(async function PATCH(request: Request)
     return NextResponse.json(result);
   } catch (error: any) {
     console.error('[API Accommodations Categories PATCH Error]', error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: safeMessage(error, 'Internal Server Error') }, { status: 500 });
   }
 }, 'AccommodationsCategoriesPATCH');
 

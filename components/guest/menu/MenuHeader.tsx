@@ -44,23 +44,24 @@ export function MenuHeader({
         <div aria-hidden className="pointer-events-none absolute inset-x-0 -top-24 h-[360px] bg-[radial-gradient(50%_55%_at_50%_32%,rgba(251,191,36,0.14),transparent_70%),radial-gradient(40%_40%_at_50%_55%,rgba(16,185,129,0.10),transparent_75%)]" />
 
         <div className="relative mx-auto w-full max-w-5xl px-4 pb-4 pt-4 sm:px-6">
-          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 justify-self-start rounded-full bg-zinc-950 px-3 py-1 text-[10px] font-semibold uppercase tracking-widest text-white shadow-[0_6px_18px_-6px_rgba(0,0,0,0.5)]">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_2px_rgba(52,211,153,0.7)]" />
-              Table {tableNo}
+          {/* Table on the left, the bill on the right. The brand sits dead centre when the screen is wide enough for all three. */}
+          <div className="relative flex items-center justify-between gap-2">
+            <span className="inline-flex h-9 items-center gap-2 whitespace-nowrap rounded-full border border-[#e6d9b8] bg-white/90 pl-3 pr-3.5 shadow-[0_6px_16px_-10px_rgba(10,50,34,0.5)]">
+              <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500 shadow-[0_0_8px_2px_rgba(16,185,129,0.45)]" />
+              <span className="text-[9px] font-semibold uppercase tracking-[0.22em] text-zinc-500">Table</span>
+              <span className="text-[13px] font-semibold leading-none tracking-wide text-zinc-950">{tableNo}</span>
             </span>
-            <span className="text-[10px] font-semibold uppercase tracking-[0.3em] text-zinc-400">{GUEST_BRAND.name}</span>
+            <span aria-hidden className="pointer-events-none absolute left-1/2 hidden -translate-x-1/2 whitespace-nowrap text-[9px] font-semibold uppercase tracking-[0.26em] text-zinc-400 min-[480px]:block">{GUEST_BRAND.name}</span>
             {activeOrdersCount > 0 ? (
               <button
                 onClick={onOpenBill}
-                className="flex items-center gap-1.5 justify-self-end rounded-full border border-zinc-200/70 bg-white/90 px-3.5 py-1.5 text-xs font-medium text-zinc-800 shadow-sm transition-colors hover:bg-white active:scale-95 cursor-pointer"
+                className="inline-flex h-9 items-center gap-1.5 whitespace-nowrap rounded-full border border-[#e6d9b8] bg-white/90 px-3.5 text-xs font-medium text-zinc-800 shadow-[0_6px_16px_-10px_rgba(10,50,34,0.5)] transition-colors hover:bg-white active:scale-95 cursor-pointer"
               >
                 <Receipt className="text-zinc-600" size={13} />
                 <span>Bill ({activeOrdersCount})</span>
               </button>
             ) : <span aria-hidden="true" />}
           </div>
-
           <motion.div
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}

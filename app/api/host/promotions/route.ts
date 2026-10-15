@@ -1,3 +1,4 @@
+import { safeMessage } from '@/lib/utils/safe-message';
 import { NextResponse } from 'next/server';
 import { requireHost, adminDb } from '@/lib/auth/guards';
 import { withApiErrorBoundary } from '@/lib/middleware/error-handler';
@@ -35,7 +36,7 @@ export const POST = withApiErrorBoundary(async function POST(req: Request) {
 
     return NextResponse.json({ success: true, promotion }, { status: 201 });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Server error' }, { status: 500 });
+    return NextResponse.json({ error: safeMessage(error, 'Server error') }, { status: 500 });
   }
 }, 'HostPromotionsPOST');
 
@@ -65,6 +66,6 @@ export const DELETE = withApiErrorBoundary(async function DELETE(req: Request) {
 
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Server error' }, { status: 500 });
+    return NextResponse.json({ error: safeMessage(error, 'Server error') }, { status: 500 });
   }
 }, 'HostPromotionsDELETE');
