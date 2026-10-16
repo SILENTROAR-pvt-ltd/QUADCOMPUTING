@@ -1,147 +1,45 @@
 'use client';
 
 import React from 'react';
-import type { MenuItem } from '@/components/guest/menu/types';
-import { CustomizationDrawer, CustomizableItem } from '@/components/guest/menu/CustomizationDrawer';
-import { CartReviewModal } from '@/components/guest/menu/CartReviewModal';
-import { VenueServiceModal } from '@/components/guest/menu/VenueServiceModal';
-import { OrderSuccessModal } from '@/components/guest/menu/OrderSuccessModal';
+import { CustomizationDrawer } from './CustomizationDrawer';
+import { CartReviewModal } from './CartReviewModal';
+import { VenueServiceModal } from './VenueServiceModal';
+import { OrderSuccessModal } from './OrderSuccessModal';
+import type { GuestMenuState } from './hooks/useGuestMenuState';
 
 interface MenuModalsHostProps {
-  isCustomizationOpen: boolean;
-  onCloseCustomization: () => void;
-  customizingItem: CustomizableItem | null;
-  onAddToCart: (configuredItem: any) => void;
-  showCartReview: boolean;
-  onCloseCartReview: () => void;
-  tableNumber: string;
-  cartItems: any[];
-  cartSubtotal: number;
-  gstAmount: number;
-  cartGrandTotal: number;
-  orderCookingNotes: string;
-  onNotesChange: (notes: string) => void;
-  guestNameInput: string;
-  guestPhoneInput: string;
-  guestHandleInput?: string;
-  guestAvatarInput?: string;
-  onGuestNameChange: (val: string) => void;
-  onGuestPhoneChange: (val: string) => void;
-  onGuestHandleChange?: (val: string) => void;
-  onGuestAvatarChange?: (val: string) => void;
-  onSaveProfile?: (profile: { name: string; handle: string; phone: string; avatar: string }) => void;
-  cafeId?: string;
-  isSendingToKitchen: boolean;
-  onPlaceOrder: (overrideName?: string, overridePhone?: string, overrideHandle?: string) => void;
-  onIncrement: (id: string) => void;
-  onDecrement: (id: string) => void;
-  onRemove: (id: string) => void;
-  hasActiveOrder: boolean;
-  menuItems?: MenuItem[];
+  state: GuestMenuState;
+  /** The venue the QR belongs to (the cart review and the success card need it). */
+  cafeId: string;
   featuredIds?: string[];
-  onQuickAdd?: (item: MenuItem) => void;
-  selectedService: MenuItem | null;
-  onCloseServiceModal: () => void;
-  onRequestService: (s: MenuItem) => void;
-  serviceNotificationSent: boolean;
-  orderCelebration: boolean;
-  businessName: string;
-  isAddonOrderSuccess: boolean;
-  onCloseOrderCelebration: () => void;
   onExploreServices: () => void;
   onExploreLounge: () => void;
 }
 
-export function MenuModalsHost({
-  isCustomizationOpen,
-  onCloseCustomization,
-  customizingItem,
-  onAddToCart,
-  showCartReview,
-  onCloseCartReview,
-  tableNumber,
-  cartItems,
-  cartSubtotal,
-  gstAmount,
-  cartGrandTotal,
-  orderCookingNotes,
-  onNotesChange,
-  guestNameInput,
-  guestPhoneInput,
-  guestHandleInput,
-  guestAvatarInput,
-  onGuestNameChange,
-  onGuestPhoneChange,
-  onGuestHandleChange,
-  onGuestAvatarChange,
-  onSaveProfile,
-  cafeId,
-  isSendingToKitchen,
-  onPlaceOrder,
-  onIncrement,
-  onDecrement,
-  onRemove,
-  hasActiveOrder,
-  menuItems,
-  featuredIds,
-  onQuickAdd,
-  selectedService,
-  onCloseServiceModal,
-  onRequestService,
-  serviceNotificationSent,
-  orderCelebration,
-  businessName,
-  isAddonOrderSuccess,
-  onCloseOrderCelebration,
-  onExploreServices,
-  onExploreLounge,
-}: MenuModalsHostProps) {
+/** Every sheet that opens over the menu: customising a dish, reviewing the tray, a venue service, and the order thank-you. */
+export function MenuModalsHost({ state: s, cafeId, featuredIds, onExploreServices, onExploreLounge }: MenuModalsHostProps) {
   return (
     <>
       <CustomizationDrawer
-        isOpen={isCustomizationOpen}
-        onClose={onCloseCustomization}
-        item={customizingItem}
-        onAddToCart={onAddToCart}
+        isOpen={s.isCustomizationOpen}
+        onClose={() => { s.setIsCustomizationOpen(false); s.setCustomizingItem(null); }}
+        item={s.customizingItem}
+        onAddToCart={(configured) => { s.addToCart(configured); s.showToast(`Added ${configured.name} to order`); }}
       />
-
       <CartReviewModal
-        isOpen={showCartReview}
-        onClose={onCloseCartReview}
-        tableNumber={tableNumber}
-        cartItems={cartItems}
-        cartSubtotal={cartSubtotal}
-        gstAmount={gstAmount}
-        cartGrandTotal={cartGrandTotal}
-        orderCookingNotes={orderCookingNotes}
-        onNotesChange={onNotesChange}
-        cafeId={cafeId}
-        isSendingToKitchen={isSendingToKitchen}
-        onPlaceOrder={onPlaceOrder}
-        onIncrement={onIncrement}
-        onDecrement={onDecrement}
-        onRemove={onRemove}
-        hasActiveOrder={hasActiveOrder}
-        menuItems={menuItems}
-        featuredIds={featuredIds}
-        onQuickAdd={onQuickAdd}
+        isOpen={s.showCartReview} onClose={() => s.setShowCartReview(false)} tableNumber={s.tableNumber}
+        cartItems={s.cartItems} cartSubtotal={s.cartSubtotal} gstAmount={s.gstAmount} cartGrandTotal={s.cartGrandTotal}
+        orderCookingNotes={s.orderCookingNotes} onNotesChange={s.setOrderCookingNotes} cafeId={cafeId}
+        isSendingToKitchen={s.isSendingToKitchen} onPlaceOrder={s.handlePlaceOrderToKitchen}
+        onIncrement={s.incrementQuantity} onDecrement={s.decrementQuantity} onRemove={s.removeFromCart}
+        hasActiveOrder={s.hasActiveOrder} menuItems={s.diningItems} featuredIds={featuredIds} onQuickAdd={s.handleQuickAdd}
       />
-
-      <VenueServiceModal
-        service={selectedService}
-        onClose={onCloseServiceModal}
-        onRequest={onRequestService}
-        isSent={serviceNotificationSent}
-      />
-
+      <VenueServiceModal service={s.selectedService} onClose={() => s.setSelectedService(null)}
+        onRequest={s.handleConciergeServiceRequest} isSent={s.serviceNotificationSent} />
       <OrderSuccessModal
-        isOpen={orderCelebration}
-        tableNumber={tableNumber}
-        businessName={businessName}
-        isAddon={isAddonOrderSuccess}
-        onClose={onCloseOrderCelebration}
-        onExploreServices={onExploreServices}
-        onExploreLounge={onExploreLounge}
+        isOpen={s.orderCelebration} tableNumber={s.tableNumber} businessName={s.businessName}
+        isAddon={s.isAddonOrderSuccess} onClose={() => s.setOrderCelebration(false)}
+        onExploreServices={onExploreServices} onExploreLounge={onExploreLounge}
       />
     </>
   );

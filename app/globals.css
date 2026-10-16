@@ -183,3 +183,17 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .animate-sheen { animation: none; opacity: 0; }
 }
+/* Placeholder blocks while data loads: a soft light sweep instead of a static grey. */
+@keyframes shimmer-sweep {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+.shimmer {
+  background-color: rgb(228 228 231 / 0.6);
+  background-image: linear-gradient(100deg, transparent 20%, rgb(255 255 255 / 0.65) 50%, transparent 80%);
+  background-size: 200% 100%;
+  animation: shimmer-sweep 1.6s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .shimmer { animation: none; }
+}

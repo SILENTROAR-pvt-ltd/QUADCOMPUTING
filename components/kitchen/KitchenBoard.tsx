@@ -18,6 +18,8 @@ interface KitchenBoardProps {
   businessId?: string;
   stationFilter?: 'ALL' | KitchenStation;
   className?: string;
+  /** Read the tickets this often as well (a PIN-signed-in kitchen tablet has no realtime channel). */
+  pollMs?: number;
 }
 
 const TICK_MS = 20_000;
@@ -25,7 +27,7 @@ const isActive = (t: KitchenTicket) => t.status !== 'SERVED' && t.status !== 'CA
 const time = (iso?: string) => Date.parse(iso || '') || 0;
 
 /** The live kitchen: one card per ticket, oldest first, with every dish and when each stage happened. */
-export function KitchenBoard({ businessId, stationFilter = 'ALL', className = '' }: KitchenBoardProps) {
+export function KitchenBoard({ businessId, stationFilter = 'ALL', className = '', pollMs }: KitchenBoardProps) {
   const [station, setStation] = useState<'ALL' | KitchenStation>(stationFilter);
   const [tab, setTab] = useState<BoardTab>('ACTIVE');
   const [nowMs, setNowMs] = useState(Date.now());
@@ -41,7 +43,7 @@ export function KitchenBoard({ businessId, stationFilter = 'ALL', className = ''
   }, []);
 
   const { tickets, isLoading, isSubscribed, error, refetch, updateTicketStatus, toggleItemDone } =
-    useKitchenRealtime({ businessId, onNewTicket });
+    useKitchenRealtime({ businessId, onNewTicket, pollMs });
 
   const inTab = useMemo(
     () => tickets.filter((t) => (tab === 'ACTIVE' ? isActive(t) : tab === 'READY' ? t.status === 'READY' : t.status === 'SERVED')),

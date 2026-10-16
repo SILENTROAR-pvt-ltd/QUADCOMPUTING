@@ -7,12 +7,12 @@ export type Tender = 'CASH' | 'UPI' | 'CARD';
 
 interface BillTotals { subtotal: number; tax: number; total: number; orderId: string | null }
 
-/** What the waiter's action did: asked billing to settle, or freed a table that had nothing started. */
-export type TableActionKind = 'request' | 'release';
+/** What the waiter's action did: settled the bill and freed the table, asked billing to settle, or freed an unstarted table. */
+export type TableActionKind = 'settle' | 'request' | 'release';
 
 /**
- * A waiter's actions on a live table. Settling is not one of them: the bill goes to billing as a bill request, and the
- * cashier settles it there. An unstarted table can still be freed.
+ * A waiter's actions on a live table: settle the bill (choosing how the guest paid) and free the table, send the bill to
+ * billing for the cashier instead, or free a table that has nothing started.
  */
 export function useTableActions(venueId: string, tableNumber: string, bill: BillTotals, onDone: (kind: TableActionKind) => void) {
   const [busy, setBusy] = useState<TableActionKind | null>(null);
@@ -47,7 +47,17 @@ export function useTableActions(venueId: string, tableNumber: string, bill: Bill
     grand_total: bill.total,
   });
 
+  /** Settles the bill as paid by `tender` and frees the table. The guest's set-aside cashback is applied on the server. */
+  const settle = (tender: Tender) => run('settle', {
+    action: 'waiter_settle',
+    payment_method: tender,
+    order_id: bill.orderId ?? undefined,
+    subtotal: bill.subtotal,
+    tax_amount: bill.tax,
+    grand_total: bill.total,
+  });
+
   const release = () => run('release', { action: 'release' });
 
-  return { busy, error, requested, sendToBilling, release, setError };
+  return { busy, error, requested, settle, sendToBilling, release, setError };
 }

@@ -1,6 +1,9 @@
 'use client';
 
 import React from 'react';
+import { motion } from 'framer-motion';
+import { pressSoft } from '@/components/guest/menu/motion';
+import { AnimatedCount } from '@/components/guest/menu/AnimatedCount';
 import type { TableVisualState } from '@/lib/utils/live-table-state';
 import { TABLE_STATE_STYLE } from './live-table-style';
 
@@ -24,12 +27,13 @@ function LiveTableTileBase({ tableNumber, seats, state, amount, itemCount, ready
   const style = TABLE_STATE_STYLE[state];
   const hasBill = state !== 'vacant' && state !== 'settled' && amount !== null && amount !== undefined;
   return (
-    <button
+    <motion.button
       type="button"
       onClick={() => onSelect(tableNumber)}
+      {...pressSoft}
       aria-pressed={selected}
       aria-label={`Table ${tableNumber}, ${style.label}${hasBill ? `, bill ${inr(amount as number)}` : ''}${readyCount > 0 ? `, ${readyCount} ready to serve` : ''}`}
-      className={`flex min-h-[7rem] w-full flex-col justify-between rounded-2xl border p-3 text-left transition-[transform,box-shadow] cursor-pointer active:scale-[0.97] lg:hover:-translate-y-0.5 lg:hover:shadow-md ${style.tile} ${
+      className={`flex min-h-[7rem] w-full flex-col justify-between rounded-2xl border p-3 text-left transition-[transform,box-shadow] cursor-pointer lg:hover:-translate-y-0.5 lg:hover:shadow-md ${style.tile} ${
         selected ? 'outline outline-2 outline-offset-2 outline-neutral-950' : ''
       }`}
     >
@@ -49,9 +53,9 @@ function LiveTableTileBase({ tableNumber, seats, state, amount, itemCount, ready
         <span className="text-[11px] text-neutral-500">
           {itemCount ? `${itemCount} ${itemCount === 1 ? 'item' : 'items'}` : seats ? `${seats} seats` : ''}
         </span>
-        {hasBill && <span className="font-mono text-base font-bold text-neutral-950">{inr(amount as number)}</span>}
+        {hasBill && <AnimatedCount value={inr(amount as number)} className="font-mono text-base font-bold text-neutral-950" />}
       </div>
-    </button>
+    </motion.button>
   );
 }
 

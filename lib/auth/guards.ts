@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { adminDb } from '@/lib/supabase/admin';
 import { getVerifiedUser } from './verified-user';
+import { staffFromRequest, staffMayMake, staffUser } from './staff-access';
+import type { StaffSession } from '@/lib/services/staff-auth/staff-session';
 import type { User, SupabaseClient } from '@supabase/supabase-js';
 
 export { adminDb };
@@ -12,6 +14,8 @@ export interface AuthHostSuccess {
   business: any;
   businesses: any[];
   supabase: SupabaseClient;
+  /** Set when the caller is a staff member signed in by PIN rather than the owner. */
+  staff?: StaffSession;
   error?: null;
 }
 
@@ -96,6 +100,27 @@ export async function resolveHostBusinesses(
 }
 
 /**
+ * The host-shaped result for a signed-in staff member: their own venue only, through the service client (the routes
+ * they can reach all filter by business id), and a user whose id is not a UUID.
+ */
+async function staffHostResult(staff: StaffSession, request?: Request, explicitBusinessId?: string | null): Promise<AuthHostResult> {
+  let asked = explicitBusinessId || null;
+  if (!asked && request) {
+    try {
+      const q = new URL(request.url).searchParams;
+      asked = q.get('business_id') || q.get('businessId') || q.get('venue_id') || q.get('venueId');
+    } catch { /* a relative URL has no query to read */ }
+  }
+  if (asked && asked !== staff.bid) {
+    return { error: NextResponse.json({ error: 'Forbidden: You do not have access to this business' }, { status: 403 }) };
+  }
+  const { data } = await adminDb().from('businesses').select('*').eq('id', staff.bid).maybeSingle();
+  if (!data) return { error: NextResponse.json({ error: 'Forbidden: No business associated with this staff member' }, { status: 403 }) };
+  const business = { ...data, name: data.business_name || data.name || 'Venue', business_name: data.business_name || data.name || 'Venue' };
+  return { user: staffUser(staff), businessId: staff.bid, business, businesses: [business], supabase: adminDb(), staff, error: null };
+}
+
+/**
  * requireHost()
  * Guard for all /api/host/** route handlers.
  * Verifies that the caller has a valid authenticated session
@@ -108,6 +133,16 @@ export async function requireHost(
   options?: { allowNoBusiness?: boolean }
 ): Promise<AuthHostResult> {
   try {
+    // A staff PIN sign-in outranks an owner session in the same browser: someone signed in as a waiter gets a waiter's
+    // calls only, never the owner's, whatever else the browser holds. Calls outside the role are refused outright.
+    const staff = request ? await staffFromRequest(request) : null;
+    if (staff && request) {
+      if (!staffMayMake(staff, request)) {
+        return { error: NextResponse.json({ error: 'Forbidden: this staff sign-in cannot do that' }, { status: 403 }) };
+      }
+      return await staffHostResult(staff, request, explicitBusinessId);
+    }
+
     const supabase = await createClient();
     const user = await getVerifiedUser(supabase);
 

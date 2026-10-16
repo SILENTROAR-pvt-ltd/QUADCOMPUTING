@@ -1,6 +1,6 @@
-import { describe, it, expect } from 'vitest';
+﻿import { describe, it, expect } from 'vitest';
 import type { KitchenTicket } from './kitchen';
-import { dishState, kitchenSummary, ticketsForTable } from './table-kitchen';
+import { activeTickets, dishState, kitchenSummary, ticketsForTable } from './table-kitchen';
 
 const ticket = (over: Partial<KitchenTicket>): KitchenTicket => ({
   id: 't1',
@@ -51,5 +51,19 @@ describe('where a dish is', () => {
       ticket({ id: 'c', status: 'SERVED', items: [{ name: 'Water', qty: 1 }] }),
     ];
     expect(kitchenSummary(tickets)).toEqual({ waiting: 0, cooking: 2, ready: 4, served: 1, readyDishes: 4, openTickets: 2 });
+  });
+});
+
+describe('the orders board', () => {
+  it('lists only unserved, uncancelled orders, ready first and then oldest first', () => {
+    const list = activeTickets([
+      ticket({ id: 'served', status: 'SERVED' }),
+      ticket({ id: 'gone', status: 'CANCELLED' }),
+      ticket({ id: 'new', status: 'PENDING', created_at: '2026-10-16T10:10:00Z' }),
+      ticket({ id: 'old', status: 'PENDING', created_at: '2026-10-16T10:00:00Z' }),
+      ticket({ id: 'ready', status: 'READY', created_at: '2026-10-16T10:20:00Z' }),
+      ticket({ id: 'cooking', status: 'PREPARING', created_at: '2026-10-16T10:30:00Z' }),
+    ]).map((t) => t.id);
+    expect(list).toEqual(['ready', 'cooking', 'old', 'new']);
   });
 });

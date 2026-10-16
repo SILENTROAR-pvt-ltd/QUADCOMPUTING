@@ -74,7 +74,7 @@ export const PATCH = withApiErrorBoundary(async function PATCH(request: Request)
     if (auth.error) return auth.error;
     const { businessId, supabase } = auth;
 
-    const body = await request.json();
+    let body = await request.json();
     if (body.business_id && body.business_id !== businessId) {
       return NextResponse.json(
         { success: false, error: 'Forbidden: Business ID mismatch', code: 'FORBIDDEN' },
@@ -83,6 +83,12 @@ export const PATCH = withApiErrorBoundary(async function PATCH(request: Request)
     }
     const venueId = businessId;
     body.business_id = venueId;
+
+    // A waiter signed in by PIN can only do what Live Tables offers: ask billing, free an unstarted table, or (when the
+    // owner allows it) settle through "waiter_settle". The billing settlement itself is the cashier's.
+    if (auth.staff?.role === 'WAITER' && !['request_bill', 'release', 'waiter_settle'].includes(String(body.action || ''))) {
+      return NextResponse.json({ success: false, error: 'Settling a bill is done by the cashier. Send it to billing.' }, { status: 403 });
+    }
 
     // Free a table whose bill was never started, without taking payment.
     if (body.action === 'release') {
@@ -96,6 +102,22 @@ export const PATCH = withApiErrorBoundary(async function PATCH(request: Request)
       const { updateGuestSession } = await import('@/lib/services/guest-session/update-session.service');
       const result = await updateGuestSession({ ...body, business_id: venueId, cafe_id: venueId, action: 'request_bill' }, supabase);
       return NextResponse.json(result);
+    }
+
+    // A waiter settles the table from Live Tables: they choose how the guest paid, and the guest's set-aside cashback
+    // is applied on the server. It then settles exactly like the billing POS does (below).
+    if (body.action === 'waiter_settle') {
+      // The owner decides whether waiters may settle at all; until they turn it on, the bill goes to billing.
+      const { readWaiterCanSettle } = await import('@/lib/services/venue/waiter-settle-setting');
+      const { adminDb } = await import('@/lib/auth/guards');
+      if (!(await readWaiterCanSettle(adminDb(), venueId))) {
+        return NextResponse.json(
+          { success: false, code: 'WAITER_SETTLE_OFF', error: 'Settling is done by the cashier at this venue. Send the bill to billing.' },
+          { status: 403 },
+        );
+      }
+      const { buildWaiterSettlement } = await import('@/lib/services/session/waiter-settle.service');
+      body = await buildWaiterSettlement(body, supabase, venueId);
     }
 
     const { withIdempotency, generateIdempotencyKey } = await import('@/lib/services/api-idempotency.util');

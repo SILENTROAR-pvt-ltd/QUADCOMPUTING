@@ -16,6 +16,13 @@ interface BillResponse {
 
 interface Snapshot { lines: BillLine[]; order: BillOrder; session: BillSession }
 
+/** A dish the waiter picked: what to show on the bill at once, and what to send. */
+export interface PickedItem { id: string; name: string; price: number; quantity: number }
+
+/** Lines the server has not confirmed yet carry this prefix on their id. */
+export const PENDING = 'pending-';
+export const isPendingLine = (l: { id: string }) => l.id.startsWith(PENDING);
+
 // The last bill seen for each table. Opening a table shows it at once while the fresh one loads behind it, so a
 // waiter tapping from table to table never waits on a spinner for a bill they looked at a minute ago.
 const SNAPSHOTS = new Map<string, Snapshot>();
@@ -51,6 +58,9 @@ export function useTableBill(venueId: string, tableNumber: string, onChanged: ()
   // False while a remembered bill is on screen and the real one has not arrived yet.
   const [fresh, setFresh] = useState(false);
   const latest = useRef(0);
+  const pendingLines = useRef(new Map<string, BillLine>());
+  const inflight = useRef(0);
+  const queue = useRef<Promise<unknown>>(Promise.resolve());
 
   const load = useCallback(async () => {
     const mine = ++latest.current;
@@ -64,7 +74,8 @@ export function useTableBill(venueId: string, tableNumber: string, onChanged: ()
     if (mine !== latest.current) return;
     if (result.ok && result.data) {
       const items = (Array.isArray(result.data.items) ? result.data.items : []).filter((l) => String(l.kot_status ?? '').toLowerCase() !== 'cancelled');
-      setLines(items);
+      // Dishes still on their way to the kitchen stay on the bill until the server has them.
+      setLines([...items, ...Array.from(pendingLines.current.values())]);
       setOrder(result.data.order ?? null);
       setSession(result.data.session ?? null);
       setError(null);
@@ -87,8 +98,45 @@ export function useTableBill(venueId: string, tableNumber: string, onChanged: ()
 
   // Reads the real bill again behind a change; settling stays locked until that is back and no tap is still waiting.
   const resync = useCallback(() => {
-    void load().finally(() => { if (timers.current.size === 0) setSyncing(false); });
+    void load().finally(() => { if (timers.current.size === 0 && inflight.current === 0) setSyncing(false); });
   }, [load]);
+
+  /**
+   * Adds dishes to the table. They are on the bill the moment the waiter taps, marked as on their way; the request runs
+   * behind (one at a time, so quick adds never open two orders) and a refused one takes its lines off again.
+   */
+  const addItems = useCallback((picks: PickedItem[]): Promise<{ ok: boolean; message: string }> => {
+    const stamp = Date.now();
+    const temp: BillLine[] = picks.map((p, i) => ({ id: `${PENDING}${stamp}-${i}`, item_name: p.name, price: p.price, quantity: p.quantity, kot_status: 'pending' }));
+    temp.forEach((l) => pendingLines.current.set(l.id, l));
+    setLines((cur) => [...cur, ...temp]);
+    setOrder((cur) => shifted(cur, temp.reduce((s, l) => s + l.price * l.quantity, 0)));
+    setSyncing(true);
+    setError(null);
+    inflight.current += 1;
+
+    const run = async () => {
+      const result = await apiRequest<{ ticket_number: string; is_addon: boolean }>('/api/host/tables/items', jsonRequest('POST', {
+        table_number: tableNumber,
+        items: picks.map((p) => ({ item_id: p.id, quantity: p.quantity })),
+      }));
+      temp.forEach((l) => pendingLines.current.delete(l.id));
+      inflight.current -= 1;
+      if (!result.ok) {
+        setLines((cur) => cur.filter((l) => !temp.some((t) => t.id === l.id)));
+        setOrder((cur) => shifted(cur, -temp.reduce((s, l) => s + l.price * l.quantity, 0)));
+        setError(result.error);
+      } else {
+        onChanged();
+      }
+      resync();
+      const where = result.data?.is_addon ? 'Added to the open order' : 'Sent to the kitchen';
+      return { ok: result.ok, message: result.ok ? `${where} · ${result.data?.ticket_number ?? ''}`.trim() : (result.error ?? 'Could not add those items.') };
+    };
+    const next = queue.current.then(run, run);
+    queue.current = next.catch(() => undefined);
+    return next;
+  }, [tableNumber, onChanged, resync]);
 
   // A change shows at once. Taps on one line within a moment are sent as one request with the final quantity, and
   // a change the server refuses is undone by reading the real bill again.
@@ -127,5 +175,5 @@ export function useTableBill(venueId: string, tableNumber: string, onChanged: ()
     return true;
   };
 
-  return { lines, order, session, loading, error, busyLine, syncing, fresh, reload: load, changeLine, setError };
+  return { lines, order, session, loading, error, busyLine, syncing, fresh, reload: load, changeLine, addItems, setError };
 }

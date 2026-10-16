@@ -3,7 +3,7 @@
 import React from 'react';
 import { inr } from './LiveTableLine';
 import { LiveTableActions } from './LiveTableActions';
-import type { TableActionKind } from './useTableActions';
+import type { Tender, TableActionKind } from './useTableActions';
 
 interface LiveTableFooterProps {
   subtotal: number;
@@ -17,6 +17,8 @@ interface LiveTableFooterProps {
   /** Billing has already been asked to settle this table. */
   billRequested: boolean;
   error: string | null;
+  canSettle: boolean;
+  onSettle: (tender: Tender) => void;
   onSendToBilling: () => void;
   onRelease: () => void;
   onOpenBilling: () => void;
@@ -46,6 +48,8 @@ export function LiveTableFooter(props: LiveTableFooterProps) {
         locked={props.locked}
         billRequested={props.billRequested}
         error={props.error}
+        canSettle={props.canSettle}
+        onSettle={props.onSettle}
         onSendToBilling={props.onSendToBilling}
         onRelease={props.onRelease}
         onOpenBilling={props.onOpenBilling}

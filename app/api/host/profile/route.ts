@@ -19,6 +19,17 @@ export const GET = withApiErrorBoundary(async function GET(request: Request) {
     if (auth.error) return auth.error;
     const { user, business, supabase } = auth;
 
+    // A cashier signed in by PIN gets what a receipt prints (venue name, UPI id for the QR, GSTIN, address) and nothing
+    // of the owner's account, PINs, wallet or plan.
+    if (auth.staff) {
+      const { data: loc } = await supabase.from('locations').select('*').eq('business_id', business.id).order('created_at', { ascending: false }).limit(1).maybeSingle();
+      return NextResponse.json({
+        success: true,
+        business: { business_name: business.business_name, upi_id: business.upi_id ?? null, gst_number: business.gst_number ?? null },
+        location: loc ? { address: loc.address, address_line1: loc.address_line1, street: loc.street, city: loc.city, state: loc.state, pincode: loc.pincode, postal_code: loc.postal_code, branch_name: loc.branch_name } : {},
+      }, { headers: noStore });
+    }
+
     const [{ data: profile }, { data: location }] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', user.id).maybeSingle(),
       supabase.from('locations').select('*').eq('business_id', business.id).order('created_at', { ascending: false }).limit(1).maybeSingle(),

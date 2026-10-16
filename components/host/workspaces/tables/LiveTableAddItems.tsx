@@ -1,138 +1,106 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
-import { CheckCircle2, Loader2, Minus, Plus, Search } from 'lucide-react';
-import { apiRequest, jsonRequest } from '@/lib/utils/api-client';
-
-interface CatalogItem { id: string; name: string; price: number; category: string; item_type?: string; is_available?: boolean }
-
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const inr = (n: number) => `₹${(Number(n) || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
+import React, { useCallback, useMemo, useState } from 'react';
+import { motion } from 'framer-motion';
+import { CheckCircle2, Search } from 'lucide-react';
+import { press } from '@/components/guest/menu/motion';
+import { AnimatedCount } from '@/components/guest/menu/AnimatedCount';
+import { useMenuCatalog } from './useMenuCatalog';
+import { AddItemRow, inr } from './AddItemRow';
+import type { PickedItem } from './useTableBill';
 
 interface LiveTableAddItemsProps {
   venueId: string;
-  tableNumber: string;
-  onAdded: () => void;
+  /** Puts the picks on the bill at once and sends them behind; resolves with what to tell the waiter. */
+  onSubmit: (picks: PickedItem[]) => Promise<{ ok: boolean; message: string }>;
 }
 
-/** Pick dishes from the menu catalogue and send them to this table, as the guest app does. */
-export function LiveTableAddItems({ venueId, tableNumber, onAdded }: LiveTableAddItemsProps) {
-  const [catalog, setCatalog] = useState<CatalogItem[]>([]);
-  const [loading, setLoading] = useState(true);
+const SKELETON_ROWS = 7;
+
+/**
+ * Pick dishes from the menu and send them to this table. Three fixed bands: search and categories on top, the dishes
+ * scrolling in the middle, the send button at the bottom. Sending is instant: the picker clears and the dishes are on the
+ * bill straight away, so the waiter can keep picking while the kitchen is told.
+ */
+export function LiveTableAddItems({ venueId, onSubmit }: LiveTableAddItemsProps) {
+  const { items, loading, error: loadError } = useMenuCatalog(venueId);
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('All');
   const [cart, setCart] = useState<Record<string, number>>({});
-  const [sending, setSending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [done, setDone] = useState<string | null>(null);
+  const [sending, setSending] = useState(0);
+  const [note, setNote] = useState<{ ok: boolean; text: string } | null>(null);
 
-  useEffect(() => {
-    apiRequest<{ items: CatalogItem[] }>(`/api/host/catalog?business_id=${encodeURIComponent(venueId)}`, { cache: 'no-store' }).then((r) => {
-      // Only real catalogue items can be ordered: room add-ons are not, and stays are not table orders.
-      const usable = (r.data?.items ?? []).filter((i) => UUID.test(i.id) && i.is_available !== false && i.item_type !== 'room');
-      setCatalog(usable);
-      if (!r.ok) setError(r.error);
-      setLoading(false);
-    });
-  }, [venueId]);
-
-  const categories = useMemo(() => ['All', ...Array.from(new Set(catalog.map((i) => i.category).filter(Boolean)))], [catalog]);
+  const categories = useMemo(() => ['All', ...Array.from(new Set(items.map((i) => i.category).filter(Boolean)))], [items]);
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return catalog.filter((i) => (category === 'All' || i.category === category) && (!q || i.name.toLowerCase().includes(q)));
-  }, [catalog, category, query]);
+    return items.filter((i) => (category === 'All' || i.category === category) && (!q || i.name.toLowerCase().includes(q)));
+  }, [items, category, query]);
 
-  const lines = Object.entries(cart).map(([id, qty]) => ({ item: catalog.find((c) => c.id === id)!, qty })).filter((l) => l.item && l.qty > 0);
-  const total = lines.reduce((sum, l) => sum + l.item.price * l.qty, 0);
-  const setQty = (id: string, qty: number) => setCart((c) => ({ ...c, [id]: Math.max(0, Math.min(50, qty)) }));
+  const byId = useMemo(() => new Map(items.map((i) => [i.id, i])), [items]);
+  const picks: PickedItem[] = useMemo(
+    () => Object.entries(cart).flatMap(([id, quantity]) => { const i = byId.get(id); return i && quantity > 0 ? [{ id, name: i.name, price: i.price, quantity }] : []; }),
+    [cart, byId],
+  );
+  const count = picks.reduce((n, p) => n + p.quantity, 0);
+  const total = picks.reduce((s, p) => s + p.price * p.quantity, 0);
+  const setQty = useCallback((id: string, qty: number) => setCart((c) => ({ ...c, [id]: Math.max(0, Math.min(50, qty)) })), []);
 
-  const send = async () => {
-    if (sending || lines.length === 0) return;
-    setSending(true);
-    setError(null);
-    setDone(null);
-    const result = await apiRequest<{ ticket_number: string; is_addon: boolean }>('/api/host/tables/items', jsonRequest('POST', {
-      table_number: tableNumber,
-      items: lines.map((l) => ({ item_id: l.item.id, quantity: l.qty })),
-    }));
-    setSending(false);
-    if (!result.ok) {
-      setError(result.error);
-      return;
-    }
+  const send = () => {
+    if (count === 0) return;
+    const batch = picks;
     setCart({});
-    setDone(`${result.data?.is_addon ? 'Added to the open order' : 'Sent to the kitchen'} · ${result.data?.ticket_number ?? ''}`.trim());
-    onAdded();
+    setSending((n) => n + 1);
+    setNote(null);
+    void onSubmit(batch).then((r) => {
+      setSending((n) => n - 1);
+      setNote({ ok: r.ok, text: r.message });
+      // A refused batch goes back into the picker, so nothing the waiter chose is lost.
+      if (!r.ok) setCart((c) => { const next = { ...c }; batch.forEach((p) => { next[p.id] = (next[p.id] ?? 0) + p.quantity; }); return next; });
+    });
   };
 
   return (
-    <section aria-label="Add items to this table" className="space-y-2">
-      {/* Search and categories stay at the top of the panel's scroll while the dishes pass under them. */}
-      <div className="sticky top-0 z-10 -mx-4 -mt-2 space-y-2 bg-white px-4 pb-2 pt-2 sm:-mx-5 sm:px-5">
+    <section aria-label="Add items to this table" className="flex h-full min-h-0 flex-col">
+      <div className="shrink-0 space-y-2 pb-2">
         <div className="relative">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-neutral-400" />
-          <input
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search the menu"
-            aria-label="Search the menu"
-            maxLength={60}
-            className="h-10 w-full rounded-xl border border-neutral-200 bg-white pl-9 pr-3 text-[16px] sm:text-sm focus:border-neutral-900 focus:outline-none"
-          />
+          <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search the menu" aria-label="Search the menu" maxLength={60}
+            className="h-11 w-full rounded-xl border border-neutral-200 bg-white pl-9 pr-3 text-[16px] focus:border-neutral-900 focus:outline-none" />
         </div>
-
         <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="group" aria-label="Category">
           {categories.map((c) => (
-            <button key={c} type="button" onClick={() => setCategory(c)} aria-pressed={category === c}
-              className={`h-8 shrink-0 rounded-full border px-3 text-[12px] font-semibold cursor-pointer ${category === c ? 'border-neutral-950 bg-neutral-950 text-white' : 'border-neutral-200 bg-white text-neutral-700'}`}>
+            <motion.button key={c} type="button" onClick={() => setCategory(c)} aria-pressed={category === c} {...press}
+              className={`h-9 shrink-0 cursor-pointer rounded-full border px-3.5 text-[12px] font-semibold transition-colors ${category === c ? 'border-neutral-950 bg-neutral-950 text-white' : 'border-neutral-200 bg-white text-neutral-700'}`}>
               {c}
-            </button>
+            </motion.button>
           ))}
         </div>
       </div>
 
-      {loading ? (
-        <p className="flex items-center gap-2 text-xs text-neutral-500"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading the menu…</p>
-      ) : visible.length === 0 ? (
-        <p className="text-xs text-neutral-500">No menu items match.</p>
-      ) : (
-        <ul className="divide-y divide-neutral-100 rounded-xl border border-neutral-200 bg-white">
-          {visible.map((item) => {
-            const qty = cart[item.id] ?? 0;
-            return (
-              <li key={item.id} className="flex items-center justify-between gap-3 px-3 py-2">
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-neutral-950">{item.name}</p>
-                  <p className="text-[11px] text-neutral-500">{item.category} · {inr(item.price)}</p>
-                </div>
-                <div className="flex shrink-0 items-center gap-1">
-                  {qty > 0 && (
-                    <button type="button" onClick={() => setQty(item.id, qty - 1)} aria-label={`Remove one ${item.name}`} className="flex h-9 w-9 items-center justify-center rounded-xl border border-neutral-200 cursor-pointer active:bg-neutral-100"><Minus className="h-3.5 w-3.5" /></button>
-                  )}
-                  {qty > 0 && <span className="w-6 text-center font-mono text-sm font-bold">{qty}</span>}
-                  <button type="button" onClick={() => setQty(item.id, qty + 1)} aria-label={`Add one ${item.name}`} className="flex h-9 w-9 items-center justify-center rounded-xl bg-neutral-950 text-white cursor-pointer active:bg-neutral-800"><Plus className="h-3.5 w-3.5" /></button>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-      )}
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain rounded-xl border border-neutral-200 bg-white">
+        {loading ? (
+          <div role="status" aria-label="Loading the menu" className="space-y-px">
+            {Array.from({ length: SKELETON_ROWS }, (_, i) => <div key={i} className="shimmer h-[3.25rem]" style={{ animationDelay: `${i * 80}ms` }} />)}
+          </div>
+        ) : visible.length === 0 ? (
+          <p className="p-3 text-xs text-neutral-500">{loadError ?? 'No menu items match.'}</p>
+        ) : (
+          <ul className="divide-y divide-neutral-100">{visible.map((item) => <AddItemRow key={item.id} item={item} qty={cart[item.id] ?? 0} onQty={setQty} />)}</ul>
+        )}
+      </div>
 
-      {error && <p role="alert" className="text-xs font-medium text-rose-600">{error}</p>}
-      {done && <p role="status" className="flex items-center gap-1.5 text-xs font-medium text-emerald-700"><CheckCircle2 className="h-3.5 w-3.5" /> {done}</p>}
-
-      {/* Pinned to the bottom of the panel's scroll, so what you picked can always be sent without scrolling back. */}
-      <div className="sticky bottom-0 -mx-4 -mb-3 bg-white/95 px-4 pb-3 pt-2 backdrop-blur-sm sm:-mx-5 sm:px-5">
-        <button
-          type="button"
-          onClick={send}
-          disabled={sending || lines.length === 0}
-          className="flex h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-neutral-950 text-[14px] font-semibold text-white shadow-[0_10px_20px_-14px_rgba(0,0,0,0.6)] active:scale-[0.99] disabled:bg-neutral-300 disabled:shadow-none"
-        >
-          {sending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-          {lines.length === 0 ? 'Pick items to add' : `Add ${lines.reduce((n, l) => n + l.qty, 0)} to table · ${inr(total)}`}
-        </button>
+      <div className="shrink-0 space-y-1.5 pt-2">
+        {note && (
+          <p role={note.ok ? 'status' : 'alert'} className={`flex items-center gap-1.5 text-xs font-medium ${note.ok ? 'text-emerald-700' : 'text-rose-600'}`}>
+            {note.ok && <CheckCircle2 className="h-3.5 w-3.5" />} {note.text}
+          </p>
+        )}
+        <motion.button type="button" onClick={send} disabled={count === 0} {...press}
+          className="flex h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-neutral-950 text-[14px] font-semibold text-white disabled:bg-neutral-300">
+          {count === 0
+            ? (sending > 0 ? 'Sending to the kitchen…' : 'Pick items to add')
+            : <>Add <AnimatedCount value={count} /> to table · <AnimatedCount value={inr(total)} /></>}
+        </motion.button>
       </div>
     </section>
   );

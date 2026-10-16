@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
 import { MailCheck, X } from 'lucide-react';
 import { applyGuestIdentity, fetchGuestAccountState, GOOGLE_AUTH_ENABLED, type GuestAccountSummary } from '@/lib/guest/guest-account-client';
 import { createClient } from '@/lib/supabase/client';
@@ -10,8 +11,8 @@ import { VibersSignInForm, type CredentialMode } from './VibersSignInForm';
 import { VibersProfileForm } from './VibersProfileForm';
 import { VibersPinSignInForm } from './VibersPinSignInForm';
 import { GoogleAuthButton } from './GoogleAuthButton';
-
-type Step = CredentialMode | 'pin' | 'profile' | 'check_email';
+import { AuthModeTabs } from './auth/AuthModeTabs';
+import { AUTH_COPY, type AuthStep } from './auth/auth-copy';
 
 export interface GuestAuthSheetProps {
   isOpen: boolean;
@@ -26,24 +27,15 @@ export interface GuestAuthSheetProps {
   notice?: string;
 }
 
-const COPY: Record<Step, [string, (table: string) => string]> = {
-  create: ['Create your Vibers account', (t) => `One account for every Vibers property. Earn 7% back on your bills, on any phone at Table ${t}.`],
-  signin: ['Sign in', () => 'Use your Vibers account email and password. Hosts: it is the same login as Quad Computing.'],
-  pin: ['Sign in with your PIN', () => 'Your @handle and the 6-digit PIN you chose when you made your account. Works at every Vibers property.'],
-  profile: ['Finish your profile', () => 'Once, for every property: your name, mobile and @handle.'],
-  check_email: ['Check your email', () => 'Open the link we sent to confirm your account, then sign in here.'],
-};
-
 /** Guest sign-in: one Vibers account (the same Supabase login as QC), then a one-time profile. */
 export function GuestAuthSheet({ isOpen, venueId, tableNumber, initialMode = 'create', onClose, onSignedIn, onBrowse, notice }: GuestAuthSheetProps) {
-  const [step, setStep] = useState<Step>(initialMode);
+  const [step, setStep] = useState<AuthStep>(initialMode);
   const [sentTo, setSentTo] = useState('');
 
   useEffect(() => {
     if (!isOpen) return;
     setStep(initialMode);
-    // Already signed in to a Vibers account on this browser (a host, or someone mid-sign-up): go
-    // straight to the profile, or straight in.
+    // Already signed in to a Vibers account on this browser (a host, or someone mid-sign-up): straight to the profile, or in.
     let live = true;
     void fetchGuestAccountState(venueId).then((state) => {
       if (!live) return;
@@ -60,31 +52,25 @@ export function GuestAuthSheet({ isOpen, venueId, tableNumber, initialMode = 'cr
     await createClient().auth.signOut({ scope: 'local' }).catch(() => {});
     setStep('signin');
   };
-  const tabClass = (active: boolean) =>
-    `flex-1 rounded-xl py-2 text-xs font-semibold transition-colors cursor-pointer ${active ? 'bg-white text-zinc-950 shadow-xs' : 'text-zinc-500 hover:text-zinc-900'}`;
-  const [title, subtitle] = COPY[step];
+  const [title, subtitle] = AUTH_COPY[step];
 
   return (
-    <div role="dialog" aria-modal="true" aria-labelledby="guest-auth-title" className="fixed inset-0 z-[300] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-0 sm:p-4 animate-in fade-in duration-200">
-      <div className="w-full max-w-md bg-white rounded-t-[32px] sm:rounded-3xl border border-zinc-200/80 p-6 shadow-2xl" style={{ maxHeight: '92dvh', overflowY: 'auto' }}>
+    <div role="dialog" aria-modal="true" aria-labelledby="guest-auth-title" className="fixed inset-0 z-[300] flex items-end justify-center bg-black/50 p-0 backdrop-blur-sm sm:items-center sm:p-4">
+      <motion.div initial={{ y: 48, opacity: 0.6 }} animate={{ y: 0, opacity: 1 }} transition={{ type: 'spring', stiffness: 420, damping: 38 }}
+        className="max-h-[92dvh] w-full max-w-md overflow-y-auto overscroll-contain rounded-t-[32px] border border-zinc-200/80 bg-white p-6 shadow-2xl sm:rounded-3xl">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h2 id="guest-auth-title" className="font-serif text-xl text-zinc-950 leading-tight">{title}</h2>
-            <p className="text-xs text-zinc-500 mt-1">{subtitle(tableNumber)}</p>
+            <h2 id="guest-auth-title" className="font-serif text-xl leading-tight text-zinc-950">{title}</h2>
+            <p className="mt-1 text-xs text-zinc-500">{subtitle(tableNumber)}</p>
           </div>
-          <button type="button" onClick={onClose} aria-label="Close" className="p-1.5 -mr-1 rounded-full hover:bg-zinc-100 text-zinc-400 hover:text-black cursor-pointer">
-            <X className="w-5 h-5" />
-          </button>
+          <button type="button" onClick={onClose} aria-label="Close" className="-mr-1 grid h-10 w-10 cursor-pointer place-items-center rounded-full text-zinc-400 hover:bg-zinc-100 hover:text-black"><X className="h-5 w-5" /></button>
         </div>
 
         {(step === 'create' || step === 'signin' || step === 'pin') && (
           <>
             {notice && <div className="pt-3"><FormError message={notice} /></div>}
             {GOOGLE_AUTH_ENABLED && <GoogleAuthButton />}
-            <div role="tablist" className="mt-4 flex gap-1 rounded-2xl bg-zinc-100 p-1">
-              <button type="button" role="tab" aria-selected={step === 'create'} className={tabClass(step === 'create')} onClick={() => setStep('create')}>New here</button>
-              <button type="button" role="tab" aria-selected={step === 'signin' || step === 'pin'} className={tabClass(step === 'signin' || step === 'pin')} onClick={() => setStep('signin')}>I have an account</button>
-            </div>
+            <AuthModeTabs step={step} onStep={setStep} />
             {step === 'pin' ? (
               <>
                 <VibersPinSignInForm venueId={venueId} onSignedIn={onSignedIn} />
@@ -92,10 +78,8 @@ export function GuestAuthSheet({ isOpen, venueId, tableNumber, initialMode = 'cr
               </>
             ) : (
               <>
-                <VibersSignInForm
-                  key={step} venueId={venueId} mode={step} onMode={setStep} onSignedIn={onSignedIn}
-                  onNeedsProfile={() => setStep('profile')} onCheckEmail={(email) => { setSentTo(email); setStep('check_email'); }}
-                />
+                <VibersSignInForm key={step} venueId={venueId} mode={step} onMode={setStep} onSignedIn={onSignedIn}
+                  onNeedsProfile={() => setStep('profile')} onCheckEmail={(email) => { setSentTo(email); setStep('check_email'); }} />
                 {step === 'signin' && <div className="mt-1"><QuietButton onClick={() => setStep('pin')}>Use @handle and PIN instead</QuietButton></div>}
               </>
             )}
@@ -105,7 +89,7 @@ export function GuestAuthSheet({ isOpen, venueId, tableNumber, initialMode = 'cr
         {step === 'profile' && <VibersProfileForm venueId={venueId} onSignedIn={onSignedIn} onSwitchAccount={switchAccount} />}
 
         {step === 'check_email' && (
-          <div className="pt-5 space-y-3.5">
+          <div className="space-y-3.5 pt-5">
             <p className="flex items-center gap-2.5 rounded-2xl border border-emerald-100 bg-emerald-50 px-3.5 py-3 text-sm text-emerald-900">
               <MailCheck aria-hidden="true" className="h-4 w-4 shrink-0" /> Sent to {sentTo}
             </p>
@@ -114,10 +98,8 @@ export function GuestAuthSheet({ isOpen, venueId, tableNumber, initialMode = 'cr
         )}
 
         {onBrowse && step !== 'profile' && <div className="mt-1"><QuietButton onClick={onBrowse}>Continue without an account</QuietButton></div>}
-        <p className="mt-2 text-[10.5px] text-zinc-400 text-center leading-relaxed">
-          Your password is never stored by the venue. {GUEST_BRAND.name} never asks for it by message.
-        </p>
-      </div>
+        <p className="mt-2 text-center text-[10.5px] leading-relaxed text-zinc-400">Your password is never stored by the venue. {GUEST_BRAND.name} never asks for it by message.</p>
+      </motion.div>
     </div>
   );
 }

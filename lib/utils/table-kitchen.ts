@@ -20,6 +20,17 @@ export function ticketsForTable(tickets: KitchenTicket[], tableNumber: string, o
     .sort((a, b) => Date.parse(a.created_at || '') - Date.parse(b.created_at || ''));
 }
 
+/**
+ * Every order the waiters still have to act on, across all tables: not served, not cancelled. Ready ones come first
+ * (they are waiting to be carried out), then the longest-waiting ones.
+ */
+export function activeTickets(tickets: KitchenTicket[]): KitchenTicket[] {
+  const rank = (t: KitchenTicket) => (t.status === 'READY' ? 0 : t.status === 'PREPARING' ? 1 : 2);
+  return tickets
+    .filter((t) => t.status !== 'SERVED' && t.status !== 'CANCELLED')
+    .sort((a, b) => rank(a) - rank(b) || Date.parse(a.created_at || '') - Date.parse(b.created_at || ''));
+}
+
 /** One dish's state: a dish the chef ticked off counts as ready even while the rest of its ticket is still cooking. */
 export function dishState(ticket: Pick<KitchenTicket, 'status'>, item: Pick<KitchenItem, 'completed'>): DishState {
   if (ticket.status === 'SERVED') return 'served';

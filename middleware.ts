@@ -1,6 +1,8 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import { getVerifiedUser } from '@/lib/auth/verified-user';
+import { staffMayCall } from '@/lib/services/staff-auth/staff-roles';
+import { readStaffSession, staffSecret, staffTokenFromCookieHeader, STAFF_COOKIE } from '@/lib/services/staff-auth/staff-session';
 
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -45,6 +47,9 @@ export async function middleware(request: NextRequest) {
   // real supabase.auth.signUp() on the onboarding page, which sets a real
   // session cookie, so it carries a real session like every other host route.)
   if (isApiHostRoute && !user) {
+    // A staff member signed in by PIN passes only for the calls their role needs; the route re-checks everything.
+    const staff = await readStaffSession(staffTokenFromCookieHeader(request.headers.get('cookie')), staffSecret());
+    if (staff && staffMayCall(staff.role, request.method, pathname)) return supabaseResponse;
     return NextResponse.json(
       { error: 'Unauthorized: Host session required' },
       { status: 401 }
@@ -93,6 +98,12 @@ export async function middleware(request: NextRequest) {
       redirectResponse.cookies.set(cookie.name, cookie.value);
     });
     return redirectResponse;
+  }
+
+  // The owner opening the control center in a browser that still holds a staff PIN sign-in: drop the staff sign-in, which
+  // would otherwise outrank the owner's session and restrict the dashboard to that staff role's calls.
+  if (user && isHostPageRoute && request.cookies.has(STAFF_COOKIE)) {
+    supabaseResponse.cookies.set(STAFF_COOKIE, '', { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', path: '/', maxAge: 0 });
   }
 
   return supabaseResponse;

@@ -18,13 +18,17 @@ export interface RestaurantTable {
 
 const DEFAULT_TABLES: RestaurantTable[] = [];
 
-export function usePOSTables(propsBusinessId?: string | null) {
+/** `pollMs`: how often the tables are read again behind the realtime signal (15 s by default; a PIN staff phone has no realtime, so reads faster). */
+export function usePOSTables(propsBusinessId?: string | null, options: { pollMs?: number } = {}) {
+  const pollMs = options.pollMs ?? 15000;
   const profile = useHostWorkspace((state) => state.profile);
 
   const [tables, setTables] = useState<RestaurantTable[]>(DEFAULT_TABLES);
   const [businessId, setBusinessId] = useState<string | null>(propsBusinessId || null);
   const [sessionsMap, setSessionsMap] = useState<Record<string, TableLiveSessionInfo>>({});
   const [isOnline, setIsOnline] = useState(true);
+  // True once the first read of the tables has come back (or failed), so screens can show placeholders until then.
+  const [loaded, setLoaded] = useState(false);
   const [activeStaff, setActiveStaff] = useState<{ id: string; name: string; role: string } | null>(null);
   const latestTableFetch = useRef(0);
 
@@ -132,6 +136,8 @@ export function usePOSTables(propsBusinessId?: string | null) {
         return;
       }
       console.warn('Could not refresh tables', e);
+    } finally {
+      setLoaded(true);
     }
   }, [businessId, fetchSessions]);
 
@@ -202,7 +208,7 @@ export function usePOSTables(propsBusinessId?: string | null) {
     // Skipped while the tab is hidden, and caught up as soon as it is visible again.
     const intervalId = setInterval(() => {
       if (typeof document === 'undefined' || !document.hidden) fetchTables();
-    }, 15000);
+    }, pollMs);
     const onVisible = () => { if (!document.hidden) scheduleFetch(); };
     document.addEventListener('visibilitychange', onVisible);
 
@@ -222,10 +228,11 @@ export function usePOSTables(propsBusinessId?: string | null) {
       document.removeEventListener('visibilitychange', onVisible);
       supabase.removeChannel(channel);
     };
-  }, [fetchTables, businessId]);
+  }, [fetchTables, businessId, pollMs]);
 
   return {
     tables,
+    loaded,
     businessId,
     sessionsMap,
     fetchTables,

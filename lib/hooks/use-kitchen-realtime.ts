@@ -23,6 +23,11 @@ export interface UseKitchenRealtimeOptions {
   onNewTicket?: (ticket: KitchenTicket) => void;
   onTicketUpdated?: (ticket: KitchenTicket) => void;
   onError?: (error: Error) => void;
+  /**
+   * Also read the tickets this often (while the tab is visible), ringing for any new one. For a staff phone signed in by
+   * PIN, which has no realtime channel (its database rules only let a signed-in owner listen).
+   */
+  pollMs?: number;
 }
 
 export function useKitchenRealtime({
@@ -30,6 +35,7 @@ export function useKitchenRealtime({
   onNewTicket,
   onTicketUpdated,
   onError,
+  pollMs,
 }: UseKitchenRealtimeOptions = {}) {
   const [tickets, setTickets] = useState<KitchenTicket[]>([]);
   const [orderItems, setOrderItems] = useState<OrderItemRecord[]>([]);
@@ -190,6 +196,27 @@ export function useKitchenRealtime({
       supabase.removeChannel(channel);
     };
   }, [businessId, fetchTickets]);
+
+  // 2b. Polling, for a phone with no realtime channel: a quiet re-read that rings for tickets it has not seen.
+  const loadedOnce = useRef(false);
+  useEffect(() => { if (!isLoading) loadedOnce.current = true; }, [isLoading]);
+  useEffect(() => {
+    if (!pollMs || !businessId) return;
+    const timer = setInterval(async () => {
+      if (document.visibilityState !== 'visible') return;
+      try {
+        const res = await fetch(`/api/host/kitchen/tickets?business_id=${encodeURIComponent(businessId)}`, { cache: 'no-store' });
+        if (!res.ok) return;
+        const next = normalizeKitchenTickets((await res.json()).tickets);
+        const known = new Set(ticketsRef.current.map((t) => t.id));
+        setTickets(next);
+        if (loadedOnce.current) next.filter((t) => !known.has(t.id)).forEach((t) => onNewTicketRef.current?.(t));
+      } catch {
+        // The next read tries again.
+      }
+    }, pollMs);
+    return () => clearInterval(timer);
+  }, [pollMs, businessId]);
 
   // 3. Optimistic Status Update with Automatic Rollback on Error
   const updateTicketStatus = useCallback(

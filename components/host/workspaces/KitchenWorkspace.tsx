@@ -3,10 +3,10 @@
 import React from 'react';
 import { KitchenBoard } from '@/components/kitchen/KitchenBoard';
 
-export function KitchenWorkspace({ cafeId }: { cafeId?: string } = {}) {
+export function KitchenWorkspace({ cafeId, pollMs }: { cafeId?: string; pollMs?: number } = {}) {
   return (
     <div className="animate-in fade-in duration-300 pb-20 selection:bg-neutral-900 selection:text-white">
-      <KitchenBoard businessId={cafeId} />
+      <KitchenBoard businessId={cafeId} pollMs={pollMs} />
     </div>
   );
 }

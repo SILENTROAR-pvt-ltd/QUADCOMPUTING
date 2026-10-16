@@ -36,10 +36,11 @@ interface LiveTableLineProps {
 /** One line of a live bill: what it is, where the kitchen has got to, and changing or removing it while it is still pending. */
 export function LiveTableLine({ line, confirming, removing, onAskRemove, onConfirmRemove, onKeep, onQuantity }: LiveTableLineProps) {
   const status = (line.kot_status || 'pending').toLowerCase();
-  const k = KITCHEN_STATUS[status] ?? KITCHEN_STATUS.pending;
-  const canRemove = status === 'pending';
+  const sending = line.id.startsWith('pending-');
+  const k = sending ? { label: 'Sending…', chip: 'bg-amber-100 text-amber-900' } : (KITCHEN_STATUS[status] ?? KITCHEN_STATUS.pending);
+  const canRemove = status === 'pending' && !sending;
   return (
-    <li className="flex items-start gap-2.5 py-2.5">
+    <li className={`flex items-start gap-2.5 py-2.5 transition-opacity ${sending ? 'opacity-70' : ''}`}>
       {canRemove && onQuantity ? (
         <div className="flex shrink-0 items-center overflow-hidden rounded-xl border border-neutral-200" aria-label={`Quantity of ${line.item_name}`}>
           <button type="button" onClick={() => onQuantity(line.quantity - 1)} disabled={line.quantity <= 1 || removing} aria-label={`One less ${line.item_name}`} className="flex h-9 w-9 items-center justify-center text-lg text-neutral-700 hover:bg-neutral-50 active:bg-neutral-100 disabled:opacity-30 cursor-pointer">−</button>
@@ -76,7 +77,7 @@ export function LiveTableLine({ line, confirming, removing, onAskRemove, onConfi
             <button type="button" onClick={onKeep} className="h-9 cursor-pointer px-2 text-[12px] text-neutral-500 hover:underline">Keep</button>
           </div>
         )}
-        {!canRemove && <p className="mt-1 flex items-center justify-end gap-1 text-[10px] text-neutral-400"><Clock className="h-3 w-3" /> started</p>}
+        {!canRemove && !sending && <p className="mt-1 flex items-center justify-end gap-1 text-[10px] text-neutral-400"><Clock className="h-3 w-3" /> started</p>}
       </div>
     </li>
   );

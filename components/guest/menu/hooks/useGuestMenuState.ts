@@ -30,13 +30,8 @@ export function useGuestMenuState({ tableParam, cafeParam }: { tableParam: strin
   });
 
   const cartSubtotal = Math.round(cart.getSubtotal() * 100) / 100;
+  // Only the search narrows the menu. The category chips scroll to a section and follow the page instead of hiding the rest.
   const filteredDiningItems = sessionData.diningItems.filter((item) => {
-    if (
-      ui.selectedCategory !== 'Dining' &&
-      (item.category || '').trim().toLowerCase() !== ui.selectedCategory.trim().toLowerCase()
-    ) {
-      return false;
-    }
     if (!ui.searchQuery.trim()) return true;
     const q = ui.searchQuery.toLowerCase();
     return item.name.toLowerCase().includes(q) || (item.description && item.description.toLowerCase().includes(q));
@@ -79,3 +74,6 @@ export function useGuestMenuState({ tableParam, cafeParam }: { tableParam: strin
     filteredDiningItems, handlePlaceOrderToKitchen, handleConciergeServiceRequest,
   };
 }
+
+/** Everything the menu page reads and does, as one object. */
+export type GuestMenuState = ReturnType<typeof useGuestMenuState>;

@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Loader2 } from 'lucide-react';
+import { ListSkeleton } from '@/components/guest/shared/ListSkeleton';
 import type { LobbyPostView } from '@/lib/services/lobby/lobby-post-view';
 import { LobbyPostCard } from './LobbyPostCard';
 import { POSTCARD_SERIF } from './MemoryPostcard';
@@ -55,9 +56,7 @@ export function LobbyFeed(props: LobbyFeedProps) {
 
   if (loading && posts.length === 0) {
     return (
-      <div className="flex items-center justify-center gap-2 py-12 text-sm text-neutral-500">
-        <Loader2 className="h-4 w-4 animate-spin" /> Pinning up the postcards…
-      </div>
+      <ListSkeleton rows={3} label="Loading the lobby" />
     );
   }
 
