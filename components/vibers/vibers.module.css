@@ -1,44 +1,23 @@
-/* Motion and 3D art for the Vibers Connect page. Everything stops for people who prefer reduced motion. */
+/* Motion for the Vibers Connect page, matched to Vibers Club. Everything stops for people who prefer reduced motion. */
 
-/* Soft drifting colour behind sections. */
-.aura { filter: blur(80px); opacity: 0.55; animation: drift 18s ease-in-out infinite; }
-.auraSlow { filter: blur(90px); opacity: 0.45; animation: drift 26s ease-in-out infinite reverse; }
-@keyframes drift {
-  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
-  50% { transform: translate3d(5%, -7%, 0) scale(1.1); }
+/* Live photos: a slow Ken Burns drift, so photography never sits still. */
+.kenburns {
+  transform-origin: var(--origin, 50% 50%);
+  animation: kenburns 18s ease-in-out infinite alternate;
+  will-change: transform;
+}
+@keyframes kenburns {
+  from { transform: scale(1.02) translate3d(0, 0, 0); }
+  to { transform: scale(1.14) translate3d(-1.5%, -1%, 0); }
 }
 
-/* The aura sphere: a glassy, slowly turning orb with a thin orbit ring, in CSS 3D. */
-.stage { perspective: 1100px; }
-.sphere {
-  position: absolute; inset: 12%; border-radius: 9999px;
-  /* Soft overlapping colour pools (a mesh), not a conic sweep, so it reads as glowing light, not slices. */
-  background:
-    radial-gradient(circle at 30% 24%, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0) 24%),
-    radial-gradient(circle at 74% 28%, #ffc27a 0%, rgba(255, 194, 122, 0) 46%),
-    radial-gradient(circle at 22% 72%, #7c3aed 0%, rgba(124,58,237, 0) 52%),
-    radial-gradient(circle at 78% 78%, #ff2e88 0%, rgba(255,46,136, 0) 56%),
-    radial-gradient(circle at 50% 50%, #ff8a6a 0%, #f2648f 70%);
-  box-shadow: inset -30px -40px 80px rgba(76,29,149, 0.35), 0 40px 90px -20px rgba(255,46,136, 0.45);
-  animation: turn 22s linear infinite;
+/* Phone and card mock-ups float gently. */
+.float { animation: float 7s ease-in-out infinite alternate; }
+.floatLate { animation: float 8s ease-in-out 1.4s infinite alternate; }
+@keyframes float {
+  from { transform: translate3d(0, 0, 0) rotate(var(--tilt, 0deg)); }
+  to { transform: translate3d(0, -10px, 0) rotate(var(--tilt, 0deg)); }
 }
-.sheen {
-  position: absolute; inset: 12%; border-radius: 9999px;
-  background: radial-gradient(circle at 30% 25%, rgba(255, 255, 255, 0.55), transparent 45%);
-  mix-blend-mode: screen;
-}
-.orbit { position: absolute; inset: 0; transform-style: preserve-3d; animation: tilt 16s ease-in-out infinite; }
-.ring {
-  position: absolute; inset: 2%; border-radius: 9999px; border: 1.5px solid rgba(42,18,80, 0.22);
-  transform: rotateX(74deg) rotateY(-12deg);
-}
-.float { animation: bob 7s ease-in-out infinite; }
-.floatLate { animation: bob 8s ease-in-out 1.4s infinite; }
-.floatLater { animation: bob 9s ease-in-out 2.6s infinite; }
-
-@keyframes turn { to { transform: rotate(360deg); } }
-@keyframes tilt { 50% { transform: rotateZ(8deg) rotateX(6deg); } }
-@keyframes bob { 50% { transform: translateY(-12px); } }
 
 /* Swipe stack: tilted cards that fan out on hover, for "connections on your terms". */
 .stack { perspective: 1000px; }
@@ -46,13 +25,16 @@
 .stack:hover .cardBack { transform: rotate(-12deg) translateX(-20%); }
 .stack:hover .cardMid { transform: rotate(8deg) translateX(16%); }
 
-/* Sections rise in as they scroll into view, where the browser supports scroll-driven animation. */
+/* The story thread: a thin line that fills as the reader scrolls through a chapter. */
+.thread { transform-origin: top center; }
 @supports (animation-timeline: view()) {
   .reveal { animation: rise linear both; animation-timeline: view(); animation-range: entry 0% entry 30%; }
+  .thread { animation: fill linear both; animation-timeline: view(); animation-range: entry 20% cover 60%; }
 }
 @keyframes rise { from { opacity: 0; transform: translateY(36px); } to { opacity: 1; transform: none; } }
+@keyframes fill { from { transform: scaleY(0); } to { transform: scaleY(1); } }
 
 @media (prefers-reduced-motion: reduce) {
-  .aura, .auraSlow, .sphere, .orbit, .float, .floatLate, .floatLater, .reveal { animation: none !important; }
+  .kenburns, .float, .floatLate, .reveal, .thread { animation: none !important; }
   .card { transition: none; }
 }

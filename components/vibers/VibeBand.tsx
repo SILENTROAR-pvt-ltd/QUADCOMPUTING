@@ -5,7 +5,8 @@ const PHRASES = [
   'Not the public',
   'No vibe viruses',
   'Verified, never assumed',
-  'Seven percent, no expiry',
+  'Rewards that never expire',
+  'You earn, we earn, fairly',
   'From the highest mountains to the deepest oceans',
 ];
 
@@ -13,11 +14,11 @@ const PHRASES = [
 export function VibeBand() {
   const row = [...PHRASES, ...PHRASES];
   return (
-    <div aria-hidden="true" className="overflow-hidden border-y border-[#2a1250]/10 bg-gradient-to-r from-[#ff6a3d] via-[#ff2e88] to-[#7c3aed] py-5">
+    <div aria-hidden="true" className="overflow-hidden border-y border-[#14261b]/10 bg-[#17301f] py-5">
       <div className="animate-marquee flex w-max gap-10 motion-reduce:animate-none">
         {row.map((p, i) => (
-          <span key={i} className={`${DISPLAY} flex items-center gap-10 whitespace-nowrap text-2xl italic text-white sm:text-3xl`}>
-            {p} <span className="not-italic text-[#ff6a3d]">✦</span>
+          <span key={i} className={`${DISPLAY} flex items-center gap-10 whitespace-nowrap text-2xl italic text-[#f6f4ec] sm:text-3xl`}>
+            {p} <span className="not-italic text-[#c8da4a]">✦</span>
           </span>
         ))}
       </div>

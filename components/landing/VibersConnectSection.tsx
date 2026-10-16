@@ -1,9 +1,10 @@
 import Image from 'next/image';
 import { ConciergeBell, Gift, MessagesSquare, QrCode, Star, UtensilsCrossed } from 'lucide-react';
+import { LivePhone } from '@/components/landing-shots/LivePhone';
 import { CONTAINER, EYEBROW, H2, LEAD, SECTION } from './landing-styles';
 
 const FEATURES = [
-  { icon: UtensilsCrossed, title: 'Order and track live', text: 'A clear menu with add-ons, then a live tracker from kitchen to table.' },
+  { icon: UtensilsCrossed, title: 'Order and track live', text: 'A clear menu with add-ons, then a live tracker from kitchen to table. Delivery and table booking too.' },
   { icon: ConciergeBell, title: 'Call staff in one tap', text: 'Waiter, chef or the bill, sent straight to the floor team.' },
   { icon: MessagesSquare, title: 'The Vibers Lobby', text: 'A lounge for the venue’s guests: posts, replies and private chats.' },
   { icon: Gift, title: 'Wallet and cashback', text: 'Guests earn on every visit and redeem it on their next bill.' },
@@ -25,18 +26,9 @@ export function VibersConnectSection() {
             </p>
           </div>
 
-          <div aria-hidden="true" className="absolute -right-2 top-8 hidden w-48 rounded-[1.75rem] border-[6px] border-black bg-white p-3 shadow-2xl sm:block lg:-right-6">
-            <p className="text-[9px] font-semibold uppercase tracking-[0.2em] text-[#8a6d3b]">Vibers Connect</p>
-            <p className="font-editorial mt-1 text-[15px] leading-tight text-black">Table 4 · Your order</p>
-            <ul className="mt-3 space-y-1.5 text-[11px] text-zinc-700">
-              <li className="flex justify-between"><span>Misal Pav × 2</span><span>Ready</span></li>
-              <li className="flex justify-between"><span>Masala Chai × 2</span><span>Preparing</span></li>
-            </ul>
-            <div className="mt-3 rounded-xl bg-[#fbf6ea] px-2.5 py-2 text-[10px] text-[#5c4520]">Cashback ready to use on this bill</div>
-            <div className="mt-2 grid grid-cols-2 gap-1.5 text-center text-[10px] font-semibold">
-              <span className="rounded-lg bg-black py-1.5 text-white">Call waiter</span>
-              <span className="rounded-lg border border-black/15 py-1.5 text-black">Get bill</span>
-            </div>
+          <div className="absolute -right-2 top-8 hidden gap-3 sm:flex lg:-right-8">
+            <LivePhone id="guest-menu" className="w-[160px] lg:w-[180px]" />
+            <LivePhone id="guest-tracker" className="mt-16 w-[160px] lg:w-[180px]" />
           </div>
         </div>
 

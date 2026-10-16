@@ -11,9 +11,9 @@ const SIDES = [
     points: [
       'Billing and POS with GST-ready bills',
       'Live tables, staff calls and kitchen tickets',
-      'Rooms with check-in and check-out',
-      'Raw inventory, recipes and purchasing',
-      'Staff, expenses, Z-reports and analytics',
+      'Rooms, delivery, reservations and vendors',
+      'Raw inventory, recipes and stock control',
+      'Dues, A-to-Z analytics and a full profit and loss',
     ],
     dark: true,
   },

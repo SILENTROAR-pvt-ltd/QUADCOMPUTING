@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { LandingNav } from '@/components/landing/LandingNav';
 import { LandingHero } from '@/components/landing/LandingHero';
 import { EcosystemSection } from '@/components/landing/EcosystemSection';
+import { ProductTour } from '@/components/landing/ProductTour';
 import { OrderFlowSection } from '@/components/landing/OrderFlowSection';
 import { HostModulesSection } from '@/components/landing/HostModulesSection';
 import { VibersConnectSection } from '@/components/landing/VibersConnectSection';
@@ -12,7 +13,7 @@ import { LandingFooter } from '@/components/landing/LandingFooter';
 export const metadata: Metadata = {
   title: 'Quad Computing by Vibers Connect · The operating system for restaurants, cafés and stays',
   description:
-    'Billing, live tables, kitchen tickets, rooms, inventory and reports in one control centre. Guests order, track, call staff and earn cashback with Vibers Connect.',
+    'Billing, live tables, kitchen tickets, rooms, delivery, reservations, stock, vendors and A-to-Z analytics with a full profit and loss. You earn 100% of every bill; we earn ₹3 a settled bill.',
 };
 
 /** Quad Computing, the Vibers Connect product that venues run on. */
@@ -26,6 +27,7 @@ export default function QuadComputingPage() {
       <main id="main">
         <LandingHero />
         <EcosystemSection />
+        <ProductTour />
         <OrderFlowSection />
         <HostModulesSection />
         <VibersConnectSection />

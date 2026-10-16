@@ -6,6 +6,8 @@ import { WhoWeAre } from '@/components/vibers/WhoWeAre';
 import { VibeProtocol } from '@/components/vibers/VibeProtocol';
 import { StayJourney } from '@/components/vibers/StayJourney';
 import { SevenPercentPromise } from '@/components/vibers/SevenPercentPromise';
+import { VenueEngine } from '@/components/vibers/VenueEngine';
+import { EarnTogether } from '@/components/vibers/EarnTogether';
 import { BeyondCheckout } from '@/components/vibers/BeyondCheckout';
 import { CommunitySection } from '@/components/vibers/CommunitySection';
 import { TeamSection } from '@/components/vibers/TeamSection';
@@ -17,7 +19,7 @@ export const metadata: Metadata = {
   metadataBase: new URL(SITE.url),
   title: 'Vibers Connect · Find your vibe. Find your people. Find yourself.',
   description:
-    'Verified stays, honest prices, 7% cashback with no expiry and a toxic-free community. The place where you don’t have to fit in. You just have to be you.',
+    'Verified stays, honest prices, 7% cashback with no expiry and a toxic-free community. Venues run on Quad Computing: you earn 100% of every bill, we earn ₹3 a bill.',
   openGraph: {
     title: 'Vibers Connect',
     description: 'Find your vibe. Find your people. Find yourself.',
@@ -27,27 +29,28 @@ export const metadata: Metadata = {
   },
 };
 
+/** The Vibers Connect home, told as one story in ten chapters: the people, the promise, the stay, and the venue side. */
 export default function VibersConnectHome() {
   return (
-    <div className={`${BODY} relative min-h-screen bg-[#fff7f0] bg-[radial-gradient(60rem_40rem_at_0%_0%,rgba(255,106,61,0.14),transparent_70%),radial-gradient(50rem_40rem_at_100%_10%,rgba(124,58,237,0.12),transparent_70%)] text-[#2a1250] selection:bg-[#ff2e88] selection:text-white`}>
-      <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-full focus:bg-[#7c3aed] focus:px-4 focus:py-2 focus:text-sm focus:text-white">
+    <div className={`${BODY} relative min-h-screen bg-[#f1efe6] text-[#14261b] selection:bg-[#c8da4a] selection:text-[#14261b]`}>
+      <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-full focus:bg-[#17301f] focus:px-4 focus:py-2 focus:text-sm focus:text-[#f6f4ec]">
         Skip to content
       </a>
-      <div className="relative z-10">
-        <VibersNav />
-        <main id="main">
-          <VibersHero />
-          <VibeBand />
-          <WhoWeAre />
-          <VibeProtocol />
-          <StayJourney />
-          <SevenPercentPromise />
-          <BeyondCheckout />
-          <CommunitySection />
-          <TeamSection />
-        </main>
-        <JoinAndFooter />
-      </div>
+      <VibersNav />
+      <main id="main">
+        <VibersHero />
+        <VibeBand />
+        <WhoWeAre />
+        <VibeProtocol />
+        <StayJourney />
+        <SevenPercentPromise />
+        <VenueEngine />
+        <EarnTogether />
+        <BeyondCheckout />
+        <CommunitySection />
+        <TeamSection />
+      </main>
+      <JoinAndFooter />
     </div>
   );
 }

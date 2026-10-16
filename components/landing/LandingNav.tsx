@@ -3,6 +3,7 @@ import { CONTAINER } from './landing-styles';
 
 const LINKS = [
   { href: '#platform', label: 'Platform' },
+  { href: '#tour', label: 'A to Z tour' },
   { href: '#how-it-works', label: 'How it works' },
   { href: '#vibers-connect', label: 'Vibers Connect' },
   { href: '#pricing', label: 'Pricing' },

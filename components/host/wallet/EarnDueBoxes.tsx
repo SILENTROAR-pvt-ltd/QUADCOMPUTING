@@ -16,7 +16,8 @@ interface Props {
 
 const BOX = 'relative flex min-h-[260px] min-w-0 flex-col rounded-2xl border border-neutral-200/90 bg-white p-4 shadow-xs sm:p-6';
 const HEADING = 'text-xs font-semibold uppercase tracking-[0.12em] text-neutral-600 sm:text-sm';
-const AMOUNT = 'mt-3 break-words font-serif text-[26px] leading-tight tabular-nums text-neutral-950 sm:text-4xl';
+// Sized to the phone's width so a lakh-scale amount stays on one line in the half-width box; it wraps only past that.
+const AMOUNT = 'mt-3 font-serif text-[clamp(17px,5vw,26px)] leading-tight tabular-nums text-neutral-950 [overflow-wrap:anywhere] sm:text-4xl';
 
 /**
  * Two big boxes side by side, on phones too. "You earn" is the venue's real revenue from settled bills, with its latest

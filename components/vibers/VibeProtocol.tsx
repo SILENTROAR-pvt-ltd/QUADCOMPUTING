@@ -1,5 +1,6 @@
 import { BadgeCheck, Flag, Gem, HeartHandshake } from 'lucide-react';
-import { AURA_TEXT, CONTAINER, KICKER, LEAD, SECTION } from './vibers-brand';
+import { Chapter } from './Chapter';
+import { ACCENT, CONTAINER, H2, KICKER, LEAD, SECTION, SURFACE } from './vibers-brand';
 import { DISPLAY } from './vibers-fonts';
 import s from './vibers.module.css';
 
@@ -11,44 +12,43 @@ const TAG = [
 
 export function VibeProtocol() {
   return (
-    <section id="protocol" aria-labelledby="protocol-title" className={`${SECTION} bg-[#f3ebff]/60`}>
+    <section id="protocol" aria-labelledby="protocol-title" className={`${SECTION} bg-[#e1efe3]/60`}>
       <div className={`${CONTAINER} ${s.reveal}`}>
-        <p className={KICKER}>Our philosophy</p>
-        <h2 id="protocol-title" className={`${DISPLAY} mt-4 max-w-3xl text-[2.6rem] leading-[1.02] tracking-[-0.02em] text-[#2a1250] sm:text-[3.6rem]`}>
-          Your environment shapes your experience. <em className={`font-normal ${AURA_TEXT}`}>So we protect it.</em>
+        <Chapter n="02" label="Our philosophy" />
+        <h2 id="protocol-title" className={`${DISPLAY} ${H2} max-w-3xl`}>
+          Your environment shapes your experience. <em className={ACCENT}>So we protect it.</em>
         </h2>
 
         <div className="mt-12 grid gap-5 lg:grid-cols-[1fr_1.15fr]">
-          <article className="relative overflow-hidden rounded-[32px] bg-gradient-to-br from-[#5b21b6] via-[#7c3aed] to-[#db2777] p-8 text-white sm:p-10">
-            <div aria-hidden="true" className={`absolute -right-16 -top-16 h-56 w-56 rounded-full bg-[#ff2e88] ${s.aura}`} />
-            <span className="relative grid h-12 w-12 place-items-center rounded-2xl bg-white/10">
-              <Flag aria-hidden="true" className="h-5 w-5 text-[#ff9b80]" />
+          <article className="relative overflow-hidden rounded-[32px] bg-[#17301f] p-8 text-[#f6f4ec] sm:p-10">
+            <span className="grid h-12 w-12 place-items-center rounded-2xl bg-[#c8da4a] text-[#14261b]">
+              <Flag aria-hidden="true" className="h-5 w-5" />
             </span>
-            <p className="relative mt-8 text-[11px] font-bold uppercase tracking-[0.24em] text-[#ff9b80]">No vibe viruses allowed</p>
-            <h3 className={`${DISPLAY} relative mt-2 text-4xl`}>The Red Flag Protocol</h3>
-            <p className="relative mt-4 text-[15px] leading-relaxed text-white/75">
+            <p className="mt-8 text-[11px] font-bold uppercase tracking-[0.24em] text-[#c8da4a]">No vibe viruses allowed</p>
+            <h3 className={`${DISPLAY} mt-2 text-4xl`}>The Red Flag Protocol</h3>
+            <p className="mt-4 text-[15px] leading-relaxed text-[#f6f4ec]/75">
               Zero tolerance for loud, bossy, inappropriate or toxic behaviour, or any criminal activity. People who disrupt
               the harmony are marked as &ldquo;red flag&rdquo; personalities, and we and our partner properties guarantee
               they are not entertained. Your space stays yours: for exploration, goals and peace of mind.
             </p>
           </article>
 
-          <article className="rounded-[32px] border border-[#2a1250]/[0.08] bg-white/80 p-8 sm:p-10">
-            <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-[#be185d]">The tag</p>
-            <h3 className={`${DISPLAY} mt-2 text-4xl text-[#2a1250]`}>A promise of authenticity</h3>
+          <article className={`${SURFACE} p-8 sm:p-10`}>
+            <p className={KICKER}>The tag</p>
+            <h3 className={`${DISPLAY} mt-2 text-4xl text-[#14261b]`}>A promise of authenticity</h3>
             <p className={`${LEAD} mt-4`}>
-              We never assign the Vibers Connect tag blindly. <strong className="font-semibold text-[#2a1250]">Every property is
+              We never assign the Vibers Connect tag blindly. <strong className="font-semibold text-[#14261b]">Every property is
               physically visited, audited and onboarded by our team.</strong>
             </p>
             <ul className="mt-8 space-y-6">
               {TAG.map((t) => (
                 <li key={t.title} className="flex gap-4">
-                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#fff7f0] text-[#be185d]">
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#e1efe3] text-[#17301f]">
                     <t.icon aria-hidden="true" className="h-[18px] w-[18px]" />
                   </span>
                   <div>
-                    <h4 className="text-[15px] font-bold text-[#2a1250]">{t.title}</h4>
-                    <p className="mt-1 text-[14px] leading-relaxed text-[#2a1250]/65">{t.text}</p>
+                    <h4 className="text-[15px] font-bold text-[#14261b]">{t.title}</h4>
+                    <p className="mt-1 text-[14px] leading-relaxed text-[#14261b]/65">{t.text}</p>
                   </div>
                 </li>
               ))}

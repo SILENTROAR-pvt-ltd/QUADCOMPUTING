@@ -41,7 +41,7 @@ export function EarnShareDonut({ revenue, fees, loaded }: Props) {
         <p className="text-sm font-semibold text-neutral-900">You earn vs we earn</p>
         <p className="text-[11px] text-neutral-500">All time · settled-bill revenue and platform fees</p>
       </figcaption>
-      <div className="mt-3 flex flex-1 flex-col items-center gap-4 sm:flex-row sm:items-center lg:flex-col xl:flex-row">
+      <div className="mt-3 flex flex-1 flex-col items-center gap-4 sm:flex-row sm:items-center lg:flex-col">
         <div className="relative shrink-0" onMouseLeave={() => setActive(null)}>
           <svg width={SIZE} height={SIZE} role="img" aria-label={`You earn ${formatRupees(revenue)}, we earn ${formatRupees(fees)}. Platform fees are ${pct(fees, total)} of the two together.`}>
             {!loaded || total === 0 ? (
@@ -65,7 +65,7 @@ export function EarnShareDonut({ revenue, fees, loaded }: Props) {
         <ul className="w-full min-w-0 space-y-2 text-xs">
           {[{ id: 'you', label: 'You earn', value: revenue, color: SERIES.youEarn }, { id: 'we', label: 'We earn', value: fees, color: SERIES.weEarn }].map((s) => (
             <li key={s.id} className="flex items-center justify-between gap-3">
-              <span className="flex min-w-0 items-center gap-2 text-neutral-700">
+              <span className="flex min-w-0 items-center gap-2 whitespace-nowrap text-neutral-700">
                 <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: s.color }} />{s.label}
               </span>
               <span className="shrink-0 text-right tabular-nums">
