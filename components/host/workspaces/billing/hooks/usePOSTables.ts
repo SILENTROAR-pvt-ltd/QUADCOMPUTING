@@ -5,6 +5,7 @@ import { useHostWorkspace } from '@/lib/store/host-workspace.store';
 import { createClient } from '@/lib/supabase/client';
 import { businessFilter } from '@/lib/realtime/channels';
 import { sharedGet } from '@/lib/utils/shared-get';
+import { useFloorPing, PUSH_HEARTBEAT_MS } from '@/lib/hooks/use-floor-ping';
 import type { TableLiveSessionInfo } from '@/types/qr-session';
 
 export interface RestaurantTable {
@@ -192,6 +193,12 @@ export function usePOSTables(propsBusinessId?: string | null, options: { pollMs?
     await fetchTables();
   }, [businessId, fetchTables]);
 
+  // A staff phone (pollMs given) listens to the venue's floor ping and only keeps a slow safety read while it is up.
+  const fetchLatest = useRef(fetchTables);
+  fetchLatest.current = fetchTables;
+  const pushUp = useFloorPing(options.pollMs ? businessId : null, useCallback(() => { void fetchLatest.current(); }, []));
+  const readEveryMs = options.pollMs && pushUp ? PUSH_HEARTBEAT_MS : pollMs;
+
   // Supabase Realtime Subscription on dine_in_sessions & orders + periodic fallback
   useEffect(() => {
     fetchTables();
@@ -208,7 +215,7 @@ export function usePOSTables(propsBusinessId?: string | null, options: { pollMs?
     // Skipped while the tab is hidden, and caught up as soon as it is visible again.
     const intervalId = setInterval(() => {
       if (typeof document === 'undefined' || !document.hidden) fetchTables();
-    }, pollMs);
+    }, readEveryMs);
     const onVisible = () => { if (!document.hidden) scheduleFetch(); };
     document.addEventListener('visibilitychange', onVisible);
 
@@ -228,7 +235,7 @@ export function usePOSTables(propsBusinessId?: string | null, options: { pollMs?
       document.removeEventListener('visibilitychange', onVisible);
       supabase.removeChannel(channel);
     };
-  }, [fetchTables, businessId, pollMs]);
+  }, [fetchTables, businessId, readEveryMs]);
 
   return {
     tables,

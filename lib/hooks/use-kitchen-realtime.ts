@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import type { KitchenTicket, KitchenItem } from '@/lib/utils/kitchen';
 import { normalizeKitchenTicket, normalizeKitchenTickets } from '@/lib/utils/kitchen-normalize';
+import { useFloorPing, PUSH_HEARTBEAT_MS } from './use-floor-ping';
 
 export interface OrderItemRecord {
   id: string;
@@ -200,23 +201,29 @@ export function useKitchenRealtime({
   // 2b. Polling, for a phone with no realtime channel: a quiet re-read that rings for tickets it has not seen.
   const loadedOnce = useRef(false);
   useEffect(() => { if (!isLoading) loadedOnce.current = true; }, [isLoading]);
+  const readAndRing = useCallback(async () => {
+    if (!businessId) return;
+    try {
+      const res = await fetch(`/api/host/kitchen/tickets?business_id=${encodeURIComponent(businessId)}`, { cache: 'no-store' });
+      if (!res.ok) return;
+      const next = normalizeKitchenTickets((await res.json()).tickets);
+      const known = new Set(ticketsRef.current.map((t) => t.id));
+      setTickets(next);
+      if (loadedOnce.current) next.filter((t) => !known.has(t.id)).forEach((t) => onNewTicketRef.current?.(t));
+    } catch {
+      // The next read tries again.
+    }
+  }, [businessId]);
+
+  // The venue's floor ping reads at once; while it is up the timer below is only a slow safety net.
+  const pushUp = useFloorPing(pollMs ? businessId : null, readAndRing);
+  const readEveryMs = pollMs && pushUp ? PUSH_HEARTBEAT_MS : pollMs;
+
   useEffect(() => {
-    if (!pollMs || !businessId) return;
-    const timer = setInterval(async () => {
-      if (document.visibilityState !== 'visible') return;
-      try {
-        const res = await fetch(`/api/host/kitchen/tickets?business_id=${encodeURIComponent(businessId)}`, { cache: 'no-store' });
-        if (!res.ok) return;
-        const next = normalizeKitchenTickets((await res.json()).tickets);
-        const known = new Set(ticketsRef.current.map((t) => t.id));
-        setTickets(next);
-        if (loadedOnce.current) next.filter((t) => !known.has(t.id)).forEach((t) => onNewTicketRef.current?.(t));
-      } catch {
-        // The next read tries again.
-      }
-    }, pollMs);
+    if (!readEveryMs || !businessId) return;
+    const timer = setInterval(() => { if (document.visibilityState === 'visible') void readAndRing(); }, readEveryMs);
     return () => clearInterval(timer);
-  }, [pollMs, businessId]);
+  }, [readEveryMs, businessId, readAndRing]);
 
   // 3. Optimistic Status Update with Automatic Rollback on Error
   const updateTicketStatus = useCallback(

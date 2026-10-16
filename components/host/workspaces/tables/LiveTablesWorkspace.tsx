@@ -37,10 +37,12 @@ export function LiveTablesWorkspace({ venueId, onNavigate, pollMs }: LiveTablesW
   const [selected, setSelected] = useState<string | null>(null);
   const [filter, setFilter] = useState<BoardFilter>('all');
 
+  // A staff phone already reads the kitchen through its push channel and its own timer, so this one is for the owner only.
   useEffect(() => {
+    if (pollMs) return;
     const timer = setInterval(() => { if (document.visibilityState === 'visible') void refetchKitchen(); }, KITCHEN_REFRESH_MS);
     return () => clearInterval(timer);
-  }, [refetchKitchen]);
+  }, [refetchKitchen, pollMs]);
 
   const orders = useMemo(() => activeTickets(kitchen.tickets), [kitchen.tickets]);
   const shown = useMemo(() => (filter === 'all' ? board.rows : board.rows.filter((r) => r.state === filter)), [board.rows, filter]);

@@ -99,6 +99,22 @@ export async function resolveHostBusinesses(
   return { businesses, error: bizError };
 }
 
+// A staff phone calls the host API every few seconds, and each call used to read the venue row again. The venue's own
+// details change rarely, so a found row is kept for a short while on this instance; a missing one is never kept.
+const VENUE_ROW_MS = 30_000;
+const venueRows = new Map<string, { at: number; row: any }>();
+
+async function staffVenueRow(businessId: string): Promise<any | null> {
+  const hit = venueRows.get(businessId);
+  if (hit && Date.now() - hit.at < VENUE_ROW_MS && process.env.NODE_ENV !== 'test') return hit.row;
+  const { data } = await adminDb().from('businesses').select('*').eq('id', businessId).maybeSingle();
+  if (data) {
+    if (venueRows.size >= 300) venueRows.delete(venueRows.keys().next().value as string);
+    venueRows.set(businessId, { at: Date.now(), row: data });
+  }
+  return data ?? null;
+}
+
 /**
  * The host-shaped result for a signed-in staff member: their own venue only, through the service client (the routes
  * they can reach all filter by business id), and a user whose id is not a UUID.
@@ -114,7 +130,7 @@ async function staffHostResult(staff: StaffSession, request?: Request, explicitB
   if (asked && asked !== staff.bid) {
     return { error: NextResponse.json({ error: 'Forbidden: You do not have access to this business' }, { status: 403 }) };
   }
-  const { data } = await adminDb().from('businesses').select('*').eq('id', staff.bid).maybeSingle();
+  const data = await staffVenueRow(staff.bid);
   if (!data) return { error: NextResponse.json({ error: 'Forbidden: No business associated with this staff member' }, { status: 403 }) };
   const business = { ...data, name: data.business_name || data.name || 'Venue', business_name: data.business_name || data.name || 'Venue' };
   return { user: staffUser(staff), businessId: staff.bid, business, businesses: [business], supabase: adminDb(), staff, error: null };

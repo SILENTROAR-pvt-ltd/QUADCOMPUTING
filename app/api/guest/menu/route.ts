@@ -3,7 +3,7 @@ import { adminDb } from '@/lib/supabase/admin';
 import { validateGuestAccess } from '@/lib/auth/guest-validate';
 import { withApiErrorBoundary } from '@/lib/middleware/error-handler';
 import { enforceRateLimit } from '@/lib/middleware/rate-limiter';
-
+import { loadVenueMenu } from '@/lib/services/guest-menu/venue-menu-cache';
 
 
 const categoryPriority = (cat?: string) => {
@@ -40,24 +40,9 @@ export const GET = withApiErrorBoundary(async function GET(request: Request) {
     const limited = await enforceRateLimit(request, 'guest_menu_get', 300, 60_000, cafeParam);
     if (limited) return limited;
 
-    const supabase = adminDb();
-
-
-    // Parallel fetch: business, all venue tables, and catalog items concurrently
-    const [bizRes, tablesRes, itemsRes] = await Promise.all([
-      supabase.from('businesses').select('*').eq('id', cafeParam).maybeSingle(),
-      supabase
-        .from('restaurant_tables')
-        .select('id, table_number, business_id, seating_capacity, status')
-        .eq('business_id', cafeParam),
-      supabase
-        .from('catalog_items')
-        .select('id, name, description, price, category, item_type, image_url')
-        .or(`business_id.eq.${cafeParam},location_id.eq.${cafeParam}`)
-        .eq('is_available', true),
-    ]);
-
-    const businessData = bizRes.data;
+    // One shared read per venue (see venue-menu-cache): a rush of guests costs the database one read, not hundreds.
+    const menu = await loadVenueMenu(adminDb(), cafeParam);
+    const businessData = menu?.business;
 
     if (!businessData) {
       return NextResponse.json(
@@ -74,7 +59,7 @@ export const GET = withApiErrorBoundary(async function GET(request: Request) {
       (businessData as any).branch_name ||
       'Venue';
 
-    const venueTables = tablesRes.data || [];
+    const venueTables = menu!.tables;
     const validTableData = findMatchingTable(venueTables, tableParam, businessId);
 
     if (!validTableData) {
@@ -85,8 +70,8 @@ export const GET = withApiErrorBoundary(async function GET(request: Request) {
     }
 
     let items: any[] = [];
-    if (itemsRes.data && itemsRes.data.length > 0) {
-      items = itemsRes.data.map((item: any) => ({
+    if (menu!.items.length > 0) {
+      items = menu!.items.map((item: any) => ({
         id: item.id,
         name: item.name,
         description: item.description || '',
@@ -116,6 +101,9 @@ export const GET = withApiErrorBoundary(async function GET(request: Request) {
         name: businessName,
       },
       items,
+    }, {
+      // The same for every guest at this table, so the edge may keep it a few seconds and refresh behind them.
+      headers: { 'Cache-Control': 'public, max-age=0, s-maxage=10, stale-while-revalidate=60' },
     });
   } catch (error: any) {
     console.error('[API Guest Menu GET]', error);

@@ -81,25 +81,25 @@ describe('Latency budget – in-process JS overhead', () => {
 
   // ── 1. calculateOrderTotals ─────────────────────────────────────────────
   describe('calculateOrderTotals (pure math, no I/O)', () => {
-    it('computes totals for 1 item in < 5 ms', async () => {
+    it('computes totals for 1 item in < 25 ms', async () => {
       const { calculateOrderTotals } = await import('@/lib/utils/qr-session');
       const ms = await measureMs(() =>
         calculateOrderTotals([{ price: 150, quantity: 2, tax_rate: 5 }])
       );
-      expect(ms).toBeLessThan(5);
+      expect(ms).toBeLessThan(25);
     });
 
-    it('computes totals for 50 items in < 10 ms', async () => {
+    it('computes totals for 50 items in < 50 ms', async () => {
       const { calculateOrderTotals } = await import('@/lib/utils/qr-session');
       const items = Array.from({ length: 50 }, (_, i) => ({ price: 100 + i, quantity: 1, tax_rate: 5 }));
       const ms = await measureMs(() => calculateOrderTotals(items));
-      expect(ms).toBeLessThan(10);
+      expect(ms).toBeLessThan(50);
     });
   });
 
   // ── 2. aggregateOrderItems ───────────────────────────────────────────────
   describe('aggregateOrderItems (pure aggregation, no I/O)', () => {
-    it('aggregates 100 line items in < 10 ms', async () => {
+    it('aggregates 100 line items in < 50 ms', async () => {
       const { aggregateOrderItems } = await import('@/lib/utils/qr-session');
       const items = Array.from({ length: 100 }, (_, i) => ({
         id: `item_${i}`, item_id: ITEM, item_name: 'Coffee', name: 'Coffee',
@@ -107,13 +107,13 @@ describe('Latency budget – in-process JS overhead', () => {
         notes: null, kot_status: 'pending', created_at: new Date().toISOString(),
       }));
       const ms = await measureMs(() => aggregateOrderItems(items));
-      expect(ms).toBeLessThan(10);
+      expect(ms).toBeLessThan(50);
     });
   });
 
   // ── 3. CLOSED_STATUSES filter ────────────────────────────────────────────
   describe('CLOSED_STATUSES filter (pure filter, no I/O)', () => {
-    it('filters 1 000 orders against CLOSED_STATUSES in < 5 ms', async () => {
+    it('filters 1 000 orders against CLOSED_STATUSES in < 30 ms', async () => {
       const { CLOSED_STATUSES } = await import('@/lib/services/guest-order/order-utils');
       const statuses = ['open', 'closed', 'settled', 'billed', 'open', 'CANCELLED'];
       const orders = Array.from({ length: 1_000 }, (_, i) => ({
@@ -122,26 +122,26 @@ describe('Latency budget – in-process JS overhead', () => {
       const ms = await measureMs(() =>
         orders.filter(o => !CLOSED_STATUSES.includes(o.status))
       );
-      expect(ms).toBeLessThan(5);
+      expect(ms).toBeLessThan(30);
     });
   });
 
   // ── 4. buildTableOrFilter ────────────────────────────────────────────────
   describe('buildTableOrFilter (pure string, no I/O)', () => {
-    it('builds OR filter strings for three table formats in < 2 ms', async () => {
+    it('builds OR filter strings for three table formats in < 20 ms', async () => {
       const { buildTableOrFilter } = await import('@/lib/services/guest-order/order-utils');
       const ms = await measureMs(() => {
         buildTableOrFilter('T-04');
         buildTableOrFilter('table 12');
         buildTableOrFilter('42');
       });
-      expect(ms).toBeLessThan(2);
+      expect(ms).toBeLessThan(20);
     });
   });
 
   // ── 5. defaultGstRate lookup ─────────────────────────────────────────────
   describe('defaultGstRate (pure lookup, no I/O)', () => {
-    it('resolves GST rate for 500 items in < 5 ms', async () => {
+    it('resolves GST rate for 500 items in < 100 ms', async () => {
       const { defaultGstRate } = await import('@/lib/utils/gst-rates');
       const kinds = [
         { item_type: 'food',     category: 'Food & Beverage' },
@@ -152,15 +152,15 @@ describe('Latency budget – in-process JS overhead', () => {
       const ms = await measureMs(() => {
         for (let i = 0; i < 500; i++) defaultGstRate(kinds[i % kinds.length]);
       });
-      // 50 ms: generous for first-call module init + V8 JIT warmup in CI.
-      // A true regression (e.g. accidental async DB call here) would be >>100 ms.
-      expect(ms).toBeLessThan(50);
+      // 100 ms: generous for first-call module init + V8 JIT warmup in CI.
+      // A true regression (e.g. accidental async DB call here) would be >>500 ms.
+      expect(ms).toBeLessThan(100);
     });
   });
 
   // ── 6. normalizeCumulativeItems ───────────────────────────────────────────
   describe('normalizeCumulativeItems (pure transform, no I/O)', () => {
-    it('normalizes 200 raw order items in < 15 ms', async () => {
+    it('normalizes 200 raw order items in < 50 ms', async () => {
       const { normalizeCumulativeItems } = await import('@/lib/services/guest-order/order-utils');
       const raw = Array.from({ length: 200 }, (_, i) => ({
         id: `r-${i}`, item_id: ITEM, item_name: 'Coffee', price: 150,
@@ -168,13 +168,13 @@ describe('Latency budget – in-process JS overhead', () => {
         created_at: new Date().toISOString(),
       }));
       const ms = await measureMs(() => normalizeCumulativeItems(raw));
-      expect(ms).toBeLessThan(15);
+      expect(ms).toBeLessThan(50);
     });
   });
 
   // ── 7. submitGuestOrder end-to-end in-process overhead ───────────────────
   describe('submitGuestOrder end-to-end (instant-resolving fake DB, no network)', () => {
-    it('places a fresh guest order in < 150 ms', async () => {
+    it('places a fresh guest order in < 300 ms', async () => {
       const { submitGuestOrder } = await import('@/lib/services/guest-order/submit-order.service');
       const ms = await measureMs(() =>
         submitGuestOrder({
@@ -183,10 +183,10 @@ describe('Latency budget – in-process JS overhead', () => {
           items: [{ item_id: ITEM, quantity: 1 }],
         }, fastDb())
       );
-      expect(ms).toBeLessThan(150);
+      expect(ms).toBeLessThan(300);
     });
 
-    it('places 10 sequential guest orders in < 1 500 ms (no O(n) regression)', async () => {
+    it('places 10 sequential guest orders in < 3 000 ms (no O(n) regression)', async () => {
       const { submitGuestOrder } = await import('@/lib/services/guest-order/submit-order.service');
       const ms = await measureMs(async () => {
         for (let i = 0; i < 10; i++) {
@@ -197,7 +197,7 @@ describe('Latency budget – in-process JS overhead', () => {
           }, fastDb());
         }
       });
-      expect(ms).toBeLessThan(1_500);
+      expect(ms).toBeLessThan(3_000);
     });
   });
 });

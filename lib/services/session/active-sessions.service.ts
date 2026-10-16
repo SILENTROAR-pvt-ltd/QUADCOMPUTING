@@ -13,6 +13,17 @@ export async function getActiveHostSessions(supabase: any, explicitBusinessId?: 
     throw new Error('Business not found');
   }
 
+  // A push to a venue's terminals makes them all read at once; they share one read instead of each running two queries.
+  const running = sessionReads.get(businessId);
+  if (running) return running;
+  const read = readActiveSessions(supabase, businessId).finally(() => { sessionReads.delete(businessId as string); });
+  sessionReads.set(businessId, read);
+  return read;
+}
+
+const sessionReads = new Map<string, Promise<{ success: boolean; sessions: Record<string, any> }>>();
+
+async function readActiveSessions(supabase: any, businessId: string) {
   const [ordsRes, sListRes] = await Promise.all([
     supabase.from('orders').select('*').eq('business_id', businessId)
       .not('status', 'in', `(${CLOSED_STATUSES.map((s) => `"${s}"`).join(',')})`).order('created_at', { ascending: false }),
