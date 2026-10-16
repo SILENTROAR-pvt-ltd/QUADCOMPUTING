@@ -4,7 +4,19 @@ import { getVerifiedUser } from '@/lib/auth/verified-user';
 import { staffMayCall } from '@/lib/services/staff-auth/staff-roles';
 import { readStaffSession, staffSecret, staffTokenFromCookieHeader, STAFF_COOKIE } from '@/lib/services/staff-auth/staff-session';
 
+/**
+ * The hot public guest endpoints (menu, catalog, order, session status) never read a Supabase user: a guest's identity
+ * comes from their own cookie (request-identity.ts). Skipping the session check saves a cookie parse and token check on
+ * every menu open and order-status read, which is most of the traffic in a rush.
+ * Deliberately NOT skipped: other /api/guest routes (Vibers sign-in reads the Supabase user and needs an expired token
+ * refreshed here), the /menu page, and /pos (the owner's terminal view needs the same refresh).
+ */
+const HOT_GUEST_API = new Set(['/api/guest/menu', '/api/guest/catalog', '/api/guest/order', '/api/guest/session']);
+const isPublicGuestPath = (pathname: string) => HOT_GUEST_API.has(pathname);
+
 export async function middleware(request: NextRequest) {
+  if (isPublicGuestPath(request.nextUrl.pathname)) return NextResponse.next({ request });
+
   let supabaseResponse = NextResponse.next({
     request,
   });

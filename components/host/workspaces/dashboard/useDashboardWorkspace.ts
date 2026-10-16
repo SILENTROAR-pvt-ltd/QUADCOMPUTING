@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import type { DashboardAnalyticsPayload } from './dashboard.types';
 
-type Timeframe = 'daily' | 'weekly' | 'monthly' | 'custom';
+export type Timeframe = 'daily' | 'yesterday' | 'weekly' | '30d' | 'mtd' | 'monthly' | 'custom';
 // A burst of order and kitchen events becomes one refresh, so the dashboard does not reload per event.
 const REALTIME_DEBOUNCE_MS = 1500;
 
@@ -25,6 +25,8 @@ export function useDashboardWorkspace(venueId?: string) {
 
   // `quiet` refreshes keep the numbers on screen; only a new period shows the loading state.
   const loadData = useCallback(async (quiet = false) => {
+    // Custom with no dates applied yet: keep the figures on screen instead of loading a default period under a Custom tab.
+    if (timeframe === 'custom' && !activeRange) return;
     const id = ++requestId.current;
     if (quiet) setIsRefreshing(true); else setIsLoading(true);
     try {

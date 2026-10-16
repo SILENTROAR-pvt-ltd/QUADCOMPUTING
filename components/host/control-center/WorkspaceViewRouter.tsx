@@ -16,6 +16,8 @@ const WorkspaceSkeleton = () => (
 );
 const BillingWorkspace = dynamic(() => import('@/components/host/workspaces/BillingWorkspace').then((m) => m.BillingWorkspace), { loading: WorkspaceSkeleton });
 const LiveTablesWorkspace = dynamic(() => import('@/components/host/workspaces/tables/LiveTablesWorkspace').then((m) => m.LiveTablesWorkspace), { loading: WorkspaceSkeleton });
+const ReservationsWorkspace = dynamic(() => import('@/components/host/workspaces/reservations/ReservationsWorkspace').then((m) => m.ReservationsWorkspace), { loading: WorkspaceSkeleton });
+const DeliveryWorkspace = dynamic(() => import('@/components/host/workspaces/delivery/DeliveryWorkspace').then((m) => m.DeliveryWorkspace), { loading: WorkspaceSkeleton });
 const KitchenWorkspace = dynamic(() => import('@/components/host/workspaces/KitchenWorkspace').then((m) => m.KitchenWorkspace), { loading: WorkspaceSkeleton });
 const CatalogWorkspace = dynamic(() => import('@/components/host/workspaces/CatalogWorkspace').then((m) => m.CatalogWorkspace), { loading: WorkspaceSkeleton });
 const AccommodationsWorkspace = dynamic(() => import('@/components/host/workspaces/AccommodationsWorkspace').then((m) => m.AccommodationsWorkspace), { loading: WorkspaceSkeleton });
@@ -23,6 +25,9 @@ const InventoryWorkspace = dynamic(() => import('@/components/host/workspaces/In
 const ExpensesWorkspace = dynamic(() => import('@/components/host/workspaces/ExpensesWorkspace').then((m) => m.ExpensesWorkspace), { loading: WorkspaceSkeleton });
 const DashboardWorkspace = dynamic(() => import('@/components/host/workspaces/DashboardWorkspace').then((m) => m.DashboardWorkspace), { loading: WorkspaceSkeleton });
 const ProfileWorkspace = dynamic(() => import('@/components/host/workspaces/ProfileWorkspace').then((m) => m.ProfileWorkspace), { loading: WorkspaceSkeleton });
+const MyGuestsWorkspace = dynamic(() => import('@/components/host/workspaces/guests/MyGuestsWorkspace').then((m) => m.MyGuestsWorkspace), { loading: WorkspaceSkeleton });
+const VendorsWorkspace = dynamic(() => import('@/components/host/workspaces/vendors/VendorsWorkspace').then((m) => m.VendorsWorkspace), { loading: WorkspaceSkeleton });
+const PaymentsWorkspace = dynamic(() => import('@/components/host/payments/PaymentsWorkspace').then((m) => m.PaymentsWorkspace), { ssr: false, loading: WorkspaceSkeleton });
 // Client-only: it reads its cached balance on first render, which would not match the server markup.
 const WalletWorkspace = dynamic(() => import('@/components/host/wallet/WalletWorkspace').then((m) => m.WalletWorkspace), { ssr: false, loading: WorkspaceSkeleton });
 
@@ -42,13 +47,18 @@ export function WorkspaceViewRouter({ activeTab, venueId, onNavigate }: Workspac
         <div className="animate-in fade-in duration-300">
           {activeTab === 'billing' && <BillingWorkspace onNavigate={handleNav} />}
           {activeTab === 'tables' && <LiveTablesWorkspace venueId={venueId} onNavigate={handleNav} />}
+          {activeTab === 'reservations' && <ReservationsWorkspace />}
+          {activeTab === 'delivery' && <DeliveryWorkspace />}
           {activeTab === 'kitchen' && <KitchenWorkspace cafeId={venueId} />}
           {activeTab === 'catalog' && <CatalogWorkspace cafeId={venueId} onNavigate={handleNav} />}
           {activeTab === 'accommodations' && <AccommodationsWorkspace onNavigate={handleNav} />}
           {activeTab === 'inventory' && <InventoryWorkspace />}
           {activeTab === 'expenses' && <ExpensesWorkspace />}
-          {(activeTab === 'dashboard' || (activeTab as string) === 'analytics') && <DashboardWorkspace venueId={venueId} />}
+          {(activeTab === 'dashboard' || (activeTab as string) === 'analytics') && <DashboardWorkspace venueId={venueId} onNavigate={handleNav} />}
           {activeTab === 'wallet' && <WalletWorkspace venueId={venueId} onNavigate={handleNav} />}
+          {activeTab === 'payments' && <PaymentsWorkspace venueId={venueId} />}
+          {activeTab === 'vendors' && <VendorsWorkspace />}
+          {activeTab === 'guests' && <MyGuestsWorkspace />}
           {activeTab === 'profile' && <ProfileWorkspace onNavigate={handleNav} />}
         </div>
       </WorkspaceErrorBoundary>

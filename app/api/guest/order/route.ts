@@ -12,6 +12,7 @@ import {
 } from '@/lib/middleware/rate-limiter';
 import { withApiErrorBoundary, handleApiError } from '@/lib/middleware/error-handler';
 import { applyRequestIdentity } from '@/lib/services/guest-auth/request-identity';
+import { newDeliveryTableNumber } from '@/lib/services/delivery/delivery-input';
 
 /**
  * GET /api/guest/order
@@ -54,9 +55,12 @@ export const POST = withApiErrorBoundary(async function POST(request: Request) {
     const body = await request.json().catch(() => ({}));
     const rawCafeId = queryCafeId || body?.business_id || body?.cafe_id;
 
-    const validation = await validateGuestAccess(rawCafeId, body?.table_number);
+    // A delivery has no table: it gets its own bill number, so it never joins a table's bill.
+    const isDelivery = body?.order_type === 'delivery';
+    const validation = await validateGuestAccess(rawCafeId, isDelivery ? undefined : body?.table_number);
     if (validation.error) return validation.error;
-    const { businessId, tableNumber } = validation;
+    const businessId = validation.businessId;
+    const tableNumber = isDelivery ? newDeliveryTableNumber() : validation.tableNumber;
 
     // Rate Limiting: Apply sliding window rate limit per IP & venue
     const ip = getClientIp(request);
@@ -101,6 +105,11 @@ export const POST = withApiErrorBoundary(async function POST(request: Request) {
       msg.toLowerCase().includes('table is closed') ||
       msg.includes('ORDER_NOT_FOUND') ||
       error.status === 409;
+
+    // A delivery the venue's terms refuse (out of range, below the minimum, delivery off) is told to the guest as it is.
+    if (typeof error.code === 'string' && error.code.startsWith('DELIVERY_')) {
+      return apiError(msg, error.code, 422);
+    }
 
     if (isTableClosed) {
       return apiError(

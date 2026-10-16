@@ -6,8 +6,40 @@ import { lookupExistingOrder } from './find-order.util';
 import { enabledStations, resolveItemStation } from '@/lib/services/kitchen/item-station';
 import { claimSessionGuest } from '@/lib/services/guest-session/session-guest.util';
 import { loadGstStatus, stripTax } from '@/lib/services/billing/gst-policy';
+import { tableLockKey, withTableLock } from './table-lock';
+import { parseDeliveryRequest } from '@/lib/services/delivery/delivery-input';
+import { quoteDelivery, type DeliveryQuote } from '@/lib/services/delivery/delivery-rules';
+import { loadDeliverySettings } from '@/lib/services/delivery/delivery-settings.service';
 
+const MAX_ATTEMPTS = 6;
+
+/**
+ * Places an order. Requests for the same table run one after another here, and if the database finds the table changed
+ * between this request's read and its write (another instance's order landed in between) the whole order is read again.
+ */
 export async function submitGuestOrder(body: any, supabase: any) {
+  const venue = String(body?.business_id || body?.cafe_id || '');
+  const table = String(body?.table_number || '');
+  if (!venue || !table) return submitGuestOrderOnce(body, supabase);
+
+  return withTableLock(tableLockKey(venue, table), async () => {
+    for (let attempt = 1; ; attempt++) {
+      try {
+        return await submitGuestOrderOnce(body, supabase);
+      } catch (err: any) {
+        if (err?.code !== 'TABLE_STATE_CHANGED') throw err;
+        if (attempt >= MAX_ATTEMPTS) {
+          const busy: any = new Error('Several orders are being placed at this table right now. Please try again in a moment.');
+          busy.status = 503;
+          throw busy;
+        }
+        await new Promise((r) => setTimeout(r, 30 + Math.random() * 90 * attempt));
+      }
+    }
+  });
+}
+
+async function submitGuestOrderOnce(body: any, supabase: any) {
   const { business_id, cafe_id, table_number, guest_name, guest_phone, guest_handle, items: incomingItems = [] } = body;
   // One note for the whole table ("Table note for kitchen"). It goes on the kitchen ticket once, never on each dish.
   const tableNote = typeof body.table_note === 'string' ? body.table_note.trim().slice(0, 200) : '';
@@ -21,6 +53,8 @@ export async function submitGuestOrder(body: any, supabase: any) {
   const normTable = rawTableNumber.replace(/^(table|t-)\s*/i, '').trim().toUpperCase();
   const resolvedBizId: string = isValidUuid(business_id) ? business_id! : isValidUuid(cafe_id) ? cafe_id! : '';
   if (!resolvedBizId) throw new Error('Missing or invalid business_id');
+  // A delivery order carries its address, phone and location. Its radius, minimum and fee are checked below, on the server.
+  const deliveryRequest = body.order_type === 'delivery' ? parseDeliveryRequest(body.delivery) : null;
 
   const idempotencyKey = body.idempotency_key || body.client_order_nonce || null;
   const itemIds = incomingItems
@@ -85,7 +119,7 @@ export async function submitGuestOrder(body: any, supabase: any) {
     }
   }
 
-  const { existingActiveOrder, previousRawItems } = lookup;
+  const { existingActiveOrder, previousRawItems, previousItemRows } = lookup;
   const isAddonOrder = Boolean(existingActiveOrder);
   const targetOrderId = isValidUuid(existingActiveOrder?.id) ? existingActiveOrder.id : randomUUID();
 
@@ -144,8 +178,17 @@ export async function submitGuestOrder(body: any, supabase: any) {
   // GST only when the venue has a verified GSTIN (gst-policy.ts); otherwise the bill carries no tax.
   const computedTotals = calculateOrderTotals(cumulativeRawItems);
   const totals = gst.canCharge ? computedTotals : { ...computedTotals, ...stripTax(computedTotals) };
+
+  // The radius, minimum order and fee come from the venue's saved terms, never from the guest's request.
+  const deliveryQuote: DeliveryQuote | null = deliveryRequest
+    ? quoteDelivery(await loadDeliverySettings(supabase, resolvedBizId), deliveryRequest, computedTotals.subtotal)
+    : null;
+  if (deliveryQuote && !deliveryQuote.ok) throw deliveryRefusal(deliveryQuote);
+  const deliveryFee = deliveryQuote?.ok ? deliveryQuote.fee : 0;
+  const payableTotal = Math.round((totals.grandTotal + deliveryFee) * 100) / 100;
+
   const customerName = guest_name || (guest_handle ? `Guest (${guest_handle})` : existingActiveOrder?.customer_name || 'Guest');
-  const customerPhone = guest_phone || existingActiveOrder?.customer_phone || null;
+  const customerPhone = deliveryRequest?.phone || guest_phone || existingActiveOrder?.customer_phone || null;
   const ticketNumber = isAddonOrder
     ? `KOT-${Math.floor(1000 + Math.random() * 9000)}-ADD`
     : `KOT-${Math.floor(1000 + Math.random() * 9000)}`;
@@ -154,7 +197,7 @@ export async function submitGuestOrder(body: any, supabase: any) {
   // insert + dine_in_sessions/restaurant_tables sync all happen inside one
   // Postgres transaction (supabase/migrations/20261006000006). A partial
   // failure (e.g. order created but KOT insert fails) is no longer possible.
-  const { data: rpcResult, error: rpcErr } = await supabase.rpc('submit_guest_order_atomic', {
+  const rpcArgs: Record<string, unknown> = {
     p_business_id: resolvedBizId,
     p_table_number: rawTableNumber,
     p_order_id: targetOrderId,
@@ -168,7 +211,7 @@ export async function submitGuestOrder(body: any, supabase: any) {
     p_aggregated_items: aggregatedForBill,
     p_subtotal: totals.subtotal,
     p_tax_amount: totals.taxAmount,
-    p_grand_total: totals.grandTotal,
+    p_grand_total: payableTotal,
     p_idempotency_key: idempotencyKey,
     p_customer_name: customerName,
     p_customer_phone: customerPhone,
@@ -187,7 +230,26 @@ export async function submitGuestOrder(body: any, supabase: any) {
         station: resolveItemStation({ station: catalogItem?.station, category: catalogItem?.category, name: it.item_name, item_type: catalogItem?.item_type }, stations),
       };
     }),
-  });
+  };
+
+  // Tells the database what this order was decided from, so it can refuse a decision another order has made stale. A
+  // database without migration 20261016000005 does not know the argument; it is then sent without it, as before.
+  // The delivery details go to the database only for a delivery, so a dine-in order calls the function exactly as before.
+  if (deliveryRequest && deliveryQuote?.ok) {
+    rpcArgs.p_delivery = {
+      address: deliveryRequest.address, phone: deliveryRequest.phone, lat: deliveryRequest.lat, lng: deliveryRequest.lng,
+      distance_km: deliveryQuote.distanceKm, fee: deliveryFee, payment: deliveryRequest.payment,
+      // The kitchen reads the address on every station ticket, with the table note (if any) below it.
+      ticket_note: [`Deliver to: ${deliveryRequest.address} · ${deliveryRequest.phone}`, tableNote].filter(Boolean).join('\n'),
+    };
+  }
+  let { data: rpcResult, error: rpcErr } = await supabase.rpc('submit_guest_order_atomic', { ...rpcArgs, p_expected_item_rows: isAddonOrder ? previousItemRows : null });
+  if (rpcErr && (rpcErr.code === 'PGRST202' || /p_expected_item_rows/.test(String(rpcErr.message)))) {
+    ({ data: rpcResult, error: rpcErr } = await supabase.rpc('submit_guest_order_atomic', rpcArgs));
+  }
+  if (rpcErr && /TABLE_STATE_CHANGED/.test(String(rpcErr.message))) {
+    throw Object.assign(new Error('The table changed while this order was being placed.'), { code: 'TABLE_STATE_CHANGED' });
+  }
 
   if (rpcErr) throw rpcErr;
   if (!rpcResult?.success) {
@@ -200,7 +262,8 @@ export async function submitGuestOrder(body: any, supabase: any) {
   // The table note goes on this submission's kitchen ticket(s) once. When the order spans several stations the
   // database gives each one a letter suffix (KOT-1234-K, -B, -G), so match the number and its suffixed copies.
   // Best-effort: the order is already committed, so a failed note write must not fail the order.
-  if (tableNote) {
+  // A delivery already carries the table note on its ticket (p_delivery.ticket_note), so it is not written twice.
+  if (tableNote && !deliveryRequest) {
     const { error: noteErr } = await supabase
       .from('kitchen_tickets')
       .update({ notes: tableNote })
@@ -224,16 +287,22 @@ export async function submitGuestOrder(body: any, supabase: any) {
 
   const orderRecord = {
     id: targetOrderId, business_id: resolvedBizId, table_number: rawTableNumber, status: 'open',
-    subtotal: totals.subtotal, tax_amount: totals.taxAmount, grand_total: totals.grandTotal, total_amount: totals.grandTotal,
+    subtotal: totals.subtotal, tax_amount: totals.taxAmount, grand_total: payableTotal, total_amount: payableTotal,
     customer_name: customerName, customer_phone: customerPhone,
     items: aggregatedForBill, raw_items: cumulativeRawItems,
     created_at: existingActiveOrder?.created_at || new Date().toISOString(), updated_at: new Date().toISOString(),
+    ...(deliveryRequest ? { is_delivery: true, delivery_status: 'received', delivery_fee: deliveryFee } : {}),
   };
 
   return {
     success: true, is_addon: isAddonOrder, order_id: targetOrderId, ticket_number: ticketNumber, kot_status: 'PENDING',
-    order: orderRecord, subtotal: totals.subtotal, tax_amount: totals.taxAmount, grand_total: totals.grandTotal, total_amount: totals.grandTotal, items: orderRecord.items,
+    order: orderRecord, subtotal: totals.subtotal, tax_amount: totals.taxAmount, grand_total: payableTotal, total_amount: payableTotal, items: orderRecord.items,
   };
 }
 
 export const placeGuestOrder = submitGuestOrder;
+
+/** A delivery the venue's terms refuse. The code tells the guest's app which rule it broke. */
+function deliveryRefusal(quote: Extract<DeliveryQuote, { ok: false }>) {
+  return Object.assign(new Error(quote.message), { status: 422, code: quote.code });
+}

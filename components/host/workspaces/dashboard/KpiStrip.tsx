@@ -37,7 +37,8 @@ export function KpiStrip({ data, formatCurrency }: KpiStripProps) {
   const profit = Number(data.sales_overview?.gross_profit) || 0;
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-      <Card label="Net sales" value={formatCurrency(k.net_sales)}>
+      {/* The bill totals (GST and delivery fees included), compared like for like with the period before. */}
+      <Card label="Total sales" value={formatCurrency(k.net_sales)}>
         <Delta pct={k.growth_pct} />
         <span>vs previous period {k.previous_net_sales > 0 ? `(${formatCurrency(k.previous_net_sales)})` : ''}</span>
       </Card>
@@ -46,6 +47,14 @@ export function KpiStrip({ data, formatCurrency }: KpiStripProps) {
         {k.open_bills > 0 && <span className="rounded-md bg-sky-50 px-1.5 py-0.5 font-semibold text-sky-800">{k.open_bills} open · {formatCurrency(k.open_value)}</span>}
         {k.unique_guests > 0 && <span>{k.unique_guests} guests</span>}
       </Card>
+      {data.pnl ? (
+        // The same net profit as the Profit & loss statement below: revenue less stock costs, bills, salaries and fees.
+        <Card label={data.pnl.net_profit < 0 ? 'Net loss' : 'Net profit'} value={formatCurrency(data.pnl.net_profit)}>
+          <span>Gross <strong className="font-semibold text-neutral-800">{formatCurrency(data.pnl.gross_profit)}</strong></span>
+          <span>Expenses <strong className="font-semibold text-neutral-800">{formatCurrency(data.pnl.opex_total + data.pnl.cogs_total)}</strong></span>
+          {data.pnl.net_margin !== null && <span>{data.pnl.net_margin}% margin</span>}
+        </Card>
+      ) : (
       <Card label="Gross profit" value={formatCurrency(profit)}>
         {Number(data.actual_cogs) > 0 ? (
           <>
@@ -57,6 +66,7 @@ export function KpiStrip({ data, formatCurrency }: KpiStripProps) {
           <span className="rounded-md bg-amber-50 px-1.5 py-0.5 font-medium text-amber-800">No ingredient costs recorded yet</span>
         )}
       </Card>
+      )}
       <Card label="GST collected" value={formatCurrency(data.total_gst_collected)}>
         <span>Discounts given <strong className="font-semibold text-neutral-800">{formatCurrency(data.total_discounts_given)}</strong></span>
       </Card>

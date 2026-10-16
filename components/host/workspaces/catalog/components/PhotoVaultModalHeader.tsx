@@ -24,11 +24,11 @@ export function PhotoVaultModalHeader({
         </div>
         <div>
           <h3 className="font-serif text-lg font-medium text-neutral-900">
-            {isMoments ? 'Photo Vault & Events Ingestion' : 'Live Offers & Special Discounts'}
+            {isMoments ? 'Live Events & Guest Lists' : 'Live Offers & Special Discounts'}
           </h3>
           <p className="text-xs text-neutral-500 font-light">
             {isMoments
-              ? 'Sync live event highlights, cocktail rituals & moments to Guest Social Lobby.'
+              ? 'Publish an event once: guests see it in the lounge and join its guest list. Manage it under My Guests too.'
               : 'Manage active discounts, happy hours & room deals visible in real-time to visiting guests.'}
           </p>
         </div>
@@ -44,7 +44,7 @@ export function PhotoVaultModalHeader({
             }`}
           >
             <Camera className="w-3.5 h-3.5" />
-            <span>Moments</span>
+            <span>Events</span>
           </button>
           <button
             type="button"

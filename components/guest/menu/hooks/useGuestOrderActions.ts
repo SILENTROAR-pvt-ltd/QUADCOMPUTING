@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import type { ActiveOrderItem } from '@/components/guest/menu/types';
 import { useGuestRealtimeSync } from './useGuestRealtimeSync';
 import { useGuestOrderPolling } from './useGuestOrderPolling';
@@ -75,12 +75,19 @@ export function useGuestOrderActions(props: {
     if (hasActiveOrder || sentItems.length > 0) resetSettledState();
   }, [hasActiveOrder, sentItems.length, resetSettledState]);
 
-  useGuestRealtimeSync({ businessId: props.businessId || props.activeSession?.business_id || props.cafeParam, tableNumber: props.tableNumber, masterOrderId: masterOrder?.id, markBillSettled, resetSettledState, setKotStatus, setTicketNumber });
+  // The table's push ping reads the order at once; the polling hook below is declared after, so it is reached through a ref.
+  const readOrderRef = useRef<() => void>(() => {});
+  const pushUp = useGuestRealtimeSync({
+    businessId: props.businessId || props.activeSession?.business_id || props.cafeParam, tableNumber: props.tableNumber, masterOrderId: masterOrder?.id,
+    markBillSettled, resetSettledState, setKotStatus, setTicketNumber, onTableChanged: () => readOrderRef.current(),
+  });
 
   const { pollActiveOrder } = useGuestOrderPolling({
-    tableNumber: props.tableNumber, cafeParam: props.cafeParam, guestId: props.guestId, activeSessionId: props.activeSession?.id,
+    tableNumber: props.tableNumber, cafeParam: props.cafeParam, guestId: props.guestId, activeSessionId: props.activeSession?.id, pushUp,
     hasActiveOrder, sentItemsCount: sentItems.length, billRequestedBanner, markBillSettled, setSentItems, setMasterOrder, setKotStatus, setTicketNumber, setBillRequestedBanner,
   });
+
+  readOrderRef.current = () => { void pollActiveOrder(); };
 
   const dispatch = useGuestOrderDispatch({
     tableNumber: props.tableNumber, cafeParam: props.cafeParam, guestId: props.guestId, activeSession: props.activeSession,

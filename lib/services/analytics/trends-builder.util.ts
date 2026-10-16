@@ -9,8 +9,8 @@ const DAY_MS = 86_400_000;
 const pad = (n: number) => String(n).padStart(2, '0');
 
 export function grainFor(timeframe: string, startISO: string, endISO: string): Grain {
-  if (timeframe === 'daily') return 'hour';
-  if (timeframe === 'weekly') return 'day';
+  if (timeframe === 'daily' || timeframe === 'yesterday') return 'hour';
+  if (timeframe === 'weekly' || timeframe === '30d' || timeframe === 'mtd') return 'day';
   if (timeframe === 'monthly') return 'month';
   const days = (Date.parse(endISO) - Date.parse(startISO)) / DAY_MS;
   return days <= 1.01 ? 'hour' : days <= 62 ? 'day' : 'month';

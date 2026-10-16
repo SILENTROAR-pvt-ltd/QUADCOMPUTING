@@ -34,7 +34,7 @@ export function Print({ src, tint, tilt, className = '', eager = false }: { src:
  */
 export function LoungeHero({ venueName }: { venueName: string }) {
   return (
-    <section aria-label={`Moments at ${venueName || 'the venue'}`} className="relative isolate overflow-hidden rounded-[26px] bg-zinc-900 shadow-[0_24px_44px_-28px_rgba(0,0,0,0.7)]" style={{ backgroundColor: LOUNGE_TINT.hero }}>
+    <section aria-label={`Events at ${venueName || 'the venue'}`} className="relative isolate overflow-hidden rounded-[26px] bg-zinc-900 shadow-[0_24px_44px_-28px_rgba(0,0,0,0.7)]" style={{ backgroundColor: LOUNGE_TINT.hero }}>
       {/* eslint-disable-next-line @next/next/no-img-element -- the hero is a 45 KB WebP from public/media; fetchPriority is not available on next/image here */}
       <img
         src={LOUNGE_MEDIA.hero}
@@ -53,7 +53,7 @@ export function LoungeHero({ venueName }: { venueName: string }) {
       <div className="relative min-h-[236px] px-5 pb-5 pt-6 sm:min-h-[260px] sm:px-7 sm:pt-8">
         <div className="max-w-[52%] sm:max-w-[50%]">
           <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-white/70">Vibers Lobby</p>
-          <h2 className="mt-2 text-[27px] leading-[1.08] text-white sm:text-[34px] [text-wrap:balance]" style={POSTCARD_SERIF}>Moments worth keeping</h2>
+          <h2 className="mt-2 text-[27px] leading-[1.08] text-white sm:text-[34px] [text-wrap:balance]" style={POSTCARD_SERIF}>Nights worth showing up for</h2>
           <p className="mt-2.5 text-[12.5px] leading-snug text-white/75 sm:text-[13.5px]">From everyone at {venueName || 'the venue'}.</p>
         </div>
 

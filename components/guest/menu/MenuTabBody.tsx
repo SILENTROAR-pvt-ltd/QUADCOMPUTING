@@ -10,7 +10,7 @@ import { VenueServicesMarquee } from './VenueServicesMarquee';
 import { BeyondDiningSection } from './BeyondDiningSection';
 import { MenuInfoPanel } from './MenuInfoPanel';
 import type { MenuInfo } from '@/lib/services/menu-info/menu-info';
-import { VenuePhotoVault } from '@/components/guest/lobby/VenuePhotoVault';
+import { LiveEventsFeed } from '@/components/guest/events/LiveEventsFeed';
 import type { DishLikesView } from './DiningFeed';
 import type { GuestMenuState } from './hooks/useGuestMenuState';
 
@@ -24,7 +24,7 @@ interface MenuTabBodyProps {
   trackerProps: React.ComponentProps<typeof LiveOrderTracker>;
 }
 
-/** The menu tab: the tracker once an order is placed, the picks, the whole menu, then the venue's services and moments. */
+/** The menu tab: the tracker once an order is placed, the picks, the whole menu, then the venue's services and live events. */
 export function MenuTabBody({ state, venueId, info, likes, orderPlaced, trackerProps }: MenuTabBodyProps) {
   const toServices = (title?: string) => {
     state.setShowBeyondDining(true);
@@ -47,7 +47,7 @@ export function MenuTabBody({ state, venueId, info, likes, orderPlaced, trackerP
       {orderPlaced && (
         <>
           <VenueServicesMarquee services={state.venueServices} onSelectService={(s) => toServices(s.title)} />
-          <VenuePhotoVault venueId={venueId} tableNumber={state.tableNumber} layout="rail" hideWhenEmpty />
+          <LiveEventsFeed venueId={venueId} layout="rail" hideWhenEmpty />
           {state.venueServices.length > 0 && <BeyondDiningSection services={state.venueServices} onSelectService={state.setSelectedService} />}
         </>
       )}

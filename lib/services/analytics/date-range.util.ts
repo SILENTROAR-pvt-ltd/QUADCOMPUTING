@@ -31,6 +31,13 @@ export function resolveAnalyticsDateRange(requestUrl: string): { timeframe: stri
     let lastDay = today;
     if (timeframe === 'weekly') {
       firstDay = ymd(y, m - 1, d - 6);
+    } else if (timeframe === 'yesterday') {
+      firstDay = ymd(y, m - 1, d - 1);
+      lastDay = firstDay;
+    } else if (timeframe === '30d') {
+      firstDay = ymd(y, m - 1, d - 29);
+    } else if (timeframe === 'mtd') {
+      firstDay = ymd(y, m - 1, 1);
     } else if (timeframe === 'monthly') {
       firstDay = ymd(y, m - 1 - 11, 1);
       lastDay = ymd(y, m, 0);

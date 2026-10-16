@@ -3,7 +3,7 @@ import { adminDb } from '@/lib/supabase/admin';
 import { validateGuestAccess } from '@/lib/auth/guest-validate';
 import { withApiErrorBoundary } from '@/lib/middleware/error-handler';
 import { enforceRateLimit } from '@/lib/middleware/rate-limiter';
-import { loadVenueMenu } from '@/lib/services/guest-menu/venue-menu-cache';
+import { loadVenueMenuWithSource } from '@/lib/services/guest-menu/venue-menu-cache';
 
 
 const categoryPriority = (cat?: string) => {
@@ -41,7 +41,7 @@ export const GET = withApiErrorBoundary(async function GET(request: Request) {
     if (limited) return limited;
 
     // One shared read per venue (see venue-menu-cache): a rush of guests costs the database one read, not hundreds.
-    const menu = await loadVenueMenu(adminDb(), cafeParam);
+    const { value: menu, source } = await loadVenueMenuWithSource(adminDb(), cafeParam);
     const businessData = menu?.business;
 
     if (!businessData) {
@@ -103,7 +103,11 @@ export const GET = withApiErrorBoundary(async function GET(request: Request) {
       items,
     }, {
       // The same for every guest at this table, so the edge may keep it a few seconds and refresh behind them.
-      headers: { 'Cache-Control': 'public, max-age=0, s-maxage=10, stale-while-revalidate=60' },
+      headers: {
+        'Cache-Control': 'public, max-age=0, s-maxage=10, stale-while-revalidate=60',
+        // HIT / SHARED / MISS: lets a load test count how many requests actually reached the database.
+        'X-Menu-Cache': source,
+      },
     });
   } catch (error: any) {
     console.error('[API Guest Menu GET]', error);

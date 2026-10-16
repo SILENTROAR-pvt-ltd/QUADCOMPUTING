@@ -17,12 +17,19 @@ import {
   X,
   ExternalLink,
   BellRing,
+  CalendarDays,
   LayoutGrid,
+  Truck,
+  Users,
+  Banknote,
+  Store,
 } from 'lucide-react';
 
 export type ControlCenterTab =
   | 'billing'
   | 'tables'
+  | 'reservations'
+  | 'delivery'
   | 'kitchen'
   | 'catalog'
   | 'accommodations'
@@ -30,19 +37,27 @@ export type ControlCenterTab =
   | 'expenses'
   | 'dashboard'
   | 'wallet'
+  | 'payments'
+  | 'vendors'
+  | 'guests'
   | 'profile';
 
 export const CONTROL_CENTER_TABS = [
   { id: 'profile', label: 'My Profile', icon: UserRound },
   { id: 'wallet', label: 'Subscription & Wallet', icon: Wallet },
+  { id: 'payments', label: 'Dues', icon: Banknote },
   { id: 'dashboard', label: 'Analytics & COGS', icon: TrendingUp },
   { id: 'catalog', label: 'Menu Catalog', icon: BookOpen },
   { id: 'billing', label: 'Billing & Tables', icon: CreditCard },
   { id: 'tables', label: 'Live Tables', icon: LayoutGrid },
+  { id: 'reservations', label: 'Reservations', icon: CalendarDays },
+  { id: 'delivery', label: 'Delivery', icon: Truck },
   { id: 'accommodations', label: 'Accommodations', icon: BedDouble },
   { id: 'kitchen', label: 'Live Kitchen (KOT)', icon: ChefHat },
   { id: 'inventory', label: 'Raw Inventory', icon: Boxes },
   { id: 'expenses', label: 'Staff & Expenses', icon: ReceiptText },
+  { id: 'guests', label: 'My Guests', icon: Users },
+  { id: 'vendors', label: 'Vendors', icon: Store },
 ] satisfies Array<{ id: ControlCenterTab; label: string; icon: React.FC<{ className?: string }> }>;
 
 export interface ControlCenterHeaderProps {

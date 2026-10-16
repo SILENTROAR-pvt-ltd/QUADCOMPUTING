@@ -41,14 +41,17 @@ export function PlanStatusCard({ plan, isLoading, isLocked, switching, onRenew, 
             )}
           </div>
         </div>
-        <span className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${tone.chip}`}>{tone.label}</span>
+        <div className="flex flex-wrap justify-end gap-1.5">
+          {plan.phase === 'payg' && <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-800">Most used</span>}
+          <span className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${tone.chip}`}>{tone.label}</span>
+        </div>
       </div>
 
       <p className="text-xs text-neutral-600 leading-relaxed">
         {plan.phase === 'active' && <>No platform fees until <strong className="text-neutral-900">{date(plan.endsAt)}</strong> ({plan.daysLeft} days left).</>}
         {plan.phase === 'expiring' && <>Fees are waived for {plan.daysLeft} more {plan.daysLeft === 1 ? 'day' : 'days'} (until {date(plan.endsAt)}). Renew to keep billing fee-free.</>}
         {plan.phase === 'expired' && <>Your plan ended{plan.endsAt ? ` on ${date(plan.endsAt)}` : ''}. Pay-as-you-go fees apply from your credit until you renew.</>}
-        {plan.phase === 'payg' && <>You pay only for what you use, from your credit wallet. An annual plan removes these fees.</>}
+        {plan.phase === 'payg' && <>You pay ₹3 for each settled bill, from your credit wallet. Nothing else is charged. An annual plan removes this fee.</>}
       </p>
 
       <FeeScheduleBadges feesWaived={plan.feesWaived} />

@@ -79,9 +79,11 @@ export const POST = withApiErrorBoundary(async function POST(request: Request) {
     //    ₹3 deducted from wallet OR logged to venue_outstanding_bills
     if (claimedDepletion) {
       try {
-        const { invoiceRefFromId, evaluateFeeGuard } = await import('@/lib/services/wallet/fee-guard.service');
-        const invoiceRef = invoiceRefFromId(orderId);
-        await evaluateFeeGuard(businessId, 'bill_generate', invoiceRef, supabase);
+        const { evaluateFeeGuard } = await import('@/lib/services/wallet/fee-guard.service');
+        const { feeReferenceFor } = await import('@/lib/services/wallet/invoice-history.util');
+        // The same reference the settlement uses (SETTLE_<order id>): this bill had been charged twice, once here
+        // under a QC- reference and once at settlement. One reference means one ₹3 fee per bill.
+        await evaluateFeeGuard(businessId, 'bill_generate', feeReferenceFor(orderId), supabase);
       } catch (feeErr) {
         console.error('[UpdateStatus FeeGuard Error]', feeErr);
       }

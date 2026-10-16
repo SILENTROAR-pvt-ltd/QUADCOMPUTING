@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { guestTableChannel } from '@/lib/realtime/channels';
 import { normalizeTableIdentifier } from './order-totals.util';
@@ -9,9 +9,16 @@ interface RealtimeSyncProps {
   businessId?: string; tableNumber: string; masterOrderId?: string;
   markBillSettled: (settledAmount?: number) => void; resetSettledState?: () => void;
   setKotStatus: (status: string) => void; setTicketNumber: (ticket: string) => void;
+  /** The table's bill, session or tickets changed: read the order now. */
+  onTableChanged?: () => void;
 }
 
-export function useGuestRealtimeSync(props: RealtimeSyncProps) {
+/** Burst of table changes (one order touches several rows) becomes one read. */
+const CHANGED_COALESCE_MS = 300;
+
+/** Returns whether the push channel is up, so the polling safety net can slow down while it is. */
+export function useGuestRealtimeSync(props: RealtimeSyncProps): boolean {
+  const [connected, setConnected] = useState(false);
   // Handlers read the latest callbacks through a ref: markBillSettled & co. are
   // rebuilt on every order-state change (every poll), and depending on them
   // tore the channel down and re-subscribed it each time, dropping pushes.
@@ -71,6 +78,7 @@ export function useGuestRealtimeSync(props: RealtimeSyncProps) {
     // Guests are anonymous and RLS gives anon no table access, so postgres_changes
     // never fires here; the server pushes broadcasts on this venue-scoped table
     // channel instead (lib/realtime/channels.ts), and polling covers any gap.
+    let changedTimer: ReturnType<typeof setTimeout> | null = null;
     const topic = guestTableChannel(businessId, tableNumber);
     const sessionCh = topic && supabase.channel(topic)
       .on('broadcast', { event: 'table_settled' }, (msg: any) => {
@@ -84,8 +92,22 @@ export function useGuestRealtimeSync(props: RealtimeSyncProps) {
       })
       .on('broadcast', { event: 'kot_status_update' }, (msg: any) => {
         if (msg.payload) handleKot(msg.payload.table_number || msg.payload.table_or_room, msg.payload.order_id, msg.payload.status, msg.payload.ticket_number);
-      }).subscribe();
+      })
+      // The database pings this table whenever its bill, session or tickets change (migration 20261016000006): the
+      // phone reads the order once, instead of asking every few seconds.
+      .on('broadcast', { event: 'changed' }, () => {
+        if (changedTimer) return;
+        changedTimer = setTimeout(() => { changedTimer = null; latest.current.onTableChanged?.(); }, CHANGED_COALESCE_MS);
+      })
+      .subscribe((status: string) => setConnected(status === 'SUBSCRIBED'));
 
-    return () => { if (bc) bc.close(); if (sessionCh) void supabase.removeChannel(sessionCh); };
+    return () => {
+      if (changedTimer) clearTimeout(changedTimer);
+      if (bc) bc.close();
+      if (sessionCh) void supabase.removeChannel(sessionCh);
+      setConnected(false);
+    };
   }, [businessId, tableNumber]);
+
+  return connected;
 }

@@ -1,18 +1,26 @@
 import type { FeeGuardAction, FeeGuardResult } from '@/types/wallet';
 import { getOrProvisionVenueWallet } from './venue-wallet.service';
 import { planState } from './subscription-state';
+import { PAYG_BILL_FEE } from './plans';
 import { adminDb } from '@/lib/supabase/admin';
 
 // ── Fee schedule ─────────────────────────────────────────────────────────────
+// Pay as you go pays ₹3 per settled bill and nothing else. Menu items, rooms and add-ons are free to add.
+// A paid plan waives the bill fee too.
 const FEE: Record<FeeGuardAction, (subscribed: boolean) => number> = {
-  bill_generate:       (s) => (s ? 0 : 3.00),
-  menu_addon:          () => 0.00,  // Services & Add-ons are completely FREE (₹0.00)
-  menu_addon_creation: () => 0.00,  // Services & Add-ons are completely FREE (₹0.00)
-  room_accommodation:  (s) => (s ? 0 : 10.00),
-  menu_item_creation:  (s) => (s ? 0 : 2.00),
-  room_creation:       (s) => (s ? 0 : 10.00), // Exactly ₹10.00 for room creation
+  bill_generate:       (s) => (s ? 0 : PAYG_BILL_FEE),
+  menu_addon:          () => 0,
+  menu_addon_creation: () => 0,
+  room_accommodation:  () => 0,
+  menu_item_creation:  () => 0,
+  room_creation:       () => 0,
   onboarding_free_tier:() => 0,
 };
+
+/** What one action costs: ₹3 for a settled bill on pay as you go, nothing else, and nothing on a paid plan. */
+export function feeFor(actionType: FeeGuardAction, subscribed: boolean): number {
+  return FEE[actionType]?.(subscribed) ?? 0;
+}
 
 /** Generate QC-YYYY-XXXX when no real order ID is available */
 export function generateInvoiceRef(): string {
@@ -71,9 +79,9 @@ export async function evaluateFeeGuard(
   // A paid plan waives fees until it ends, and no longer: an "active" row past its end date pays fees.
   const isSubscribed = planState(subscription).feesWaived;
 
-  const baseCost = FEE[actionType]?.(isSubscribed) ?? 0;
-  const validOverride = overrideCost !== undefined && Number.isFinite(overrideCost) && overrideCost >= 0;
-  const cost = validOverride ? (isSubscribed ? 0 : (overrideCost as number)) : baseCost;
+  // The schedule above is the only price. A caller's overrideCost (the old free-tier amounts) is ignored.
+  void overrideCost;
+  const cost = feeFor(actionType, isSubscribed);
 
   // Subscribed plans or free items — bill settlement is free
   if (cost === 0) {

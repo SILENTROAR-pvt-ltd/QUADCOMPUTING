@@ -13,6 +13,9 @@ import { LuxuryToast } from '@/components/guest/menu/LuxuryToast';
 import { ActiveBillView } from '@/components/guest/menu/ActiveBillView';
 import { BillWalletRedeem } from '@/components/guest/menu/BillWalletRedeem';
 import { GuestMeView } from '@/components/guest/me/GuestMeView';
+import { ReservationStrip } from '@/components/guest/reservations/ReservationStrip';
+import { DeliveryTrackerCard } from '@/components/guest/delivery/DeliveryTrackerCard';
+import { DeliveryEntry } from '@/components/guest/delivery/DeliveryEntry';
 import { guestHref } from '@/components/guest/shell/GuestTabBar';
 import { useMenuInfo } from '@/components/guest/menu/MenuInfoPanel';
 import { useTableService } from '@/components/guest/menu/useTableService';
@@ -85,6 +88,13 @@ function GuestMenuContent() {
       <MenuTop state={state} venueId={venueId} guestName={account?.display_name} tagline={menuInfo.tagline}
         onOpenBill={() => goTab('live_order')} requestBill={bill.requestBill} />
 
+      {state.activeTab === 'menu' && venueId && (
+        <div className="mx-auto mt-4 grid w-full max-w-3xl grid-cols-2 gap-3 px-4">
+          <DeliveryEntry cafeId={venueId} />
+          <ReservationStrip venueId={venueId} venueName={state.businessName || 'Venue'} initialName={state.guestNameInput} initialPhone={state.guestPhoneInput} />
+        </div>
+      )}
+      {state.activeTab === 'menu' && venueId && <DeliveryTrackerCard venueId={venueId} />}
       <MenuBody state={state} venueId={venueId} info={menuInfo} likes={likes} orderPlaced={orderPlaced} trackerProps={trackerProps}
         settled={settled} requestBill={bill.requestBill} goTab={goTab} selectTab={selectTab} />
 

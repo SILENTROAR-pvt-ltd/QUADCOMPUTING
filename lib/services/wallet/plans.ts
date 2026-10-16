@@ -31,13 +31,9 @@ export const PLANS: PlanInfo[] = [
 
 export const planById = (id: unknown) => PLANS.find((p) => p.id === id) || null;
 
-/** Pay-as-you-go fees, charged from the credit wallet when there is no paid plan. */
-export const PAYG_FEES = [
-  { label: 'Bill settled', amount: 3 },
-  { label: 'Room stay checked out', amount: 10 },
-  { label: 'Room added', amount: 10 },
-  { label: 'Menu item added', amount: 2 },
-  { label: 'Add-on services', amount: 0 },
-];
+/** Pay as you go: the one platform fee, ₹3 for each settled bill, taken from the credit wallet. Nothing else is charged. */
+export const PAYG_BILL_FEE = 3;
+
+export const PAYG_FEES = [{ label: 'Each settled bill', amount: PAYG_BILL_FEE }];
 
 export const TOPUP_LIMITS = { min: 100, max: 100000 };

@@ -65,8 +65,10 @@ export const POST = withApiErrorBoundary(async function POST(request: Request) {
     const isCounterBill = order && !order.table_id && !order.room_id;
     if (isCounterBill && String(order.status || '').toUpperCase() === 'SETTLED') {
       afterResponse('counter-bill-fee', async () => {
-        const { invoiceRefFromId, evaluateFeeGuard } = await import('@/lib/services/wallet/fee-guard.service');
-        await evaluateFeeGuard(businessId, 'bill_generate', invoiceRefFromId(order.id), supabase);
+        const { evaluateFeeGuard } = await import('@/lib/services/wallet/fee-guard.service');
+        const { feeReferenceFor } = await import('@/lib/services/wallet/invoice-history.util');
+        // The same reference the settlement uses, so a bill is charged its ₹3 once whichever path settles it.
+        await evaluateFeeGuard(businessId, 'bill_generate', feeReferenceFor(order.id), supabase);
       });
     }
 

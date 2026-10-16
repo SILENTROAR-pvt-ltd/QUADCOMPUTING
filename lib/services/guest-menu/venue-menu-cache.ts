@@ -37,13 +37,22 @@ async function readFromDatabase(db: any, businessId: string): Promise<VenueMenuD
   return { business: biz.data, tables: tables.data || [], items: items.data || [] };
 }
 
+/** How a menu read was served: from memory, by joining a read already running, or by reading the database. */
+export type MenuSource = 'HIT' | 'SHARED' | 'MISS';
+
 /** The venue's menu data. Returns null for a venue that does not exist; throws only when there is no copy to fall back on. */
 export async function loadVenueMenu(db: any, businessId: string, now = Date.now()): Promise<VenueMenuData | null> {
+  return (await loadVenueMenuWithSource(db, businessId, now)).value;
+}
+
+export async function loadVenueMenuWithSource(
+  db: any, businessId: string, now = Date.now(),
+): Promise<{ value: VenueMenuData | null; source: MenuSource }> {
   const hit = store.get(businessId);
-  if (hit && now - hit.at < FRESH_MS) return hit.value;
+  if (hit && now - hit.at < FRESH_MS) return { value: hit.value, source: 'HIT' };
 
   const running = inflight.get(businessId);
-  if (running) return running;
+  if (running) return { value: await running, source: 'SHARED' };
 
   const job = (async () => {
     try {
@@ -63,5 +72,5 @@ export async function loadVenueMenu(db: any, businessId: string, now = Date.now(
     }
   })();
   inflight.set(businessId, job);
-  return job;
+  return { value: await job, source: 'MISS' };
 }

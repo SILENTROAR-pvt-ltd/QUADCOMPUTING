@@ -3,7 +3,7 @@
 import React from 'react';
 import { Tag } from 'lucide-react';
 import { VibersLobby } from '@/components/guest/vibers-lobby/VibersLobby';
-import { VenuePhotoVault } from './VenuePhotoVault';
+import { LiveEventsFeed } from '@/components/guest/events/LiveEventsFeed';
 import { VenueLiveOffers } from './VenueLiveOffers';
 import { VenueReviewPortal } from './VenueReviewPortal';
 import type { LoungeView } from './LoungeTopBar';
@@ -32,7 +32,7 @@ export function LoungeViews({ view, venueId, venueName, table, guestName, canPos
       />
     );
   }
-  if (view === 'moments') return <VenuePhotoVault venueId={venueId} />;
+  if (view === 'moments') return <LiveEventsFeed venueId={venueId} />;
   if (view === 'offers') {
     return (
       <VenueLiveOffers

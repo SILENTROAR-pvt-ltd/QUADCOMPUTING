@@ -1,13 +1,12 @@
 'use client';
 
 import React from 'react';
+import { ArrowRight, Banknote } from 'lucide-react';
 import { WalletHeader } from './WalletHeader';
 import { PaymentVerificationBanner } from './PaymentVerificationBanner';
 import { WalletBalanceCard } from './WalletBalanceCard';
 import { PlanStatusCard } from './PlanStatusCard';
 import { PlanCards } from './PlanCards';
-import { LedgerTable } from './LedgerTable';
-import { OutstandingBillingSection } from './OutstandingBillingSection';
 import { PaymentModal } from './PaymentModal';
 import { useWalletWorkspace } from './hooks/useWalletWorkspace';
 
@@ -16,7 +15,8 @@ interface WalletWorkspaceProps {
   onNavigate?: (tab: string) => void;
 }
 
-export function WalletWorkspace({ venueId }: WalletWorkspaceProps) {
+/** The plan and the credit wallet. Earnings, dues, daily slips and the usage ledger live in Payments. */
+export function WalletWorkspace({ venueId, onNavigate }: WalletWorkspaceProps) {
   const w = useWalletWorkspace(venueId);
   const locked = w.hasPendingApproval;
 
@@ -47,8 +47,20 @@ export function WalletWorkspace({ venueId }: WalletWorkspaceProps) {
       </div>
 
       <PlanCards plan={w.plan} isLocked={locked} isLoading={w.loading} onSelectPlan={(plan) => w.openPayment({ kind: 'plan', plan })} />
-      <OutstandingBillingSection venueId={venueId} />
-      <LedgerTable items={w.ledger} />
+
+      {onNavigate && (
+        <button type="button" onClick={() => onNavigate('payments')}
+          className="flex w-full cursor-pointer items-center justify-between gap-4 rounded-2xl border border-neutral-200/90 bg-white p-5 text-left shadow-xs hover:border-neutral-400">
+          <span className="flex items-center gap-3">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-neutral-100"><Banknote className="h-5 w-5 text-neutral-900" aria-hidden /></span>
+            <span>
+              <span className="block text-sm font-semibold text-neutral-950">Payments, dues and invoices</span>
+              <span className="block text-xs text-neutral-500">What you earn, what you owe, daily due slips, Settle &amp; pay and the usage ledger.</span>
+            </span>
+          </span>
+          <ArrowRight className="h-4 w-4 shrink-0 text-neutral-500" aria-hidden />
+        </button>
+      )}
 
       <PaymentModal venueId={venueId} target={w.payFor} payment={w.payment} onClose={w.closePayment} onSubmitted={w.fetchWalletData} />
     </div>

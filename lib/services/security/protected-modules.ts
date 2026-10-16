@@ -1,10 +1,10 @@
-// Which workspace sections ask for the master PIN. Settings and money (profile, wallet) are always
-// locked once a master PIN exists, so staff cannot change bank details or the PIN itself.
+// Which workspace sections ask for the master PIN. Settings and money (profile, wallet, payments) are always
+// locked once a master PIN exists, so staff cannot change bank details, the PIN, or settle the venue's dues.
 
-export const ALWAYS_LOCKED = ['profile', 'wallet'] as const;
+export const ALWAYS_LOCKED = ['profile', 'wallet', 'payments'] as const;
 
 export const DEFAULT_LOCKS: Record<string, boolean> = {
-  profile: true, wallet: true, dashboard: true, catalog: true, inventory: true, expenses: true, accommodations: true,
+  profile: true, wallet: true, payments: true, dashboard: true, catalog: true, inventory: true, expenses: true, accommodations: true, guests: true,
   billing: false, tables: false, kitchen: false,
 };
 

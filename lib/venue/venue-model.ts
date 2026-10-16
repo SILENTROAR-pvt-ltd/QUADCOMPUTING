@@ -47,9 +47,9 @@ export const hasStays = (m: BusinessModel) => m !== 'food';
 
 /** The workspace sections each kind of venue uses, in sidebar order. */
 const MODULES: Record<BusinessModel, string[]> = {
-  food: ['profile', 'wallet', 'dashboard', 'catalog', 'billing', 'tables', 'kitchen', 'inventory', 'expenses'],
-  stay: ['profile', 'wallet', 'dashboard', 'accommodations', 'billing', 'catalog', 'expenses'],
-  both: ['profile', 'wallet', 'dashboard', 'catalog', 'billing', 'tables', 'accommodations', 'kitchen', 'inventory', 'expenses'],
+  food: ['profile', 'wallet', 'payments', 'dashboard', 'catalog', 'billing', 'tables', 'reservations', 'delivery', 'kitchen', 'inventory', 'expenses', 'guests', 'vendors'],
+  stay: ['profile', 'wallet', 'payments', 'dashboard', 'accommodations', 'billing', 'catalog', 'expenses', 'guests', 'vendors'],
+  both: ['profile', 'wallet', 'payments', 'dashboard', 'catalog', 'billing', 'tables', 'reservations', 'delivery', 'accommodations', 'kitchen', 'inventory', 'expenses', 'guests', 'vendors'],
 };
 
 export const modulesFor = (m: BusinessModel) => MODULES[m];

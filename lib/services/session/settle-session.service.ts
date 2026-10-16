@@ -3,6 +3,7 @@ import { broadcastToGuestTable } from '@/lib/realtime/channels';
 import { assertRedemptionSettleable } from '@/lib/services/wallet/redemption.service';
 import { loadGstStatus, stripTax } from '@/lib/services/billing/gst-policy';
 import { billOwner, isSharedSignedInBill, type BillOwner } from '@/lib/services/wallet/bill-owner.util';
+import { recordLedgerVisit } from '@/lib/services/live-events/ledger.service';
 // Columns that exist on the deployed dine_in_sessions. It has no guest_name:
 // selecting it made every session lookup here fail, so the guest's handle was
 // never found and cashback was credited under their phone/name instead of the
@@ -314,7 +315,10 @@ export async function settleAndVacateSession(body: any, supabase: any) {
     }
   };
 
-  const [, , inventoryResult, platformFeeResult] = await Promise.all([recordOwner(), cleanUp(), deductStock(), chargeFee()]);
+  // My Guests: every settled bill is a visit for the guest who paid it, signed in or walk-in (see ledger.service.ts).
+  const recordLedger = () => recordLedgerVisit(supabase, businessId, finalOrderId, { handle: guestHandle, phone: guestPhone, name: guestName }, settledTotal, nowIso);
+
+  const [, , inventoryResult, platformFeeResult] = await Promise.all([recordOwner(), cleanUp(), deductStock(), chargeFee(), recordLedger()]);
 
   // Realtime notification to this venue's guest table (non-fatal UI nicety;
   // awaited so it finishes before the serverless response returns).

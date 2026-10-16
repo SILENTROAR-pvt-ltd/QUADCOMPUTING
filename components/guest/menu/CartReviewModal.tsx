@@ -17,6 +17,7 @@ import { CartReviewHeader } from './cart/CartReviewHeader';
 import { CartAuthGate, type AuthReason } from './cart/CartAuthGate';
 import type { MenuItem } from './types';
 import { cashbackFor } from '@/lib/guest/cashback';
+import { DeliveryCheckoutSheet } from '@/components/guest/delivery/DeliveryCheckoutSheet';
 
 interface CartReviewModalProps {
   isOpen: boolean;
@@ -53,6 +54,7 @@ export const CartReviewModal: React.FC<CartReviewModalProps> = (p) => {
   const gstApplicable = useVenueGst(cafeId);
   const setItemNote = useCartStore((s) => s.setItemNote);
   const [authFor, setAuthFor] = useState<AuthReason>(null);
+  const [deliveryOpen, setDeliveryOpen] = useState(false);
 
   const cashback = cashbackFor(cartSubtotal);
   const itemCount = cartItems.reduce((n, i) => n + i.quantity, 0);
@@ -101,10 +103,18 @@ export const CartReviewModal: React.FC<CartReviewModalProps> = (p) => {
               <CartBillSummary subtotal={cartSubtotal} cashback={cashback} signedIn={Boolean(account)} gstApplicable={gstApplicable} />
             </div>
 
+            {cafeId && !hasActiveOrder && (
+              <button type="button" onClick={() => setDeliveryOpen(true)} disabled={cartItems.length === 0 || p.isSendingToKitchen}
+                className="mb-3 h-10 w-full cursor-pointer rounded-2xl border border-zinc-200 text-xs font-semibold uppercase tracking-[0.12em] text-zinc-800 hover:bg-zinc-50 disabled:opacity-40">
+                Order for delivery instead
+              </button>
+            )}
             <CartReviewFooter total={cartSubtotal} sending={p.isSendingToKitchen} disabled={cartItems.length === 0} hasActiveOrder={hasActiveOrder} onPlace={place} />
           </motion.div>
 
           <CartAuthGate reason={authFor} venueId={cafeId} tableNumber={tableNumber} onClose={() => setAuthFor(null)} onPlace={p.onPlaceOrder} onSignedIn={() => void refresh()} />
+          <DeliveryCheckoutSheet isOpen={deliveryOpen} onClose={() => setDeliveryOpen(false)} cafeId={cafeId}
+            cartItems={cartItems} subtotal={cartSubtotal} onPlaced={() => { setDeliveryOpen(false); onClose(); }} />
         </motion.div>
       )}
     </AnimatePresence>

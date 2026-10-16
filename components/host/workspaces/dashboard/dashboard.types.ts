@@ -1,3 +1,6 @@
+import type { AnalyticsReports } from '@/lib/services/analytics/reports.util';
+import type { ProfitAndLoss } from '@/lib/services/analytics/pnl.util';
+
 export interface DashboardChartPoint {
   label: string;
   revenue: number;
@@ -47,4 +50,13 @@ export interface DashboardAnalyticsPayload {
   total_discounts_given: number;
   total_gst_collected: number;
   actual_cogs: number;
+  timeframe?: string;
+  /** The A-to-Z reports (reports.util.ts); absent from older responses. */
+  reports?: AnalyticsReports;
+  /** How many raw ingredients are tracked, and how many are out (0 or less). */
+  stock?: { total: number; out: number };
+  /** Profit and loss for the period (pnl.util.ts). */
+  pnl?: ProfitAndLoss;
+  /** True when the period had more bills than one report reads. */
+  truncated?: boolean;
 }

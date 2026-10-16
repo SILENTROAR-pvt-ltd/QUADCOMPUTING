@@ -6,6 +6,8 @@ import { getKnownOrder } from './guest-storage.util';
 
 interface PollingProps {
   tableNumber: string; cafeParam: string; guestId: string; activeSessionId?: string; hasActiveOrder: boolean; sentItemsCount: number;
+  /** The table's push channel is up: the polls below are then only a slow safety net. */
+  pushUp?: boolean;
   billRequestedBanner: boolean; markBillSettled: (t?: number, cashback?: number) => void; setSentItems: (it: any[]) => void;
   setMasterOrder: (o: any) => void; setKotStatus: (s: string) => void; setTicketNumber: (t: string) => void; setBillRequestedBanner: (v: boolean) => void;
 }
@@ -17,6 +19,10 @@ interface PollingProps {
 const STATUS_POLL_ACTIVE_MS = 10_000;
 const ORDER_POLL_ACTIVE_MS = 8_000;
 const POLL_IDLE_MS = 30_000;
+// While the table's push channel is up a change arrives at once, so the reads only guard against a missed push.
+const STATUS_POLL_PUSHED_MS = 60_000;
+const ORDER_POLL_PUSHED_MS = 45_000;
+const POLL_IDLE_PUSHED_MS = 90_000;
 
 export function useGuestOrderPolling(props: PollingProps) {
   // Callbacks like markBillSettled are rebuilt whenever order state changes, and
@@ -29,6 +35,9 @@ export function useGuestOrderPolling(props: PollingProps) {
   const { tableNumber, cafeParam } = props;
   const statusId = props.activeSessionId || props.guestId;
   const isActive = props.hasActiveOrder || props.sentItemsCount > 0 || props.billRequestedBanner;
+  const pushUp = Boolean(props.pushUp);
+  const statusEveryMs = pushUp ? (isActive ? STATUS_POLL_PUSHED_MS : POLL_IDLE_PUSHED_MS) : (isActive ? STATUS_POLL_ACTIVE_MS : POLL_IDLE_MS);
+  const orderEveryMs = pushUp ? (isActive ? ORDER_POLL_PUSHED_MS : POLL_IDLE_PUSHED_MS) : (isActive ? ORDER_POLL_ACTIVE_MS : POLL_IDLE_MS);
 
   const pollActiveOrder = useCallback(async () => {
     const p = latest.current;
@@ -84,9 +93,9 @@ export function useGuestOrderPolling(props: PollingProps) {
 
     void checkStatus(true);
     // Active orders poll faster; idle tables poll at relaxed interval
-    const interval = setInterval(() => void checkStatus(), isActive ? STATUS_POLL_ACTIVE_MS : POLL_IDLE_MS);
+    const interval = setInterval(() => void checkStatus(), statusEveryMs);
     return () => clearInterval(interval);
-  }, [statusId, tableNumber, cafeParam, isActive, pollActiveOrder]);
+  }, [statusId, tableNumber, cafeParam, statusEveryMs, pollActiveOrder]);
 
   useEffect(() => {
     if (!tableNumber) return;
@@ -102,12 +111,12 @@ export function useGuestOrderPolling(props: PollingProps) {
     };
 
     void runPoll(true);
-    const interval = setInterval(() => void runPoll(), isActive ? ORDER_POLL_ACTIVE_MS : POLL_IDLE_MS);
+    const interval = setInterval(() => void runPoll(), orderEveryMs);
     // Catch up immediately when the guest returns to the tab.
     const onVisible = () => { if (!document.hidden) void runPoll(); };
     document.addEventListener('visibilitychange', onVisible);
     return () => { clearInterval(interval); document.removeEventListener('visibilitychange', onVisible); };
-  }, [tableNumber, cafeParam, isActive, pollActiveOrder]);
+  }, [tableNumber, cafeParam, orderEveryMs, pollActiveOrder]);
 
   return { pollActiveOrder };
 }

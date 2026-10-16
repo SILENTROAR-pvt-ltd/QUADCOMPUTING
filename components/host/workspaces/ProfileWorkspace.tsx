@@ -10,6 +10,7 @@ import { AddressSection, BankingSection, OwnerSection } from './profile/AddressO
 import { SecuritySection } from './profile/SecuritySection';
 import { WaiterPermissionsSection } from './profile/WaiterPermissionsSection';
 import { StaffAccessSection } from './profile/StaffAccessSection';
+import { HoursServicesSection } from './profile/HoursServicesSection';
 
 interface ProfileWorkspaceProps {
   onNavigate?: (tab: 'catalog' | 'inventory' | 'billing' | 'kitchen' | 'expenses') => void;
@@ -60,6 +61,7 @@ export function ProfileWorkspace(_props: ProfileWorkspaceProps) {
         )}
       </form>
 
+      <HoursServicesSection />
       <StaffAccessSection />
       <WaiterPermissionsSection />
 

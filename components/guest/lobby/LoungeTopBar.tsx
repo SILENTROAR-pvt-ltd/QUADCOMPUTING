@@ -1,14 +1,14 @@
 'use client';
 
 import React from 'react';
-import { MapPin, MessageCircle, Images, Tag, Star } from 'lucide-react';
+import { MapPin, MessageCircle, CalendarDays, Tag, Star } from 'lucide-react';
 import { GUEST_BRAND } from '@/lib/brand';
 
 export type LoungeView = 'chat' | 'moments' | 'offers' | 'reviews';
 
 export const LOUNGE_VIEWS: Array<{ id: LoungeView; label: string; icon: React.FC<{ className?: string }> }> = [
   { id: 'chat', label: 'Lobby', icon: MessageCircle },
-  { id: 'moments', label: 'Moments', icon: Images },
+  { id: 'moments', label: 'Events', icon: CalendarDays },
   { id: 'offers', label: 'Offers', icon: Tag },
   { id: 'reviews', label: 'Reviews', icon: Star },
 ];
