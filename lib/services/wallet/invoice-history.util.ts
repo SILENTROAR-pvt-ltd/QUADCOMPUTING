@@ -16,6 +16,8 @@ export interface InvoiceOrderRow {
   payment_method?: string | null;
   grand_total: number | string | null;
   is_delivery?: boolean | null;
+  /** The daily number (ORD-001); null until the order has one, or before the migration that adds it. */
+  order_number?: string | null;
 }
 
 export interface FeeOutstandingRow { reference_id: string | null; amount: number | string; status: string }
@@ -24,6 +26,8 @@ export interface FeeLedgerRow { reference_id: string | null; cost: number | stri
 export interface InvoiceRow {
   id: string;
   invoice_number: string;
+  /** The daily order number (ORD-001), when the order has one. */
+  order_number?: string | null;
   created_at: string;
   where: string;
   guest: string | null;
@@ -79,6 +83,7 @@ export function buildInvoiceRows(orders: InvoiceOrderRow[], outstanding: FeeOuts
     return {
       id: o.id,
       invoice_number: invoiceNumberFor(o),
+      order_number: o.order_number ? String(o.order_number) : null,
       created_at: o.created_at,
       where: placeFor(o),
       guest: guestFor(o.customer_name),

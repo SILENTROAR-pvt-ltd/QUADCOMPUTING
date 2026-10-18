@@ -79,7 +79,9 @@ async function checkRedisSlidingWindow(
       pipeline.push(['EXPIRE', key, String(Math.ceil(windowMs / 1000))]);
     }
 
-    const res = await fetch(`${redisUrl}/pipeline`, {
+    // A counting check runs as one transaction (multi-exec), so a burst of parallel requests cannot all read the same
+    // count before any of them adds itself; a read-only check has no need for one.
+    const res = await fetch(`${redisUrl}/${increment ? 'multi-exec' : 'pipeline'}`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${redisToken}`,

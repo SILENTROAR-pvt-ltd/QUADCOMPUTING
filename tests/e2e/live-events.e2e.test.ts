@@ -150,11 +150,16 @@ describe.skipIf(!LIVE)('Live events: pool split by gender, guests say "I\'m Inte
 
   it('10. a settled bill adds a visit and the spend to the ledger', async () => {
     const args = { p_business_id: biz, p_guest_key: 'p:9123456780', p_guest_name: 'Vikram Shah', p_handle: null, p_email: null, p_phone: '9123456780' };
-    const a = await db.rpc('ledger_record_visit', { ...args, p_spend: 1200 });
-    const b = await db.rpc('ledger_record_visit', { ...args, p_spend: 800 });
+    // Since migration 20261016000010 a visit is keyed by the bill (order id), so a bill settled twice counts once.
+    const bill1 = crypto.randomUUID(), bill2 = crypto.randomUUID();
+    const a = await db.rpc('ledger_record_visit', { ...args, p_order_id: bill1, p_spend: 1200 });
+    const b = await db.rpc('ledger_record_visit', { ...args, p_order_id: bill2, p_spend: 800 });
+    const again = await db.rpc('ledger_record_visit', { ...args, p_order_id: bill1, p_spend: 1200 });
+    note('A bill settled twice is counted once', !again.error && again.data === false);
     const { data } = await db.from('venue_guest_ledger').select('visits, total_spend, last_visit_at').eq('business_id', biz).eq('guest_key', 'p:9123456780').single();
     note('Two settled bills: 2 visits, spend adds up', !a.error && !b.error && data?.visits === 2 && Number(data?.total_spend) === 2000 && Boolean(data?.last_visit_at), `${data?.visits} visits, ₹${data?.total_spend}`);
     expect(data?.visits).toBe(2);
+    expect(again.data).toBe(false);
   });
 
   it('11. the host\'s data is closed to everyone but the signed-in owner', async () => {

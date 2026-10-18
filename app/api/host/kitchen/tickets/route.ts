@@ -13,14 +13,8 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
 async function notifyGuestTable(db: any, businessId: string, ticket: any, status: string) {
   // Re-sending the current status (e.g. alongside an items update) is not pushed.
   if (!ticket?.table_or_room || String(ticket.status || '').toUpperCase() === status) return;
-  await broadcastToGuestTable(db, businessId, ticket.table_or_room, 'kot_status_update', {
-    id: ticket.id,
-    order_id: ticket.order_id,
-    ticket_number: ticket.ticket_number,
-    table_or_room: ticket.table_or_room,
-    table_number: ticket.table_or_room,
-    status,
-  });
+  // An empty ping: the topic is public, so the phone reads the ticket's status itself.
+  await broadcastToGuestTable(db, businessId, ticket.table_or_room, 'kot_status_update');
 }
 
 export const GET = withApiErrorBoundary(async function GET(request: Request) {

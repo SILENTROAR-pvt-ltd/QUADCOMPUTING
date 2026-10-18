@@ -36,18 +36,19 @@ describe('broadcastToGuestTable', () => {
 
   it('sends over REST on the scoped topic and cleans up the channel', async () => {
     const sb = fakeClient(vi.fn(async () => ({ success: true })));
-    const ok = await broadcastToGuestTable(sb, A, 'T-01', 'table_settled', { settled_total: 100 });
+    const ok = await broadcastToGuestTable(sb, A, 'T-01', 'table_settled');
     expect(ok).toBe(true);
     expect(sb.channel).toHaveBeenCalledWith(`biz_${A}_table_01`);
-    expect(sb._ch.httpSend).toHaveBeenCalledWith('table_settled', { settled_total: 100 });
+    // The topic is public, so the message is always empty: no total, order id or fee.
+    expect(sb._ch.httpSend).toHaveBeenCalledWith('table_settled', {});
     expect(sb.removeChannel).toHaveBeenCalledWith(sb._ch);
   });
 
   it('never throws and skips unscoped targets', async () => {
     const sb = fakeClient(vi.fn(async () => { throw new Error('network'); }));
     vi.spyOn(console, 'error').mockImplementation(() => {});
-    await expect(broadcastToGuestTable(sb, A, '1', 'kot_status_update', {})).resolves.toBe(false);
+    await expect(broadcastToGuestTable(sb, A, '1', 'kot_status_update')).resolves.toBe(false);
     expect(sb.removeChannel).toHaveBeenCalled();
-    expect(await broadcastToGuestTable(sb, 'slug', '1', 'kot_status_update', {})).toBe(false);
+    expect(await broadcastToGuestTable(sb, 'slug', '1', 'kot_status_update')).toBe(false);
   });
 });

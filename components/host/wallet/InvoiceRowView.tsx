@@ -17,6 +17,9 @@ const Chip = ({ status }: { status: FeeStatus }) => (
   <span className={`inline-flex whitespace-nowrap rounded-full border px-2 py-0.5 text-[10px] font-medium ${FEE_CHIP[status].tone}`}>{FEE_CHIP[status].label}</span>
 );
 
+/** The order's daily number (ORD-014), when it has one. */
+const OrderNo = ({ n }: { n?: string | null }) => (n ? <span className="ml-1.5 inline-flex rounded bg-neutral-100 px-1.5 py-0.5 font-sans text-[10px] font-semibold text-neutral-700">{n}</span> : null);
+
 const AfterHours = () => (
   <span className="ml-1.5 inline-flex whitespace-nowrap rounded-full bg-neutral-100 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-neutral-600" title="Settled outside 10 AM to 10 PM">After hours</span>
 );
@@ -31,7 +34,7 @@ export function InvoiceRowView({ inv, afterHours = false, onOpen }: { inv: Invoi
       style={open ? { cursor: 'pointer' } : undefined}>
       <div className="flex items-start justify-between gap-3 sm:hidden">
         <div className="min-w-0">
-          <p className="truncate font-mono text-xs font-semibold text-neutral-900">{inv.invoice_number}</p>
+          <p className="truncate font-mono text-xs font-semibold text-neutral-900">{inv.invoice_number}<OrderNo n={inv.order_number} /></p>
           <p className="mt-0.5 text-[11px] text-neutral-500">{formatInvoiceDate(inv.created_at)}{afterHours && <AfterHours />}</p>
           <p className="truncate text-[11px] text-neutral-500">{detail}{inv.payment_method ? ` · ${inv.payment_method}` : ''}</p>
         </div>
@@ -43,7 +46,7 @@ export function InvoiceRowView({ inv, afterHours = false, onOpen }: { inv: Invoi
       </div>
 
       <div className={`hidden items-center gap-3 text-xs sm:grid ${INVOICE_COLUMNS}`}>
-        <span className="truncate font-mono font-semibold text-neutral-900">{inv.invoice_number}</span>
+        <span className="truncate font-mono font-semibold text-neutral-900">{inv.invoice_number}<OrderNo n={inv.order_number} /></span>
         <span className="text-neutral-600">{formatInvoiceDate(inv.created_at)}{afterHours && <AfterHours />}</span>
         <span className="truncate text-neutral-600">{detail}</span>
         <span className="text-neutral-600">{inv.payment_method ?? '—'}</span>

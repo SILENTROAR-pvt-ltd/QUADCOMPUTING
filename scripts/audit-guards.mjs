@@ -1,139 +1,52 @@
-import fs from 'fs';
-import path from 'path';
+// Fails when an owner-side API route can reach the database without first checking who is calling.
+//
+// Every handler in a route file under app/api/host, app/api/admin and app/api/venue must call a require* guard (requireHost,
+// requireAdmin, requireStaff...) before its first database call. Routes outside those folders (guest, club, auth, health)
+// are public by design and are covered by the smoke tests instead. A thin wrapper that only re-exports a guarded route
+// (app/api/tables) passes by importing it.
+//
+// It reads handlers in every form the app uses (`export async function GET`, `export const GET = withApiErrorBoundary(...)`).
+// An earlier version matched only the first form, audited 0 handlers and passed for ever; this one fails if it finds none.
+import fs from 'node:fs';
+import path from 'node:path';
 
-function findRouteFiles(dir) {
-  let results = [];
-  const entries = fs.readdirSync(dir, { withFileTypes: true });
-  for (const entry of entries) {
-    const full = path.join(dir, entry.name);
-    if (entry.isDirectory()) {
-      results = results.concat(findRouteFiles(full));
-    } else if (entry.name === 'route.ts' || entry.name === 'route.js') {
-      results.push(full);
-    }
-  }
-  return results;
-}
+const ROOTS = ['app/api/host', 'app/api/admin', 'app/api/venue', 'app/api/tables', 'app/api/orders'];
+const GUARD = /\brequire(?:Host|Admin|Staff\w*|Waiter|Chef|Cashier|Role)\s*\(/;
+const DB = /\badminDb\s*\(|\.from\s*\(|\.rpc\s*\(/;
+const HANDLER = /export\s+(?:async\s+function|function|const)\s+(GET|POST|PATCH|PUT|DELETE)\b/g;
+// Reads that are public on purpose (the guest menu shows the venue's photo vault); every write there is guarded.
+const PUBLIC_READS = new Set(['app/api/venue/photo-vault GET']);
+const WRAPS_GUARDED = /from\s+['"]@\/app\/api\/(?:host|admin|venue)\/[^'"]+\/route['"]/;
 
-const hostRoutes = findRouteFiles('app/api/host');
-const adminRoutes = findRouteFiles('app/api/admin');
-const venueRoutes = findRouteFiles('app/api/venue');
+const routes = (dir) => (fs.existsSync(dir) ? fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
+  const full = path.join(dir, e.name);
+  return e.isDirectory() ? routes(full) : e.name === 'route.ts' || e.name === 'route.js' ? [full] : [];
+}) : []);
 
-const METHODS = ['GET', 'POST', 'PATCH', 'PUT', 'DELETE'];
-const WRITE_METHODS = ['POST', 'PATCH', 'PUT', 'DELETE'];
-
-const rows = [];
-let hasFailure = false;
-
-function extractFunctionBody(content, fnName) {
-  // Matches "export async function GET(" or "export function GET("
-  const regex = new RegExp(`export\\s+(?:async\\s+)?function\\s+${fnName}\\s*\\([^)]*\\)\\s*\\{`);
-  const match = regex.exec(content);
-  if (!match) return null;
-
-  const startIndex = match.index + match[0].length;
-  let braceCount = 1;
-  let currentIndex = startIndex;
-
-  while (braceCount > 0 && currentIndex < content.length) {
-    const char = content[currentIndex];
-    if (char === '{') {
-      braceCount++;
-    } else if (char === '}') {
-      braceCount--;
-    }
-    currentIndex++;
-  }
-
-  return content.slice(startIndex, currentIndex - 1);
-}
-
-function checkHandler(file, method, requiredGuards) {
-  const normPath = file.replace(/\\/g, '/');
-  const content = fs.readFileSync(file, 'utf8');
-  const body = extractFunctionBody(content, method);
-
-  if (body === null) {
-    return; // Handler not implemented in this route
-  }
-
-  // Find position of requireHost or requireAdmin
-  let guardPos = Infinity;
-  for (const g of requiredGuards) {
-    const pos = body.indexOf(g);
-    if (pos !== -1 && pos < guardPos) {
-      guardPos = pos;
-    }
-  }
-
-  // Find position of first database operation
-  const dbTriggers = ['.from(', '.rpc(', 'adminDb('];
-  let firstDbPos = Infinity;
-  let triggeredBy = '';
-  for (const trig of dbTriggers) {
-    const pos = body.indexOf(trig);
-    if (pos !== -1 && pos < firstDbPos) {
-      firstDbPos = pos;
-      triggeredBy = trig;
-    }
-  }
-
-  const isGuarded = guardPos !== Infinity && guardPos < firstDbPos;
-  const status = isGuarded ? 'PASS' : 'FAIL';
-
-  rows.push({
-    route: normPath,
-    method,
-    status,
-    detail: isGuarded
-      ? 'Guard called before DB'
-      : (guardPos === Infinity ? 'No guard found' : `DB (${triggeredBy}) before guard`),
+let handlers = 0;
+const failures = [];
+for (const file of ROOTS.flatMap(routes)) {
+  const src = fs.readFileSync(file, 'utf8');
+  const found = [...src.matchAll(HANDLER)].map((m) => ({ method: m[1], at: m.index }));
+  if (!found.length) continue;
+  const rel = file.replace(/\\/g, '/');
+  if (WRAPS_GUARDED.test(src) && !DB.test(src)) { handlers += found.length; continue; }
+  // Each handler is read on its own (from its export to the next one), so a helper written above them cannot fool the check.
+  found.forEach((h, i) => {
+    handlers += 1;
+    if (PUBLIC_READS.has(`${rel.replace(/\/route\.(ts|js)$/, '')} ${h.method}`)) return;
+    const body = src.slice(h.at, found[i + 1]?.at ?? src.length);
+    const guard = body.search(GUARD);
+    const db = body.search(DB);
+    // `export const PUT = PATCH;` is the guarded handler under another name; a handler that never reads the database and
+    // only answers 401/403 reaches nothing.
+    if (/^[^=]*=\s*(?:GET|POST|PATCH|PUT|DELETE)\s*;/.test(body)) return;
+    if (guard < 0 && db < 0 && /status:\s*40[13]\b/.test(body)) return;
+    if (guard < 0) failures.push(`${rel} ${h.method}: no require* guard`);
+    else if (db >= 0 && db < guard) failures.push(`${rel} ${h.method}: touches the database before its guard`);
   });
-
-  if (!isGuarded) {
-    hasFailure = true;
-  }
 }
 
-// 1. Audit host routes (all methods must be guarded)
-for (const file of hostRoutes) {
-  for (const m of METHODS) {
-    checkHandler(file, m, ['requireHost', 'requireAdmin']);
-  }
-}
-
-// 2. Audit admin routes (all methods must be requireAdmin)
-for (const file of adminRoutes) {
-  for (const m of METHODS) {
-    checkHandler(file, m, ['requireAdmin']);
-  }
-}
-
-// 3. Audit venue routes (write methods must be guarded)
-for (const file of venueRoutes) {
-  for (const m of WRITE_METHODS) {
-    checkHandler(file, m, ['requireHost', 'requireAdmin']);
-  }
-}
-
-console.log('\n========================================================================================');
-console.log('                          API ROUTE GUARD AUDIT REPORT                                  ');
-console.log('========================================================================================');
-console.log('| ' + 'Route'.padEnd(52) + ' | ' + 'Method'.padEnd(7) + ' | ' + 'Status'.padEnd(6) + ' | ' + 'Details'.padEnd(25) + ' |');
-console.log('|-' + '-'.repeat(52) + '-|-' + '-'.repeat(7) + '-|-' + '-'.repeat(6) + '-|-' + '-'.repeat(25) + '-|');
-
-for (const r of rows) {
-  console.log(`| ${r.route.padEnd(52)} | ${r.method.padEnd(7)} | ${r.status.padEnd(6)} | ${r.detail.padEnd(25)} |`);
-}
-
-console.log('========================================================================================');
-console.log(`Total Handlers Audited: ${rows.length}`);
-console.log(`Failed Handlers: ${rows.filter(r => r.status === 'FAIL').length}`);
-
-if (hasFailure) {
-  console.error('\nAUDIT FAILED: Unprotected handlers found.');
-  process.exit(1);
-} else {
-  console.log('\nAUDIT PASSED: All handlers are properly guarded before DB operations.');
-  process.exit(0);
-}
+if (handlers === 0) { console.error('AUDIT FAILED: found no handlers to audit (the scan is broken, not the routes).'); process.exit(1); }
+if (failures.length) { console.error(`AUDIT FAILED: ${failures.length} handler(s) not guarded:\n  ${failures.join('\n  ')}`); process.exit(1); }
+console.log(`AUDIT PASSED: ${handlers} handlers in owner-side routes, each guarded before its first database call.`);

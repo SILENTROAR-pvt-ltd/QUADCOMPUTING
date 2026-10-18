@@ -207,6 +207,10 @@ describe.skipIf(!LIVE)('A to Z: QR scan to final bill, staff PIN, websockets, ru
     await sleep(1500);
     note('Websocket: guest at the table got "table_settled"', state.settled.length > 0, undefined, state.guestSocket ? `${state.settled.length} message(s)` : 'socket did not connect');
     expect(state.settled.length).toBeGreaterThan(0);
+    // The topic is public (a venue's id is in every QR link): the message must carry no amounts, ids or fees.
+    const leaked = state.settled.filter((m: any) => Object.keys(m?.payload ?? m ?? {}).length > 0);
+    note('Websocket: the public settlement message carries no amounts or ids', leaked.length === 0, undefined, leaked.length ? JSON.stringify(leaked[0]).slice(0, 80) : 'empty');
+    expect(leaked).toHaveLength(0);
   });
 
   it('7b. the database itself refuses a stale "new bill" or "add to bill" decision', async () => {
@@ -316,6 +320,16 @@ describe.skipIf(!LIVE)('A to Z: QR scan to final bill, staff PIN, websockets, ru
     const stillOpen = (left || []).filter((o: any) => !['settled', 'cancelled', 'completed'].includes(String(o.status).toLowerCase()));
     note('No order left open at the venue', stillOpen.length === 0, undefined, `${stillOpen.length} open`);
     expect(stillOpen).toHaveLength(0);
+
+    // Daily order numbers (migration 20261018000001): every order of the venue's day has ORD-001, 002 ... with none
+    // missing and none twice, even though 24 orders were placed at the same instant.
+    const { data: numbered } = await db.from('orders').select('order_number, order_seq, order_day').eq('business_id', biz);
+    const seqs = (numbered || []).map((o: any) => Number(o.order_seq)).sort((a: number, b: number) => a - b);
+    const formatOk = (numbered || []).every((o: any) => /^ORD-\d{3,}$/.test(String(o.order_number)) && o.order_number === `ORD-${String(o.order_seq).padStart(3, '0')}`);
+    const days = new Set((numbered || []).map((o: any) => o.order_day));
+    const whole = days.size === 1 && seqs.every((s: number, i: number) => s === i + 1);
+    note(`Order numbers: ${seqs.length} orders numbered ORD-001..ORD-${String(seqs.length).padStart(3, '0')}, none missing or repeated`, formatOk && whole, undefined, `${days.size} billing day(s), seqs ${seqs[0]}..${seqs[seqs.length - 1]}`);
+    expect(formatOk && whole).toBe(true);
   }, 60_000);
 
   it('10. websockets: the floor ping and ticket events', async () => {

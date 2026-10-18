@@ -1,5 +1,6 @@
 import { SETTLED_STATUSES } from '@/lib/utils/business-day';
 import { normaliseBill } from '@/lib/services/analytics/z-report-sales.util';
+import { selectOrders } from './order-number-column';
 import { feeReferenceFor, invoiceNumberFor, placeFor, type FeeStatus } from './invoice-history.util';
 
 export const INVOICE_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -7,6 +8,8 @@ export const INVOICE_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9
 export interface InvoiceDetail {
   id: string;
   invoice_number: string;
+  /** The daily order number (ORD-001), when the order has one. */
+  order_number: string | null;
   created_at: string;
   place: string;
   guest: string | null;
@@ -30,9 +33,10 @@ const r2 = (n: number) => Math.round(n * 100) / 100;
  * (business_id is checked in the same query), and the fee is read by its own reference. Null when there is no such bill.
  */
 export async function fetchInvoiceDetail(db: any, businessId: string, orderId: string): Promise<InvoiceDetail | null> {
-  const { data: order, error } = await db.from('orders')
-    .select('id, created_at, status, invoice_number, table_number, customer_name, customer_phone, payment_method, items, subtotal, discount_amount, tax_amount, grand_total, is_delivery, delivery_fee')
-    .eq('id', orderId).eq('business_id', businessId).maybeSingle();
+  const { data: order, error } = await selectOrders(
+    'id, created_at, status, invoice_number, table_number, customer_name, customer_phone, payment_method, items, subtotal, discount_amount, tax_amount, grand_total, is_delivery, delivery_fee',
+    (columns) => db.from('orders').select(columns).eq('id', orderId).eq('business_id', businessId).maybeSingle(),
+  );
   if (error) throw error;
   if (!order || !SETTLED_STATUSES.includes(order.status)) return null;
 
@@ -61,6 +65,7 @@ export async function fetchInvoiceDetail(db: any, businessId: string, orderId: s
   return {
     id: order.id,
     invoice_number: invoiceNumberFor(order),
+    order_number: order.order_number ? String(order.order_number) : null,
     created_at: order.created_at,
     place: placeFor(order),
     guest: guest && !/^guest$/i.test(guest) ? guest : null,

@@ -320,17 +320,9 @@ export async function settleAndVacateSession(body: any, supabase: any) {
 
   const [, , inventoryResult, platformFeeResult] = await Promise.all([recordOwner(), cleanUp(), deductStock(), chargeFee(), recordLedger()]);
 
-  // Realtime notification to this venue's guest table (non-fatal UI nicety;
-  // awaited so it finishes before the serverless response returns).
-  await broadcastToGuestTable(supabase, businessId, rawTable, 'table_settled', {
-    table_number: rawTable,
-    // Which bill was settled: a phone at the table shows "settled" only when this is its own order.
-    order_id: finalOrderId,
-    settled_total: settledTotal,
-    cashback: cashbackResult.cashback_amount,
-    redeemed: redemptionResult?.redeemed_amount,
-    platform_fee: platformFeeResult?.cost,
-  });
+  // Realtime ping to this venue's guest table (non-fatal UI nicety; awaited so it finishes before the serverless
+  // response returns). The topic is public, so the ping is empty: the phone reads its own bill, total and cashback.
+  await broadcastToGuestTable(supabase, businessId, rawTable, 'table_settled');
 
   return {
     success: true,

@@ -71,17 +71,32 @@ describe('the staff session token', () => {
   });
 });
 
-/** A fake client over a single staff row that records updates. */
-function staffDb(row: any) {
+/**
+ * A fake client over staff rows with real update semantics: every update checks its filters at the moment it runs, so
+ * "set the count to n+1 only if it still is n" behaves as it does in the database, and parallel attempts race for it.
+ */
+function staffDb(initial: any) {
+  const rows: any[] = (Array.isArray(initial) ? initial : [initial]).map((r) => ({ ...r }));
   const updates: any[] = [];
-  const chain: any = {};
-  chain.select = () => chain;
-  chain.eq = () => chain;
-  chain.not = () => chain;
-  chain.order = () => Promise.resolve({ data: Array.isArray(row) ? row : [row], error: null });
-  chain.maybeSingle = async () => ({ data: row, error: null });
-  chain.update = (patch: any) => { updates.push(patch); return chain; };
-  return { from: () => chain, updates };
+  const builder = () => {
+    const q: any = { op: 'select', filters: [] as Array<[string, string, any]>, patch: null, returning: false };
+    const match = (r: any) => q.filters.every(([c, k, v]: any) => (k === 'eq' ? (c === 'business_id' ? true : r[c] === v) : k === 'is' ? (r[c] ?? null) === v : r[c] != null));
+    const run = () => {
+      const hit = rows.filter(match);
+      if (q.op === 'update') { hit.forEach((r) => Object.assign(r, q.patch)); updates.push(q.patch); return { data: q.returning ? hit.map((r) => ({ id: r.id })) : null, error: null }; }
+      return { data: hit.map((r) => ({ ...r })), error: null };
+    };
+    q.select = () => { if (q.op === 'update') q.returning = true; return q; };
+    q.eq = (c: string, v: any) => { q.filters.push([c, 'eq', v]); return q; };
+    q.is = (c: string, v: any) => { q.filters.push([c, 'is', v]); return q; };
+    q.not = (c: string) => { q.filters.push([c, 'notnull', null]); return q; };
+    q.order = () => Promise.resolve(run());
+    q.maybeSingle = async () => ({ data: run().data?.[0] ?? null, error: null });
+    q.update = (patch: any) => { q.op = 'update'; q.patch = patch; return q; };
+    q.then = (res: any, rej: any) => Promise.resolve(run()).then(res, rej);
+    return q;
+  };
+  return { from: () => builder(), rows, updates };
 }
 
 describe('the PIN check', () => {
@@ -90,28 +105,60 @@ describe('the PIN check', () => {
     for (const bad of ['123', '12345', 'abcd', '12 4', 1234, null]) expect(isFourDigitPin(bad)).toBe(false);
   });
 
+  const staff = { id: 's1', name: 'Rahul', role: 'WAITER', status: 'ACTIVE', is_pos_active: true, pin_locked_until: null };
+
   it('lets the right PIN in and clears the failure count', async () => {
-    const row = { id: 's1', name: 'Rahul', role: 'WAITER', status: 'ACTIVE', is_pos_active: true, pin_hash: await hashStaffPin('1234'), pin_failures: 3, pin_locked_until: null };
-    const db = staffDb(row);
+    const db = staffDb({ ...staff, pin_hash: await hashStaffPin('1234'), pin_failures: 3 });
     const out = await checkStaffPin(db, 'b1', 's1', '1234');
     expect(out).toMatchObject({ ok: true, staff: { id: 's1', role: 'WAITER' } });
-    expect(db.updates[0]).toMatchObject({ pin_failures: 0, pin_locked_until: null });
+    expect(db.rows[0]).toMatchObject({ pin_failures: 0, pin_locked_until: null });
   });
 
   it('counts a wrong PIN and locks after five in a row', async () => {
     const hash = await hashStaffPin('1234');
-    const base = { id: 's1', name: 'Rahul', role: 'WAITER', status: 'ACTIVE', is_pos_active: true, pin_hash: hash, pin_locked_until: null };
-    const wrong = await checkStaffPin(staffDb({ ...base, pin_failures: 1 }), 'b1', 's1', '0000');
-    expect(wrong).toMatchObject({ ok: false, code: 'WRONG', triesLeft: MAX_PIN_FAILURES - 2 });
-    const db = staffDb({ ...base, pin_failures: MAX_PIN_FAILURES - 1 });
-    const locked = await checkStaffPin(db, 'b1', 's1', '0000');
-    expect(locked).toMatchObject({ ok: false, code: 'LOCKED' });
-    expect(db.updates[0].pin_locked_until).toBeTruthy();
+    const one = staffDb({ ...staff, pin_hash: hash, pin_failures: 1 });
+    expect(await checkStaffPin(one, 'b1', 's1', '0000')).toMatchObject({ ok: false, code: 'WRONG', triesLeft: MAX_PIN_FAILURES - 2 });
+    expect(one.rows[0].pin_failures).toBe(2);
+    const db = staffDb({ ...staff, pin_hash: hash, pin_failures: MAX_PIN_FAILURES - 1 });
+    expect(await checkStaffPin(db, 'b1', 's1', '0000')).toMatchObject({ ok: false, code: 'LOCKED' });
+    expect(db.rows[0].pin_locked_until).toBeTruthy();
+  });
+
+  it('cannot be brute-forced by a burst of parallel guesses: at most five are ever compared', async () => {
+    const hash = await hashStaffPin('4821');
+    const db = staffDb({ ...staff, pin_hash: hash, pin_failures: 0 });
+    // 40 different wrong PINs at the same instant, all of which read a count of 0 before any of them writes.
+    const guesses = Array.from({ length: 40 }, (_, i) => String(1000 + i * 3).padStart(4, '0'));
+    const outcomes = await Promise.all(guesses.map((g) => checkStaffPin(db, 'b1', 's1', g)));
+    expect(outcomes.filter((o) => o.ok)).toHaveLength(0);
+    expect(outcomes.filter((o) => !o.ok && o.code === 'WRONG').length).toBeLessThanOrEqual(MAX_PIN_FAILURES - 1);
+    expect(db.rows[0].pin_locked_until).toBeTruthy();
+    // And the person is now locked out, even for the right PIN.
+    expect(await checkStaffPin(db, 'b1', 's1', '4821')).toMatchObject({ ok: false, code: 'LOCKED' });
+  });
+
+  it('does not let a parallel right PIN slip in once the guesses have used up the tries', async () => {
+    const hash = await hashStaffPin('4821');
+    const db = staffDb({ ...staff, pin_hash: hash, pin_failures: MAX_PIN_FAILURES - 1 });
+    const outcomes = await Promise.all([checkStaffPin(db, 'b1', 's1', '0001'), checkStaffPin(db, 'b1', 's1', '0002'), checkStaffPin(db, 'b1', 's1', '4821')]);
+    // Exactly one attempt got the last try; the rest were refused. The right PIN only gets in if it was the one that got it.
+    const compared = outcomes.filter((o) => o.ok || o.code === 'WRONG' || o.code === 'LOCKED');
+    expect(compared).toHaveLength(3);
+    expect(outcomes.filter((o) => o.ok).length).toBeLessThanOrEqual(1);
+  });
+
+  it('starts counting again once an old lock has run out', async () => {
+    const hash = await hashStaffPin('1234');
+    const now = Date.now();
+    const stale = staffDb({ ...staff, pin_hash: hash, pin_failures: MAX_PIN_FAILURES, pin_locked_until: new Date(now - 1000).toISOString() });
+    expect(await checkStaffPin(stale, 'b1', 's1', '0000', now)).toMatchObject({ ok: false, code: 'WRONG', triesLeft: MAX_PIN_FAILURES - 1 });
+    const fresh = staffDb({ ...staff, pin_hash: hash, pin_failures: null });
+    expect(await checkStaffPin(fresh, 'b1', 's1', '0000')).toMatchObject({ ok: false, code: 'WRONG', triesLeft: MAX_PIN_FAILURES - 1 });
   });
 
   it('refuses while locked, even for the right PIN', async () => {
     const now = Date.now();
-    const row = { id: 's1', name: 'R', role: 'WAITER', status: 'ACTIVE', is_pos_active: true, pin_hash: await hashStaffPin('1234'), pin_failures: 0, pin_locked_until: new Date(now + 60_000).toISOString() };
+    const row = { ...staff, pin_hash: await hashStaffPin('1234'), pin_failures: 0, pin_locked_until: new Date(now + 60_000).toISOString() };
     expect(await checkStaffPin(staffDb(row), 'b1', 's1', '1234', now)).toMatchObject({ ok: false, code: 'LOCKED' });
   });
 
@@ -124,14 +171,14 @@ describe('the PIN check', () => {
   });
 
   it('lists only staff with a known role', async () => {
+    const live = { is_pos_active: true, pin_hash: 'scrypt:x:y' };
     const rows = [
-      { id: 'a', name: 'Rahul', role: 'waiter', status: 'ACTIVE' },
-      { id: 'b', name: 'Owner', role: 'MANAGER', status: 'ACTIVE' },
-      { id: 'c', name: 'Gone', role: 'CHEF', status: 'INACTIVE' },
+      { id: 'a', name: 'Rahul', role: 'waiter', status: 'ACTIVE', ...live },
+      { id: 'b', name: 'Owner', role: 'MANAGER', status: 'ACTIVE', ...live },
+      { id: 'c', name: 'Gone', role: 'CHEF', status: 'INACTIVE', ...live },
     ];
     const list = await listLoginStaff(staffDb(rows), 'b1');
     expect(list).toEqual([{ id: 'a', name: 'Rahul', role: 'WAITER' }]);
   });
 });
-
 vi.setConfig({ testTimeout: 15_000 });

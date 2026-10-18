@@ -26,7 +26,7 @@ function printInvoice(inv: InvoiceDetail, venue: string): boolean {
     .r{text-align:right}tfoot td{border:0}tfoot tr:last-child td{font-weight:700;font-size:14px;border-top:2px solid #111}
     .status{margin-top:14px;font-size:11px;color:#555}
   </style></head><body>
-    <h1>${esc(venue)}</h1><h2>Tax invoice · ${esc(inv.invoice_number)}</h2>
+    <h1>${esc(venue)}</h1><h2>Tax invoice · ${esc(inv.invoice_number)}${inv.order_number ? ` · ${esc(inv.order_number)}` : ''}</h2>
     <div class="meta">${esc(formatInvoiceDate(inv.created_at))} · ${esc(inv.place)}${inv.guest ? ` · ${esc(inv.guest)}` : ''}${inv.payment_method ? ` · Paid by ${esc(inv.payment_method)}` : ''}</div>
     <table><thead><tr><th>Item</th><th class="r">Qty</th><th class="r">Rate</th><th class="r">Amount</th></tr></thead>
     <tbody>${rows}</tbody>
@@ -63,7 +63,7 @@ export function InvoiceDetailModal({ invoiceId, onClose }: { invoiceId: string; 
         <header className="flex items-start justify-between gap-3 border-b border-neutral-100 p-5">
           <div className="min-w-0">
             <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-500">Invoice</p>
-            <h2 id="invoice-title" className="truncate font-mono text-base font-semibold text-neutral-950">{inv?.invoice_number ?? '…'}</h2>
+            <h2 id="invoice-title" className="truncate font-mono text-base font-semibold text-neutral-950">{inv?.invoice_number ?? '…'}{inv?.order_number && <span className="ml-2 rounded bg-neutral-100 px-1.5 py-0.5 font-sans text-[11px] font-semibold text-neutral-700">{inv.order_number}</span>}</h2>
             {inv && <p className="mt-0.5 text-xs text-neutral-500">{formatInvoiceDate(inv.created_at)} · {inv.place}{inv.guest ? ` · ${inv.guest}` : ''}</p>}
           </div>
           <button type="button" onClick={onClose} aria-label="Close invoice" className="grid h-9 w-9 shrink-0 cursor-pointer place-items-center rounded-full hover:bg-neutral-100"><X className="h-4 w-4" /></button>

@@ -1,5 +1,6 @@
 import { SETTLED_STATUSES } from '@/lib/utils/business-day';
 import { billingRangeBounds } from './billing-day';
+import { selectOrders } from './order-number-column';
 import { buildDaySlips, type DaySlip, type SlipFilters, type SlipTotals } from './day-slips.util';
 import { buildInvoiceRows, feeReferenceFor, type FeeLedgerRow, type FeeOutstandingRow } from './invoice-history.util';
 
@@ -17,9 +18,11 @@ async function readOrders(db: any, businessId: string, range: SlipRange) {
   const bounds = range.from && range.to ? billingRangeBounds(range.from, range.to) : null;
   const rows: any[] = [];
   for (let from = 0; rows.length < SLIP_ROW_CAP; from += BATCH) {
-    let q = db.from('orders').select(ORDER_COLUMNS).eq('business_id', businessId).in('status', [...SETTLED_STATUSES]);
-    if (bounds) q = q.gte('created_at', bounds.start.toISOString()).lt('created_at', bounds.end.toISOString());
-    const { data, error } = await q.order('created_at', { ascending: false }).order('id', { ascending: false }).range(from, from + BATCH - 1);
+    const { data, error } = await selectOrders(ORDER_COLUMNS, (columns) => {
+      let q = db.from('orders').select(columns).eq('business_id', businessId).in('status', [...SETTLED_STATUSES]);
+      if (bounds) q = q.gte('created_at', bounds.start.toISOString()).lt('created_at', bounds.end.toISOString());
+      return q.order('created_at', { ascending: false }).order('id', { ascending: false }).range(from, from + BATCH - 1);
+    });
     if (error) throw error;
     rows.push(...(data ?? []));
     if (!data || data.length < BATCH) return { rows, truncated: false };

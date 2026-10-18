@@ -1,4 +1,5 @@
 import { SETTLED_STATUSES } from '@/lib/utils/business-day';
+import { selectOrders } from './order-number-column';
 import { buildInvoiceRows, feeReferenceFor, sumRevenue, type FeeLedgerRow, type FeeOutstandingRow, type InvoiceRow } from './invoice-history.util';
 
 const BATCH = 1000;
@@ -56,14 +57,14 @@ export interface InvoicePage { invoices: InvoiceRow[]; nextCursor: string | null
 /** One page of settled bills, newest first, each with the platform fee it was charged. `cursor` is `<created_at>|<id>`. */
 export async function fetchInvoicePage(db: any, businessId: string, cursor: string | null, limit: number): Promise<InvoicePage> {
   const size = Math.min(Math.max(Math.floor(limit) || 25, 1), 100);
-  let query = db.from('orders').select(ORDER_COLUMNS).eq('business_id', businessId).in('status', [...SETTLED_STATUSES])
-    .order('created_at', { ascending: false }).order('id', { ascending: false }).limit(size + 1);
-
   const match = cursor ? CURSOR.exec(cursor) : null;
   if (cursor && !match) throw Object.assign(new Error('Invalid page position.'), { status: 400 });
-  if (match) query = query.or(`created_at.lt.${match[1]},and(created_at.eq.${match[1]},id.lt.${match[2]})`);
-
-  const { data, error } = await query;
+  const { data, error } = await selectOrders(ORDER_COLUMNS, (columns) => {
+    let query = db.from('orders').select(columns).eq('business_id', businessId).in('status', [...SETTLED_STATUSES])
+      .order('created_at', { ascending: false }).order('id', { ascending: false }).limit(size + 1);
+    if (match) query = query.or(`created_at.lt.${match[1]},and(created_at.eq.${match[1]},id.lt.${match[2]})`);
+    return query;
+  });
   if (error) throw error;
   const rows = (data ?? []) as any[];
   const more = rows.length > size;

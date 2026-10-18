@@ -58,36 +58,55 @@ export type PinOutcome =
   | { ok: true; staff: LoginStaff }
   | { ok: false; code: 'UNKNOWN' | 'WRONG' | 'LOCKED'; retryAfterSeconds?: number; triesLeft?: number };
 
+/** How many times one sign-in re-reads the row after losing the race to count an attempt, before it gives up. */
+const CLAIM_RETRIES = 8;
+
 /**
  * Checks a staff member's PIN. Five wrong tries in a row lock that person out for five minutes (the lock is on them,
  * not the venue, so one person guessing cannot lock out the rest). A right PIN clears the count.
+ *
+ * Every attempt is counted BEFORE its PIN is looked at, in one conditional update ("set the count to n+1 only if it
+ * still is n"). Two attempts that read the same count cannot both win that update, so a burst of parallel guesses is
+ * serialised: at most five get as far as a PIN comparison, and the fifth one sets the lock in the same write.
  */
 export async function checkStaffPin(db: any, businessId: string, staffId: string, pin: string, now = Date.now()): Promise<PinOutcome> {
-  const { data: row, error } = await db.from('staff_profiles')
-    .select('id, name, role, status, is_pos_active, pin_hash, pin_failures, pin_locked_until')
-    .eq('id', staffId).eq('business_id', businessId).maybeSingle();
-  const role = asStaffRole(row?.role);
-  if (error || !row || !role || !row.is_pos_active || String(row.status || 'ACTIVE').toUpperCase() === 'INACTIVE' || !row.pin_hash) {
-    return { ok: false, code: 'UNKNOWN' };
-  }
+  for (let spin = 0; spin < CLAIM_RETRIES; spin += 1) {
+    const { data: row, error } = await db.from('staff_profiles')
+      .select('id, name, role, status, is_pos_active, pin_hash, pin_failures, pin_locked_until')
+      .eq('id', staffId).eq('business_id', businessId).maybeSingle();
+    const role = asStaffRole(row?.role);
+    if (error || !row || !role || !row.is_pos_active || String(row.status || 'ACTIVE').toUpperCase() === 'INACTIVE' || !row.pin_hash) {
+      return { ok: false, code: 'UNKNOWN' };
+    }
 
-  const lockedUntil = row.pin_locked_until ? Date.parse(row.pin_locked_until) : 0;
-  if (lockedUntil > now) return { ok: false, code: 'LOCKED', retryAfterSeconds: Math.ceil((lockedUntil - now) / 1000) };
+    const lockedUntil = row.pin_locked_until ? Date.parse(row.pin_locked_until) : 0;
+    if (lockedUntil > now) return { ok: false, code: 'LOCKED', retryAfterSeconds: Math.ceil((lockedUntil - now) / 1000) };
 
-  if (await matchesStoredPin(row.pin_hash, pin)) {
-    await db.from('staff_profiles').update({ pin_failures: 0, pin_locked_until: null, last_login_at: new Date(now).toISOString() }).eq('id', staffId);
-    return { ok: true, staff: { id: String(row.id), name: String(row.name), role } };
-  }
+    const stored = row.pin_failures ?? null;
+    // A count left at the limit is stale once its lock has run out (the attempt that set it may never have finished).
+    const before = Number(stored) >= MAX_PIN_FAILURES ? 0 : Number(stored) || 0;
+    const after = before + 1;
+    const patch = after >= MAX_PIN_FAILURES
+      ? { pin_failures: after, pin_locked_until: new Date(now + LOCK_MINUTES * 60_000).toISOString() }
+      : { pin_failures: after };
 
-  const failures = (Number(row.pin_failures) || 0) + 1;
-  if (failures >= MAX_PIN_FAILURES) {
-    await db.from('staff_profiles').update({ pin_failures: 0, pin_locked_until: new Date(now + LOCK_MINUTES * 60_000).toISOString() }).eq('id', staffId);
-    return { ok: false, code: 'LOCKED', retryAfterSeconds: LOCK_MINUTES * 60 };
+    let claim = db.from('staff_profiles').update(patch).eq('id', staffId).eq('business_id', businessId);
+    claim = stored === null ? claim.is('pin_failures', null) : claim.eq('pin_failures', stored);
+    const { data: won, error: claimError } = await claim.select('id');
+    if (claimError) return { ok: false, code: 'UNKNOWN' };
+    if (!Array.isArray(won) || won.length !== 1) continue; // another attempt was counted first: read the new count and go again
+
+    if (await matchesStoredPin(row.pin_hash, pin)) {
+      await db.from('staff_profiles').update({ pin_failures: 0, pin_locked_until: null, last_login_at: new Date(now).toISOString() }).eq('id', staffId);
+      return { ok: true, staff: { id: String(row.id), name: String(row.name), role } };
+    }
+    return after >= MAX_PIN_FAILURES
+      ? { ok: false, code: 'LOCKED', retryAfterSeconds: LOCK_MINUTES * 60 }
+      : { ok: false, code: 'WRONG', triesLeft: MAX_PIN_FAILURES - after };
   }
-  await db.from('staff_profiles').update({ pin_failures: failures }).eq('id', staffId);
-  return { ok: false, code: 'WRONG', triesLeft: MAX_PIN_FAILURES - failures };
+  // Too many attempts at once to keep count of: refuse rather than guess.
+  return { ok: false, code: 'LOCKED', retryAfterSeconds: 10 };
 }
-
 /** Whether a signed-in staff member still has access: still active, same venue, same role. Used to cut a session short. */
 export async function staffStillValid(db: any, businessId: string, staffId: string, role: StaffRole): Promise<boolean> {
   const { data, error } = await db.from('staff_profiles').select('id, role, status, is_pos_active, pin_hash').eq('id', staffId).eq('business_id', businessId).maybeSingle();

@@ -3,7 +3,6 @@ import { requireHost } from '@/lib/auth/guards';
 import { verifyPinCode } from './verify-pin.service';
 import {
   getClientIp,
-  isPinRateLimited,
   recordPinFailure,
   resetPinFailures,
   rateLimitResponse,
@@ -19,11 +18,13 @@ export const POST = withApiErrorBoundary(async function POST(request: Request) {
 
   const ip = getClientIp(request);
 
-  // RULE (b): Rate limit PIN verification (max 5 fails per 15 min per IP/business)
-  const pinCheck = await isPinRateLimited(ip, businessId);
-  if (!pinCheck.allowed) {
+  // RULE (b): Rate limit PIN verification (max 5 fails per 15 min per IP/business).
+  // The attempt is counted BEFORE its PIN is looked at, in the same atomic step as the check. Checking first and counting
+  // after the verdict lets a burst of parallel guesses all read an empty count and all get a turn.
+  const attempt = await recordPinFailure(ip, businessId);
+  if (!attempt.allowed) {
     return rateLimitResponse(
-      pinCheck,
+      attempt,
       'Too many failed PIN attempts. Maximum 5 allowed per 15 minutes.'
     );
   }
@@ -37,21 +38,14 @@ export const POST = withApiErrorBoundary(async function POST(request: Request) {
 
   const { status, data } = await verifyPinCode(pinCode, businessId, supabase);
 
-  // If verification failed, record failure against sliding window
+  // A failed attempt is already counted against the sliding window (above).
   if (status !== 200 || !data?.success) {
-    const failResult = await recordPinFailure(ip, businessId);
-    if (!failResult.allowed) {
-      return rateLimitResponse(
-        failResult,
-        'Too many failed PIN attempts. Maximum 5 allowed per 15 minutes.'
-      );
-    }
     return NextResponse.json(data, {
       status,
       headers: {
-        'X-RateLimit-Limit': String(failResult.limit),
-        'X-RateLimit-Remaining': String(failResult.remaining),
-        'X-RateLimit-Reset': String(Math.ceil(failResult.resetMs / 1000)),
+        'X-RateLimit-Limit': String(attempt.limit),
+        'X-RateLimit-Remaining': String(attempt.remaining),
+        'X-RateLimit-Reset': String(Math.ceil(attempt.resetMs / 1000)),
       },
     });
   }

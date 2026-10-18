@@ -79,26 +79,23 @@ export function useGuestRealtimeSync(props: RealtimeSyncProps): boolean {
     // never fires here; the server pushes broadcasts on this venue-scoped table
     // channel instead (lib/realtime/channels.ts), and polling covers any gap.
     let changedTimer: ReturnType<typeof setTimeout> | null = null;
+    // The topic is public (a venue's id is in every QR link), so every message on it is an empty ping: it says that
+    // something changed at this table, and the phone reads its own order through its own session. A settlement, a
+    // ticket moving on and the database's own change ping all mean the same thing: read the order now.
+    const readSoon = () => {
+      if (changedTimer) return;
+      changedTimer = setTimeout(() => { changedTimer = null; latest.current.onTableChanged?.(); }, CHANGED_COALESCE_MS);
+    };
     const topic = guestTableChannel(businessId, tableNumber);
     const sessionCh = topic && supabase.channel(topic)
-      .on('broadcast', { event: 'table_settled' }, (msg: any) => {
-        if (msg.payload && normalizeTableIdentifier(msg.payload.table_number) === normCurrent) {
-          markBillSettled(msg.payload.settled_total, msg.payload.order_id);
-          try { window.dispatchEvent(new CustomEvent('guest-wallet:refresh')); } catch {}
-        }
+      .on('broadcast', { event: 'table_settled' }, () => {
+        readSoon();
+        try { window.dispatchEvent(new CustomEvent('guest-wallet:refresh')); } catch {}
       })
-      .on('broadcast', { event: 'order_status_updated' }, (msg: any) => {
-        if (msg.payload) handleOrderStatus(msg.payload.table_number || msg.payload.table_or_room, msg.payload.order_id, msg.payload.status, msg.payload.settled_total);
-      })
-      .on('broadcast', { event: 'kot_status_update' }, (msg: any) => {
-        if (msg.payload) handleKot(msg.payload.table_number || msg.payload.table_or_room, msg.payload.order_id, msg.payload.status, msg.payload.ticket_number);
-      })
-      // The database pings this table whenever its bill, session or tickets change (migration 20261016000006): the
-      // phone reads the order once, instead of asking every few seconds.
-      .on('broadcast', { event: 'changed' }, () => {
-        if (changedTimer) return;
-        changedTimer = setTimeout(() => { changedTimer = null; latest.current.onTableChanged?.(); }, CHANGED_COALESCE_MS);
-      })
+      .on('broadcast', { event: 'order_status_updated' }, readSoon)
+      .on('broadcast', { event: 'kot_status_update' }, readSoon)
+      // The database pings this table whenever its bill, session or tickets change (migration 20261016000006).
+      .on('broadcast', { event: 'changed' }, readSoon)
       .subscribe((status: string) => setConnected(status === 'SUBSCRIBED'));
 
     return () => {
