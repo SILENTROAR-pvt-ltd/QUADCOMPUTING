@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { businessFilter } from '@/lib/realtime/channels';
+import { nextTableNames } from '@/lib/services/table/table-zones';
 
 export interface RestaurantTable {
   id: string;
@@ -11,7 +12,12 @@ export interface RestaurantTable {
   status: 'VACANT' | 'OCCUPIED' | 'RESERVED' | 'CLEANING';
   is_active: boolean;
   qr_code_slug?: string;
+  /** The area the table sits in ("Ground floor", "Riverside"), when the venue uses areas. */
+  zone?: string | null;
 }
+
+/** Said when an area was asked for before the database update that stores areas has been run. */
+const ZONE_NOT_READY = 'Saved, but areas are not set up in the database yet (run the zones update).';
 
 export function useTableManagement(onTablesChanged: () => void, businessId?: string | null) {
   const [tables, setTables] = useState<RestaurantTable[]>([]);
@@ -60,7 +66,7 @@ export function useTableManagement(onTablesChanged: () => void, businessId?: str
     };
   }, [fetchTables, resolvedBiz]);
 
-  const handleAddSingle = async (newTableNumber: string, newCapacity: string) => {
+  const handleAddSingle = async (newTableNumber: string, newCapacity: string, zone = '') => {
     if (!newTableNumber.trim()) return false;
     setIsSaving(true);
     try {
@@ -71,12 +77,14 @@ export function useTableManagement(onTablesChanged: () => void, businessId?: str
           table_number: newTableNumber.trim().toUpperCase(),
           seating_capacity: parseInt(newCapacity) || 4,
           business_id: resolvedBiz,
+          ...(zone.trim() ? { zone } : {}),
         }),
       });
       if (res.ok) {
+        const out = await res.json().catch(() => ({}));
         await fetchTables();
         onTablesChanged();
-        showToast(`Table ${newTableNumber.trim().toUpperCase()} created`);
+        showToast(zone.trim() && out.zone_saved === false ? ZONE_NOT_READY : `Table ${newTableNumber.trim().toUpperCase()} created`);
         return true;
       }
       const err = await res.json().catch(() => ({}));
@@ -90,19 +98,20 @@ export function useTableManagement(onTablesChanged: () => void, businessId?: str
     }
   };
 
-  const handleBulkGenerate = async (bulkCount: string, bulkPrefix: string, bulkCapacity: string) => {
+  /** Makes `count` tables under an area, numbered on from the highest T-number in use (so a second area never collides). */
+  const handleBulkGenerate = async (bulkCount: string, bulkCapacity: string, zone = '') => {
     const count = parseInt(bulkCount) || 0;
     if (count <= 0 || count > 50) {
       showToast('Enter a count between 1 and 50');
       return false;
     }
     setIsSaving(true);
-    const prefix = bulkPrefix.trim().toUpperCase() || 'T';
     const cap = parseInt(bulkCapacity) || 4;
+    const names = nextTableNames(tables.map((t) => t.table_number), count);
     let created = 0;
+    let zoneSaved = true;
 
-    for (let i = 1; i <= count; i++) {
-      const tableNum = `${prefix}-${String(i).padStart(2, '0')}`;
+    for (const tableNum of names) {
       try {
         const res = await fetch('/api/host/tables', {
           method: 'POST',
@@ -111,35 +120,60 @@ export function useTableManagement(onTablesChanged: () => void, businessId?: str
             table_number: tableNum,
             seating_capacity: cap,
             business_id: resolvedBiz,
+            ...(zone.trim() ? { zone } : {}),
           }),
         });
-        if (res.ok) created++;
+        if (res.ok) {
+          created++;
+          if ((await res.json().catch(() => ({}))).zone_saved === false) zoneSaved = false;
+        }
       } catch {}
     }
 
     await fetchTables();
     onTablesChanged();
-    showToast(`${created} tables generated (${prefix}-01 to ${prefix}-${String(count).padStart(2, '0')})`);
+    const where = zone.trim() ? ` in ${zone.trim()}` : '';
+    showToast(zone.trim() && !zoneSaved ? ZONE_NOT_READY : `${created} tables generated${where} (${names[0]} to ${names[names.length - 1]})`);
     setIsSaving(false);
     return true;
   };
 
-  const handleUpdateTable = async (id: string, num: string, cap: number) => {
+  const handleUpdateTable = async (id: string, num: string, cap: number, zone?: string | null) => {
     if (!cap || cap <= 0 || !num) return false;
     try {
       const res = await fetch('/api/host/tables', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, table_number: num, seating_capacity: cap, business_id: resolvedBiz }),
+        body: JSON.stringify({ id, table_number: num, seating_capacity: cap, business_id: resolvedBiz, ...(zone !== undefined ? { zone: zone ?? '' } : {}) }),
       });
       const result = await res.json();
       if (!res.ok || !result.success) throw new Error(result.error || 'Failed to update');
       await fetchTables();
       onTablesChanged();
-      showToast('Table updated');
+      showToast(zone && result.zone_saved === false ? ZONE_NOT_READY : 'Table updated');
       return true;
     } catch (e: any) {
       showToast(e.message || 'Failed to update');
+      return false;
+    }
+  };
+
+  /** Renames an area for every table in it; an empty name takes the tables out of any area. */
+  const handleRenameZone = async (from: string, to: string) => {
+    try {
+      const res = await fetch('/api/host/tables', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rename_zone: { from, to }, business_id: resolvedBiz }),
+      });
+      const result = await res.json();
+      if (!res.ok || !result.success) throw new Error(result.error || 'Failed to rename');
+      await fetchTables();
+      onTablesChanged();
+      showToast(result.zone_saved === false ? ZONE_NOT_READY : to.trim() ? `${from} is now ${to.trim()}` : `${from} removed from its tables`);
+      return true;
+    } catch (e: any) {
+      showToast(e.message || 'Failed to rename');
       return false;
     }
   };
@@ -217,6 +251,7 @@ export function useTableManagement(onTablesChanged: () => void, businessId?: str
     handleAddSingle,
     handleBulkGenerate,
     handleUpdateTable,
+    handleRenameZone,
     handleDelete,
     handleUpdateStatus,
     handleReactivate,

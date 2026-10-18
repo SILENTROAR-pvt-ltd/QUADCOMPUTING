@@ -6,6 +6,7 @@ import type { TableVisualState } from '@/lib/utils/live-table-state';
 import { LiveTableTile } from './LiveTableTile';
 import { TABLE_STATE_STYLE } from './live-table-style';
 import type { BoardFilter } from './LiveTablesHeader';
+import { groupByZone, hasZones } from '@/lib/services/table/table-zones';
 
 export interface TableRow { table: RestaurantTable; number: string; state: TableVisualState }
 
@@ -31,6 +32,7 @@ export function LiveTableGrid({ loading = false, rows, shown, filter, onShowAll,
       </div>
     );
   }
+  const zoned = hasZones(rows.map((r) => r.table));
   return (
     <div className="grid min-w-0 grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3 xl:grid-cols-4 2xl:grid-cols-5">
       {rows.length === 0 && (
@@ -44,13 +46,23 @@ export function LiveTableGrid({ loading = false, rows, shown, filter, onShowAll,
           <button type="button" onClick={onShowAll} className="cursor-pointer font-semibold text-neutral-900 underline">Show all</button>
         </p>
       )}
-      {shown.map(({ table, number, state }) => (
-        <LiveTableTile
-          key={table.id || number} tableNumber={number} seats={table.seating_capacity} state={state}
-          amount={table.activeSession ? Number(table.activeSession.grandTotal) || 0 : null}
-          itemCount={table.activeSession?.itemsCount} readyCount={readyByTable.get(number) ?? 0}
-          selected={selected === number} onSelect={onSelect}
-        />
+      {/* A venue that uses areas (first floor, riverside ...) sees its tables under each area's heading. */}
+      {(zoned ? groupByZone(shown.map((row) => ({ row, table_number: row.number, zone: row.table.zone }))) : [{ zone: null, tables: shown.map((row) => ({ row })) }]).map((group) => (
+        <React.Fragment key={group.zone ?? 'none'}>
+          {zoned && (
+            <h3 className="col-span-full mt-2 flex items-baseline gap-2 border-b border-neutral-200 pb-1.5 text-sm font-bold tracking-tight text-neutral-900 first:mt-0">
+              {group.zone ?? 'Other tables'} <span className="text-[11px] font-medium text-neutral-400">{group.tables.length}</span>
+            </h3>
+          )}
+          {group.tables.map(({ row: { table, number, state } }) => (
+            <LiveTableTile
+              key={table.id || number} tableNumber={number} seats={table.seating_capacity} state={state}
+              amount={table.activeSession ? Number(table.activeSession.grandTotal) || 0 : null}
+              itemCount={table.activeSession?.itemsCount} readyCount={readyByTable.get(number) ?? 0}
+              selected={selected === number} onSelect={onSelect}
+            />
+          ))}
+        </React.Fragment>
       ))}
     </div>
   );

@@ -22,6 +22,7 @@ import { formatRupees } from '@/components/host/wallet/money';
 import { analytics, dues, invoices, pnl, reports } from '@/lib/showcase/demo-screens';
 import { deliveries, vendors } from '@/lib/showcase/demo-extras';
 import { DEMO_VENUE } from '@/lib/showcase/demo-orders';
+import { TableZonesScreen } from './TableScreens';
 
 const CARD = 'rounded-2xl border border-neutral-200 bg-white p-5 sm:p-6';
 const CHANNEL_COLOR = { dine_in: '#2a78d6', delivery: '#eb6834', counter: '#1baf7a' } as const;
@@ -81,6 +82,7 @@ const pad = (node: React.ReactNode) => <div className="bg-[#faf9f6] p-6">{node}<
 
 /** Each host screenshot, by its id. */
 export const HOST_SCREENS: Record<string, () => React.ReactElement> = {
+  'table-zones': TableZonesScreen,
   overview: Overview,
   dues: Dues,
   pnl: () => pad(<ProfitLossCard p={pnl} format={formatRupees} />),

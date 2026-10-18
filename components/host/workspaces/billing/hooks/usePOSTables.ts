@@ -14,6 +14,8 @@ export interface RestaurantTable {
   seating_capacity: number;
   status: 'VACANT' | 'OCCUPIED' | 'RESERVED' | 'CLEANING';
   is_active: boolean;
+  /** The area the table sits in ("Ground floor", "Riverside"), when the venue uses areas. */
+  zone?: string | null;
   activeSession?: TableLiveSessionInfo;
 }
 

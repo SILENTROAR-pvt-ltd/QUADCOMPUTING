@@ -1,4 +1,6 @@
 import { invalidateTablesCache } from './get-tables.service';
+import { resolveZone, zoneColumnAvailable } from './table-zone.service';
+import { cleanZone } from './table-zones';
 
 export async function createHostTable(body: any, user: any, supabase: any, authorizedBizId?: string) {
   let businessId = authorizedBizId || body.business_id || body.venue_id;
@@ -23,6 +25,11 @@ export async function createHostTable(body: any, user: any, supabase: any, autho
   const formattedNum = `T-${cleanNum.padStart(2, '0')}`;
   const slug = `${businessId.slice(0, 8)}-${formattedNum.toLowerCase().replace(/\s+/g, '-')}`;
 
+  // An optional area ("Ground floor"). Left out, and reported, until the database has the column.
+  const wantsZone = Boolean(cleanZone(body.zone));
+  const zoneSaved = !wantsZone || (await zoneColumnAvailable(supabase));
+  const zone = wantsZone && zoneSaved ? await resolveZone(supabase, businessId, body.zone) : null;
+
   const { data: table, error: insertError } = await supabase
     .from('restaurant_tables')
     .insert({
@@ -33,6 +40,7 @@ export async function createHostTable(body: any, user: any, supabase: any, autho
       status: 'VACANT',
       is_active: true,
       qr_code_slug: slug,
+      ...(zone ? { zone } : {}),
     })
     .select()
     .single();
@@ -55,7 +63,7 @@ export async function createHostTable(body: any, user: any, supabase: any, autho
   }
 
   invalidateTablesCache(businessId);
-  return { table };
+  return { table, zone_saved: zoneSaved };
 }
 
 export async function deleteHostTable(body: any, user: any, supabase: any, authorizedBizId?: string) {

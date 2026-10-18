@@ -3,21 +3,25 @@
 import React, { useState } from 'react';
 import { Pencil, Trash2 } from 'lucide-react';
 import type { RestaurantTable } from '../hooks/useTableManagement';
+import { ZoneField } from './ZoneField';
 
 interface TableManagementCardProps {
   table: RestaurantTable;
-  onUpdateTable: (id: string, num: string, cap: number) => Promise<boolean>;
+  /** The areas the venue has, offered when moving this table to another one. */
+  zones?: string[];
+  onUpdateTable: (id: string, num: string, cap: number, zone?: string | null) => Promise<boolean>;
   onDelete: (id: string, tableNumber: string) => void;
   onUpdateStatus: (id: string, status: string, tableNumber?: string) => void;
 }
 
-export function TableManagementCard({ table, onUpdateTable, onDelete, onUpdateStatus }: TableManagementCardProps) {
+export function TableManagementCard({ table, zones = [], onUpdateTable, onDelete, onUpdateStatus }: TableManagementCardProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editNumber, setEditNumber] = useState(table.table_number);
   const [editCapacity, setEditCapacity] = useState(String(table.seating_capacity));
+  const [editZone, setEditZone] = useState(table.zone ?? '');
 
   const handleSave = async () => {
-    const success = await onUpdateTable(table.id, editNumber.trim().toUpperCase(), parseInt(editCapacity));
+    const success = await onUpdateTable(table.id, editNumber.trim().toUpperCase(), parseInt(editCapacity), editZone);
     if (success) setIsEditing(false);
   };
 
@@ -40,6 +44,7 @@ export function TableManagementCard({ table, onUpdateTable, onDelete, onUpdateSt
           {isEditing ? (
             <div className="mt-1 flex flex-col gap-2 w-full">
               <input type="text" value={editNumber} onChange={(e) => setEditNumber(e.target.value)} className={editInputClass} placeholder="Table Number" />
+              <ZoneField compact value={editZone} onChange={setEditZone} zones={zones} />
               <div className="flex items-center gap-2">
                 <input type="number" min="1" max="20" value={editCapacity} onChange={(e) => setEditCapacity(e.target.value)} className={`${editInputClass} w-16 text-center`} placeholder="Seats" />
                 <button type="button" onClick={handleSave} className="text-[10px] font-bold text-neutral-900 hover:underline cursor-pointer">Save</button>
@@ -48,8 +53,8 @@ export function TableManagementCard({ table, onUpdateTable, onDelete, onUpdateSt
             </div>
           ) : (
             <>
-              <div className="flex items-center gap-2">
-                <p className="text-sm font-bold text-neutral-900 tracking-tight">{table.table_number}</p>
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <p className="whitespace-nowrap text-sm font-bold text-neutral-900 tracking-tight">{table.table_number}</p>
                 <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded border ${statusBadge(table.status)}`}>{table.status}</span>
               </div>
               <p className="mt-1 text-[11px] text-neutral-400">{table.seating_capacity} Seats</p>
@@ -59,7 +64,7 @@ export function TableManagementCard({ table, onUpdateTable, onDelete, onUpdateSt
 
         <div className="flex items-center gap-1 shrink-0 ml-2">
           {!isEditing && (
-            <button type="button" onClick={() => { setIsEditing(true); setEditNumber(table.table_number); setEditCapacity(String(table.seating_capacity)); }} className="rounded-lg p-1.5 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-900 transition-colors cursor-pointer" title="Edit">
+            <button type="button" onClick={() => { setIsEditing(true); setEditNumber(table.table_number); setEditCapacity(String(table.seating_capacity)); setEditZone(table.zone ?? ''); }} className="rounded-lg p-1.5 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-900 transition-colors cursor-pointer" title="Edit">
               <Pencil className="h-3.5 w-3.5" />
             </button>
           )}

@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Bed, UtensilsCrossed } from 'lucide-react';
 import type { RestaurantTable } from './hooks/usePOSTables';
 import { POSTableGridItem } from './components/POSTableGridItem';
 import { POSRoomGridItem, type RoomOption } from './components/POSRoomGridItem';
+import { groupByZone, hasZones } from '@/lib/services/table/table-zones';
 
 interface Props {
   tables: RestaurantTable[];
@@ -194,13 +195,22 @@ export function POSTableSelector({
 
         <div className="grid max-h-[38dvh] grid-cols-3 gap-1.5 overflow-y-auto overscroll-contain pr-1 lg:max-h-44 lg:grid-cols-3">
           {activeTab === 'tables' &&
-            tables.map((table) => (
-              <POSTableGridItem
-                key={table.id}
-                table={table}
-                isSelected={selectedTableId === table.id}
-                onSelect={handleSelectTable}
-              />
+            (hasZones(tables) ? groupByZone(tables) : [{ zone: null, tables }]).map((group) => (
+              <React.Fragment key={group.zone ?? 'none'}>
+                {hasZones(tables) && (
+                  <p className="col-span-full mt-1 truncate border-b border-neutral-100 pb-0.5 text-[10px] font-bold uppercase tracking-wider text-neutral-400 first:mt-0">
+                    {group.zone ?? 'Other tables'}
+                  </p>
+                )}
+                {group.tables.map((table) => (
+                  <POSTableGridItem
+                    key={table.id}
+                    table={table}
+                    isSelected={selectedTableId === table.id}
+                    onSelect={handleSelectTable}
+                  />
+                ))}
+              </React.Fragment>
             ))}
 
           {activeTab === 'rooms' &&

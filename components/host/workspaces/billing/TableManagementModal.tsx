@@ -5,6 +5,8 @@ import { X } from 'lucide-react';
 import { useTableManagement, RestaurantTable } from './hooks/useTableManagement';
 import { TableManagementCard } from './components/TableManagementCard';
 import { TableManagementForms } from './components/TableManagementForms';
+import { TableZoneSection } from './components/TableZoneSection';
+import { groupByZone, hasZones, zoneNames } from '@/lib/services/table/table-zones';
 
 export type { RestaurantTable };
 
@@ -17,12 +19,15 @@ interface Props {
 export function TableManagementModal({ onClose, onTablesChanged, businessId }: Props) {
   const {
     tables, isLoading, isSaving, toast,
-    handleAddSingle, handleBulkGenerate, handleUpdateTable,
+    handleAddSingle, handleBulkGenerate, handleUpdateTable, handleRenameZone,
     handleDelete, handleUpdateStatus, handleReactivate,
   } = useTableManagement(onTablesChanged, businessId);
 
   const activeTables = tables.filter((t) => t.is_active);
   const inactiveTables = tables.filter((t) => !t.is_active);
+  // Tables sit under their area's heading; a venue with no areas keeps the plain grid.
+  const groups = groupByZone(activeTables);
+  const zones = zoneNames(tables);
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/30 p-3 backdrop-blur-sm">
@@ -31,7 +36,7 @@ export function TableManagementModal({ onClose, onTablesChanged, businessId }: P
         <div className="flex items-center justify-between border-b border-neutral-100 px-6 py-5 sm:px-8">
           <div>
             <h2 className="text-lg font-bold text-neutral-900 tracking-tight">Table Management</h2>
-            <p className="mt-1 text-xs text-neutral-500">Configure your restaurant floor plan and seating capacity.</p>
+            <p className="mt-1 text-xs text-neutral-500">Set up your floor plan: tables, seats, and areas like first floor or riverside.</p>
           </div>
           <button onClick={onClose} className="rounded-xl p-2 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-900 cursor-pointer">
             <X className="h-5 w-5" />
@@ -40,7 +45,7 @@ export function TableManagementModal({ onClose, onTablesChanged, businessId }: P
 
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto px-6 py-6 sm:px-8 space-y-6">
-          <TableManagementForms isSaving={isSaving} onAddSingle={handleAddSingle} onBulkGenerate={handleBulkGenerate} />
+          <TableManagementForms isSaving={isSaving} zones={zones} existingNumbers={tables.map((t) => t.table_number)} onAddSingle={handleAddSingle} onBulkGenerate={handleBulkGenerate} />
 
           {/* Active Tables Grid */}
           <div>
@@ -52,18 +57,22 @@ export function TableManagementModal({ onClose, onTablesChanged, businessId }: P
                 <span className="h-5 w-5 animate-spin rounded-full border-2 border-neutral-200 border-t-neutral-700" />
               </div>
             ) : activeTables.length > 0 ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {activeTables.map((table) => (
-                  <TableManagementCard
-                    key={table.id}
-                    table={table}
-                    onUpdateTable={handleUpdateTable}
-                    onDelete={handleDelete}
-                    onUpdateStatus={handleUpdateStatus}
-                  />
+              <div className="space-y-5">
+                {groups.map((g) => (
+                  <TableZoneSection key={g.zone ?? 'none'} zone={g.zone} count={g.tables.length} showHeading={hasZones(activeTables)} onRename={handleRenameZone}>
+                    {g.tables.map((table) => (
+                      <TableManagementCard
+                        key={table.id}
+                        table={table}
+                        zones={zones}
+                        onUpdateTable={handleUpdateTable}
+                        onDelete={handleDelete}
+                        onUpdateStatus={handleUpdateStatus}
+                      />
+                    ))}
+                  </TableZoneSection>
                 ))}
-              </div>
-            ) : (
+              </div>            ) : (
               <div className="rounded-2xl border border-dashed border-neutral-200 py-10 text-center">
                 <p className="text-sm text-neutral-400">No tables configured yet.</p>
                 <p className="mt-1 text-xs text-neutral-400">Use the form above or Bulk Generate to get started.</p>
