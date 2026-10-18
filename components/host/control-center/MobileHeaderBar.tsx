@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Menu, ExternalLink, BellRing } from 'lucide-react';
 import { CONTROL_CENTER_TABS, ControlCenterTab } from '../ControlCenterHeader';
 import { MasterSessionControl } from './MasterSessionControl';
+import { CopilotButton } from '@/components/host/vibey/CopilotButton';
 import type { BillRequestItem } from './useBillRequests';
 import type { SecurityStatus } from './useControlCenterSecurity';
 
@@ -19,6 +20,7 @@ interface MobileHeaderBarProps {
   onBillingClick: () => void;
   venueName: string;
   venueId: string;
+  onOpenCopilot?: () => void;
 }
 
 export function MobileHeaderBar({
@@ -32,6 +34,7 @@ export function MobileHeaderBar({
   onBillingClick,
   venueName,
   venueId,
+  onOpenCopilot,
 }: MobileHeaderBarProps) {
   return (
     <header className="lg:hidden sticky top-0 z-40 w-full bg-white/95 border-b border-neutral-200/80 px-4 py-3 flex items-center justify-between backdrop-blur-xl">
@@ -55,6 +58,7 @@ export function MobileHeaderBar({
       </div>
 
       <div className="flex items-center gap-2">
+        {onOpenCopilot && <CopilotButton compact onOpen={onOpenCopilot} />}
         {securityStatus?.isAdminPinActive && (
           <MasterSessionControl compact unlocked={isMasterUnlocked} onLock={onLockSession} onUnlock={onUnlockRequest} />
         )}

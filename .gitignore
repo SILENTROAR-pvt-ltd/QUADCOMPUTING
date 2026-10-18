@@ -39,4 +39,5 @@ supabase/.temp/
 # local tooling & cache
 git.cmd
 .next-prod-test/
+.next-*/
 scratch/

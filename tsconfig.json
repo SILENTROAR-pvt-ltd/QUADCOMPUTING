@@ -32,9 +32,10 @@
     "**/*.ts",
     "**/*.tsx",
     ".next-ci-check/types/**/*.ts",
+    ".next-prod-test/types/**/*.ts",
     ".next/types/**/*.ts",
     "next-env.d.ts",
-    ".next-prod-test/types/**/*.ts"
+    ".next-vibey/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"

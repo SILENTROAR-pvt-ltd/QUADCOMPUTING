@@ -6,6 +6,7 @@ import { useVisibleTabs } from './useVisibleTabs';
 import { NavWorkspaceItem } from './NavWorkspaceItem';
 import { SidebarHeader } from './SidebarHeader';
 import { SidebarFooter } from './SidebarFooter';
+import { CopilotButton } from '@/components/host/vibey/CopilotButton';
 import type { BillRequestItem } from './useBillRequests';
 import type { SecurityStatus } from './useControlCenterSecurity';
 
@@ -21,6 +22,8 @@ interface DesktopSidebarProps {
   venueName: string;
   venueId: string;
   pendingKotCount?: number;
+  /** Opens the Vibey co-pilot; absent while the venue does not have it. */
+  onOpenCopilot?: () => void;
 }
 
 export function DesktopSidebar({
@@ -35,6 +38,7 @@ export function DesktopSidebar({
   venueName,
   venueId,
   pendingKotCount = 0,
+  onOpenCopilot,
 }: DesktopSidebarProps) {
   const { tabs } = useVisibleTabs();
 
@@ -49,6 +53,7 @@ export function DesktopSidebar({
           onLock={onLockSession}
           onUnlock={onUnlockRequest}
         />
+        {onOpenCopilot && <CopilotButton onOpen={onOpenCopilot} />}
         <nav aria-label="Host workspaces" className="no-scrollbar flex-1 space-y-0.5 overflow-y-auto p-3">
           <p className="px-3.5 pb-2 pt-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-neutral-400">Workspaces</p>
           {tabs.map((item) => (

@@ -23,6 +23,7 @@ interface MobileNavDrawerProps {
   billRequests: BillRequestItem[];
   venueName: string;
   venueId: string;
+  onOpenCopilot?: () => void;
 }
 
 export function MobileNavDrawer({
@@ -38,6 +39,7 @@ export function MobileNavDrawer({
   billRequests,
   venueName,
   venueId,
+  onOpenCopilot,
 }: MobileNavDrawerProps) {
   const { tabs } = useVisibleTabs();
 
@@ -54,6 +56,7 @@ export function MobileNavDrawer({
         onBillingClick={() => onTabChange('billing')}
         venueName={venueName}
         venueId={venueId}
+        onOpenCopilot={onOpenCopilot}
       />
 
       {mobileDrawerOpen && (

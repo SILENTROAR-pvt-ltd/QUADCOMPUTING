@@ -9,12 +9,20 @@ import { buildReports } from './analytics/reports.util';
 
 const round1 = (n: number) => Math.round(n * 10) / 10;
 
-export async function computeEodReport(requestUrl: string, supabase: any) {
+/**
+ * The analytics report for one venue. `businessId` is the venue requireHost() resolved for this request (the one in
+ * the URL, checked against the caller's own venues). Without it, the caller's first venue is looked up, which is wrong
+ * for a host with two venues and impossible for a staff session, so every route passes it.
+ */
+export async function computeEodReport(requestUrl: string, supabase: any, businessId?: string) {
   const { timeframe, startDate, endDate } = resolveAnalyticsDateRange(requestUrl);
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) throw new Error('Unauthorized');
-
-  const { data: business } = await supabase.from('businesses').select('id').eq('host_id', user.id).single();
+  let business: { id: string } | null = businessId ? { id: businessId } : null;
+  if (!business) {
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) throw new Error('Unauthorized');
+    const { data } = await supabase.from('businesses').select('id').eq('host_id', user.id).order('created_at', { ascending: false }).limit(1).maybeSingle();
+    business = data;
+  }
   if (!business) throw new Error('Business not found');
 
   const [{ orders, tickets, logs, stockLogs, stockLogsFailed, rawItems, rawPromos, truncated }, previous_net_sales, categoryOf] = await Promise.all([

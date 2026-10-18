@@ -197,3 +197,84 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .shimmer { animation: none; }
 }
+
+/* Vibey: the current step's label shimmers while it works (Perplexity-style). Still text when motion is reduced. */
+@keyframes text-shimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
+.shimmer-text {
+  background: linear-gradient(90deg, #18181b 0%, #18181b 40%, #a1a1aa 50%, #18181b 60%, #18181b 100%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: text-shimmer 1.6s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shimmer-text { animation: none; color: #18181b; background: none; }
+}
+/* ---------- Vibey chat: mascot motion and ambient glow (transform/opacity only, so it stays smooth on phones) ---------- */
+@keyframes vibey-bob {
+  0%, 100% { transform: translateY(0) rotate(-3deg); }
+  50% { transform: translateY(-2px) rotate(3deg); }
+}
+@keyframes vibey-groove {
+  0%, 100% { transform: translateY(0) rotate(-6deg) scale(1); }
+  25% { transform: translateY(-3px) rotate(4deg) scale(1.04); }
+  50% { transform: translateY(0) rotate(6deg) scale(1); }
+  75% { transform: translateY(-3px) rotate(-4deg) scale(1.04); }
+}
+@keyframes vibey-ring {
+  0% { transform: scale(0.9); opacity: 0.7; }
+  100% { transform: scale(1.55); opacity: 0; }
+}
+@keyframes vibey-drift {
+  0% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(-4%, 3%, 0) scale(1.06); }
+  100% { transform: translate3d(3%, -2%, 0) scale(1.02); }
+}
+@keyframes vibey-progress {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(250%); }
+}
+
+.vibey-bob { animation: vibey-bob 2.4s ease-in-out infinite; transform-origin: 50% 85%; }
+.vibey-groove { animation: vibey-groove 0.9s ease-in-out infinite; transform-origin: 50% 85%; }
+.vibey-ring { animation: vibey-ring 1.6s ease-out infinite; }
+
+.vibey-glow {
+  position: absolute;
+  inset: -25%;
+  background:
+    radial-gradient(42% 34% at 86% 10%, rgba(253, 186, 116, 0.42), transparent 70%),
+    radial-gradient(30% 26% at 14% 16%, rgba(251, 113, 133, 0.18), transparent 70%),
+    radial-gradient(44% 36% at 18% 88%, rgba(196, 181, 253, 0.34), transparent 70%),
+    radial-gradient(40% 34% at 84% 84%, rgba(147, 197, 253, 0.3), transparent 70%);
+  animation: vibey-drift 16s ease-in-out infinite alternate;
+  will-change: transform;
+}
+.vibey-glow-hot { opacity: 1; transition: opacity 0.4s ease; }
+.vibey-glow-calm { opacity: 0.75; transition: opacity 0.4s ease; }
+
+.vibey-progress::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  width: 40%;
+  background: linear-gradient(90deg, transparent, rgba(244, 63, 94, 0.9), rgba(250, 204, 21, 0.9), transparent);
+  animation: vibey-progress 1.1s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vibey-bob, .vibey-groove, .vibey-ring, .vibey-glow, .vibey-progress::after { animation: none; }
+}
+/* Vibey welcome: the speech bubbles around the mascot drift gently, each on its own beat. */
+@keyframes vibey-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+.vibey-float { animation: vibey-float 3.2s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .vibey-float { animation: none; } }

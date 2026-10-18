@@ -19,7 +19,7 @@ export type DishKind = 'beverage' | 'dessert' | 'side' | 'main';
 export interface Suggestion { id: 'drinks' | 'sweet' | 'pairs'; title: string; items: SuggestableDish[] }
 
 const BEVERAGE = /beverage|drink|shake|juice|tea\b|chai|coffee|mocktail|cocktail|lassi|soda|smoothie|lemonade|beer|wine|spirit|mojito/i;
-const DESSERT = /dessert|sweet|ice.?cream|cake|brownie|pastry|halwa|gulab|kulfi|jalebi/i;
+const DESSERT = /dessert|sweet|ice.?cream|cake|brownie|pastry|halwa|gulab|kulfi|jalebi|waffle|sundae|mousse|pudding|donut|doughnut|tiramisu|kheer|rasmalai/i;
 const SIDE = /side|starter|snack|quick bites|fries|bread|raita|salad|soup/i;
 
 /** What kind of dish this is, from its category first and its type or name when the category says nothing. */

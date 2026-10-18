@@ -45,6 +45,13 @@ describe('roles and routes', () => {
     expect(staffMayCall('CASHIER', 'PUT', '/api/host/settings/waiter-settle')).toBe(false);
     expect(staffMayCall('CASHIER', 'GET', '/api/host/tablesX')).toBe(false);
   });
+
+  it('opens the read-only Vibey co-pilot to the cashier only', () => {
+    expect(staffMayCall('CASHIER', 'POST', '/api/host/vibey')).toBe(true);
+    expect(staffMayCall('WAITER', 'POST', '/api/host/vibey')).toBe(false);
+    expect(staffMayCall('CHEF', 'POST', '/api/host/vibey')).toBe(false);
+    expect(staffMayCall('CASHIER', 'DELETE', '/api/host/vibey')).toBe(false);
+  });
 });
 
 describe('the staff session token', () => {

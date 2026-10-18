@@ -1,0 +1,1645 @@
+{
+ "model": "openai/gpt-oss-20b",
+ "outputs": {
+  "en01": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "cold coffee",
+     "qty": 2,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "en02": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "cappuccino",
+     "qty": null,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "en03": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "masala chai",
+     "qty": null,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "en04": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "peri peri fries",
+     "qty": 3,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "en05": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "mango lassi",
+     "qty": null,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "en06": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "paneer tikka",
+     "qty": null,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "en07": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "chocolate brownie",
+     "qty": null,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "en08": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "green tea",
+     "qty": 2,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "en09": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "Caesar Salad",
+     "qty": null,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "en10": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "tomato soup",
+     "qty": 1,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "en11": {
+   "intent": "browse",
+   "mentions": [],
+   "topic": "mac and cheese",
+   "question": null
+  },
+  "en12": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "extra cheese pizza",
+     "qty": null,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "en13": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "margherita pizza",
+     "qty": 1,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "en14": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "veg club sandwich",
+     "qty": null,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "en15": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "chicken club sandwich",
+     "qty": 2,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "en16": {
+   "intent": "browse",
+   "mentions": [],
+   "topic": "pasta",
+   "question": null
+  },
+  "en17": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "brownie",
+     "qty": null,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "en18": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "filter coffee",
+     "qty": null,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "en19": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "iced americano",
+     "qty": null,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "en20": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "fresh lime soda",
+     "qty": null,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "en21": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "gulab jamun",
+     "qty": 4,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "en22": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "blueberry cheesecake",
+     "qty": null,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "en23": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "aloo paratha",
+     "qty": null,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "en24": {
+   "intent": "browse",
+   "mentions": [],
+   "topic": "chocolate shake",
+   "question": null
+  },
+  "en25": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "ginger tea",
+     "qty": null,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "en26": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "cheese pizza",
+     "qty": null,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "en27": {
+   "intent": "browse",
+   "mentions": [],
+   "topic": "veg sandwich",
+   "question": null
+  },
+  "en28": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "fries",
+     "qty": null,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "hi01": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "cold coffee",
+     "qty": 2,
+     "note": null
+    },
+    {
+     "dish_words": "masala chai",
+     "qty": 1,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "hi02": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "cold coffee",
+     "qty": 1,
+     "note": null
+    },
+    {
+     "dish_words": "brownie",
+     "qty": 2,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "hi03": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "cold coffee",
+     "qty": null,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "hi04": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "masala chai",
+     "qty": null,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "hi05": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "aloo paratha",
+     "qty": 3,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "hi06": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "ginger tea",
+     "qty": 1,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "hi07": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "Mango Lassi",
+     "qty": null,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "hi08": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "paneer tikka",
+     "qty": null,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "hi09": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "cold coffee",
+     "qty": 2,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "hi10": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "lime soda",
+     "qty": 1,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "hi11": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "gulab jamun",
+     "qty": null,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "hi12": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "masala chai",
+     "qty": 2,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "hi13": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "aloo paratha",
+     "qty": 1,
+     "note": null
+    },
+    {
+     "dish_words": "masala chai",
+     "qty": 1,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "hi14": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "cappuccino",
+     "qty": 5,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "hi15": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "chocolate shake",
+     "qty": null,
+     "note": null
+    },
+    {
+     "dish_words": "fries",
+     "qty": null,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "hi16": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "filter coffee",
+     "qty": 1,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "hi17": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "cheesecake",
+     "qty": 1,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "hi18": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "pasta",
+     "qty": 2,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "hi19": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "mac and cheese",
+     "qty": 1,
+     "note": null
+    },
+    {
+     "dish_words": "lassi",
+     "qty": 2,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "hi20": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "tomato soup",
+     "qty": 1,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "hi21": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "veg club sandwich",
+     "qty": null,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "hi22": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "brownie",
+     "qty": 1,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "hi23": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "ginger tea",
+     "qty": 1,
+     "note": null
+    },
+    {
+     "dish_words": "green tea",
+     "qty": 1,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "hi24": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "cold coffee",
+     "qty": 2,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "hi25": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "cold coffee",
+     "qty": 2,
+     "note": null
+    },
+    {
+     "dish_words": "paneer tikka",
+     "qty": 1,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "hi26": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "Margherita Pizza",
+     "qty": null,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "no01": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "masala chai",
+     "qty": null,
+     "note": "less sugar"
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "no02": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "cold coffee",
+     "qty": 2,
+     "note": "less sugar"
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "no03": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "tea",
+     "qty": 1,
+     "note": "less sugar"
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "no04": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "Masala Chai",
+     "qty": 1,
+     "note": "no sugar"
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "no05": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "paneer tikka",
+     "qty": null,
+     "note": "extra spicy"
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "no06": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "veg club sandwich",
+     "qty": null,
+     "note": "no onion"
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "no07": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "cold coffee",
+     "qty": 2,
+     "note": "less sugar"
+    },
+    {
+     "dish_words": "masala chai",
+     "qty": 1,
+     "note": "less sugar"
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "no08": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "fries",
+     "qty": null,
+     "note": "extra salt"
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "no09": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "cappuccino",
+     "qty": null,
+     "note": "strong"
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "no10": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "filter coffee",
+     "qty": null,
+     "note": "strong"
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "ty01": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "cappuccino",
+     "qty": 2,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "ty02": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "cold coffee",
+     "qty": null,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "ty03": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "mango lassi",
+     "qty": null,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "ty04": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "paneer tikka",
+     "qty": null,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "ty05": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "chocolate brownie",
+     "qty": null,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "ty06": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "margherita pizza",
+     "qty": null,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "ty07": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "Caesar Salad",
+     "qty": null,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "ty08": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "tomato soup",
+     "qty": null,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "ty09": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "gulab jamun",
+     "qty": null,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "ty10": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "masala chai",
+     "qty": null,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "am01": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "coffee",
+     "qty": 2,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "am02": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "tea",
+     "qty": 1,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "am03": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "chai",
+     "qty": 1,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "am04": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "club sandwich",
+     "qty": null,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "am05": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "pizza",
+     "qty": null,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "am06": {
+   "intent": "browse",
+   "mentions": [],
+   "topic": "chocolate",
+   "question": null
+  },
+  "am07": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "sandwich",
+     "qty": 2,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "am08": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "coffee",
+     "qty": 1,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "am09": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "cold coffee",
+     "qty": 2,
+     "note": null
+    },
+    {
+     "dish_words": "Masala Chai",
+     "qty": 1,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "nm01": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "biryani",
+     "qty": 2,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "nm02": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "beer",
+     "qty": 1,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "nm03": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "samosa",
+     "qty": null,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "nm04": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "butter chicken",
+     "qty": null,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "nm05": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "burger",
+     "qty": 2,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "nm06": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "mojito",
+     "qty": null,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "nm07": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "momos",
+     "qty": 2,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "nm08": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "cold coffee",
+     "qty": 1,
+     "note": null
+    },
+    {
+     "dish_words": "biryani",
+     "qty": 1,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "ed01": {
+   "intent": "remove",
+   "mentions": [
+    {
+     "dish_words": "Penne Arrabbiata Pasta",
+     "qty": null,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "ed02": {
+   "intent": "remove",
+   "mentions": [
+    {
+     "dish_words": "Penne Arrabbiata Pasta",
+     "qty": null,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "ed03": {
+   "intent": "remove",
+   "mentions": [
+    {
+     "dish_words": "Chocolate Brownie",
+     "qty": null,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "ed04": {
+   "intent": "set_qty",
+   "mentions": [
+    {
+     "dish_words": "__same__",
+     "qty": 3,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "ed05": {
+   "intent": "set_qty",
+   "mentions": [
+    {
+     "dish_words": "masala chai",
+     "qty": 2,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "ed06": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "__same__",
+     "qty": 1,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "ed07": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "__same__",
+     "qty": 1,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "ed08": {
+   "intent": "remove",
+   "mentions": [
+    {
+     "dish_words": "coffee",
+     "qty": null,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "ed09": {
+   "intent": "remove",
+   "mentions": [
+    {
+     "dish_words": "brownie",
+     "qty": null,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "ed10": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "__same__",
+     "qty": null,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "ed11": {
+   "intent": "remove",
+   "mentions": [
+    {
+     "dish_words": "Peri Peri Fries",
+     "qty": null,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "ed12": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "cold coffee",
+     "qty": 3,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "ed13": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "cappuccino",
+     "qty": null,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "ed14": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "__same__",
+     "qty": 1,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "ed15": {
+   "intent": "remove",
+   "mentions": [
+    {
+     "dish_words": "coffee",
+     "qty": null,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "qa01": {
+   "intent": "ask",
+   "mentions": [],
+   "topic": null,
+   "question": "popular"
+  },
+  "qa02": {
+   "intent": "browse",
+   "mentions": [],
+   "topic": "recommendation",
+   "question": null
+  },
+  "qa03": {
+   "intent": "ask",
+   "mentions": [],
+   "topic": "best seller",
+   "question": "popular"
+  },
+  "qa04": {
+   "intent": "ask",
+   "mentions": [],
+   "topic": "cappuccino",
+   "question": "price"
+  },
+  "qa05": {
+   "intent": "ask",
+   "mentions": [
+    {
+     "dish_words": "cold coffee",
+     "qty": null,
+     "note": null
+    }
+   ],
+   "topic": "cold coffee",
+   "question": "price"
+  },
+  "qa06": {
+   "intent": "ask",
+   "mentions": [],
+   "topic": "paneer tikka",
+   "question": "price"
+  },
+  "qa07": {
+   "intent": "ask",
+   "mentions": [],
+   "topic": "paneer tikka",
+   "question": "describe"
+  },
+  "qa08": {
+   "intent": "ask",
+   "mentions": [],
+   "topic": "cheesecake",
+   "question": "describe"
+  },
+  "qa09": {
+   "intent": "browse",
+   "mentions": [],
+   "topic": "desserts",
+   "question": null
+  },
+  "qa10": {
+   "intent": "browse",
+   "mentions": [],
+   "topic": "drinks",
+   "question": null
+  },
+  "qa11": {
+   "intent": "browse",
+   "mentions": [],
+   "topic": "pasta",
+   "question": null
+  },
+  "qa12": {
+   "intent": "browse",
+   "mentions": [],
+   "topic": "starters",
+   "question": null
+  },
+  "qa13": {
+   "intent": "browse",
+   "mentions": [],
+   "topic": "sweet",
+   "question": null
+  },
+  "qa14": {
+   "intent": "browse",
+   "mentions": [],
+   "topic": "cold",
+   "question": null
+  },
+  "qa15": {
+   "intent": "ask",
+   "mentions": [],
+   "topic": "coffee",
+   "question": "describe"
+  },
+  "qa16": {
+   "intent": "browse",
+   "mentions": [],
+   "topic": "menu",
+   "question": null
+  },
+  "dt01": {
+   "intent": "ask",
+   "mentions": [
+    {
+     "dish_words": "Penne Arrabbiata Pasta",
+     "qty": null,
+     "note": null
+    }
+   ],
+   "topic": "Penne Arrabbiata Pasta",
+   "question": "dietary"
+  },
+  "dt02": {
+   "intent": "ask",
+   "mentions": [],
+   "topic": "brownie",
+   "question": "dietary"
+  },
+  "dt03": {
+   "intent": "ask",
+   "mentions": [],
+   "topic": "Paneer Tikka",
+   "question": "describe"
+  },
+  "dt04": {
+   "intent": "ask",
+   "mentions": [],
+   "topic": "peanuts",
+   "question": "dietary"
+  },
+  "dt05": {
+   "intent": "ask",
+   "mentions": [],
+   "topic": "jain food available?",
+   "question": "dietary"
+  },
+  "dt06": {
+   "intent": "ask",
+   "mentions": [],
+   "topic": "gluten free options",
+   "question": "dietary"
+  },
+  "dt07": {
+   "intent": "ask",
+   "mentions": [],
+   "topic": "caesar salad",
+   "question": "dietary"
+  },
+  "dt08": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "veg club sandwich",
+     "qty": 2,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "dt09": {
+   "intent": "ask",
+   "mentions": [
+    {
+     "dish_words": "cold coffee",
+     "qty": null,
+     "note": null
+    }
+   ],
+   "topic": "cold coffee",
+   "question": "dietary"
+  },
+  "st01": {
+   "intent": "call_staff",
+   "mentions": [],
+   "topic": null,
+   "question": null
+  },
+  "st02": {
+   "intent": "call_staff",
+   "mentions": [],
+   "topic": null,
+   "question": null
+  },
+  "st03": {
+   "intent": "ask",
+   "mentions": [],
+   "topic": null,
+   "question": "other"
+  },
+  "st04": {
+   "intent": "call_staff",
+   "mentions": [],
+   "topic": null,
+   "question": null
+  },
+  "ck01": {
+   "intent": "checkout",
+   "mentions": [],
+   "topic": null,
+   "question": null
+  },
+  "ck02": {
+   "intent": "smalltalk",
+   "mentions": [],
+   "topic": null,
+   "question": null
+  },
+  "ck03": {
+   "intent": "browse",
+   "mentions": [],
+   "topic": null,
+   "question": null
+  },
+  "ck04": {
+   "intent": "checkout",
+   "mentions": [],
+   "topic": null,
+   "question": null
+  },
+  "sm01": {
+   "intent": "smalltalk",
+   "mentions": [],
+   "topic": null,
+   "question": null
+  },
+  "sm02": {
+   "intent": "smalltalk",
+   "mentions": [],
+   "topic": null,
+   "question": null
+  },
+  "sm03": {
+   "intent": "smalltalk",
+   "mentions": [],
+   "topic": null,
+   "question": null
+  },
+  "sm04": {
+   "intent": "smalltalk",
+   "mentions": [],
+   "topic": null,
+   "question": null
+  },
+  "ij01": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "blueberry cheesecake",
+     "qty": 10,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "ij02": {
+   "intent": "smalltalk",
+   "mentions": [],
+   "topic": null,
+   "question": null
+  },
+  "ij03": {
+   "intent": "smalltalk",
+   "mentions": [],
+   "topic": null,
+   "question": null
+  },
+  "ij04": {
+   "intent": "smalltalk",
+   "mentions": [],
+   "topic": null,
+   "question": null
+  },
+  "ij05": {
+   "intent": "ask",
+   "mentions": [],
+   "topic": null,
+   "question": "other"
+  },
+  "ij06": {
+   "intent": "add",
+   "mentions": [],
+   "topic": null,
+   "question": null
+  },
+  "ij07": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "cold coffee",
+     "qty": null,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "ij08": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "cold coffee",
+     "qty": null,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "ij09": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "Blueberry Cheesecake",
+     "qty": 20,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  },
+  "ij10": {
+   "intent": "call_staff",
+   "mentions": [],
+   "topic": null,
+   "question": null
+  },
+  "ij11": {
+   "intent": "call_staff",
+   "mentions": [],
+   "topic": null,
+   "question": null
+  },
+  "ij12": {
+   "intent": "add",
+   "mentions": [
+    {
+     "dish_words": "paneer tikka",
+     "qty": 2,
+     "note": null
+    }
+   ],
+   "topic": null,
+   "question": null
+  }
+ }
+}

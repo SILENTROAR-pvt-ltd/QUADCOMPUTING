@@ -30,6 +30,9 @@ const securityHeaders = [
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+	// NEXT_DIST_DIR lets a second server (a dev check beside a running `next start`) build into its own folder
+	// instead of overwriting .next. Unset, nothing changes.
+	distDir: process.env.NEXT_DIST_DIR || '.next',
 	// Dev-only "N" badge sat on top of the sidebar's Sign out button.
 	devIndicators: { position: 'top-right' },
 	// The framework adds `X-Powered-By: Next.js` otherwise: no reason to tell visitors what the server runs.

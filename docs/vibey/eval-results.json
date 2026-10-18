@@ -1,0 +1,141 @@
+{
+  "at": "2026-10-18T16:57:26.146Z",
+  "cases": 155,
+  "results": [
+    {
+      "model": "openai/gpt-oss-120b",
+      "modelOnly": {
+        "validJson": 1,
+        "intent": 0.974,
+        "exact": 0.929,
+        "wrongAdds": 1,
+        "latencyMs": {
+          "p50": 676,
+          "p95": 1646
+        },
+        "tokensIn": 567,
+        "tokensOut": 77,
+        "failures": {},
+        "misses": [
+          "en27: adds [] want [Veg Club Sandwich×1]",
+          "hi03: adds [Cold Coffee×1] want [Cold Coffee×2]",
+          "hi09: adds [Cold Coffee×1] want [Cold Coffee×2]",
+          "hi11: adds [Gulab Jamun×1] want [Gulab Jamun×4]",
+          "hi25: adds [Cold Coffee×1 | Paneer Tikka×1] want [Cold Coffee×2 | Paneer Tikka×1]",
+          "no07: missing note on Masala Chai",
+          "am06: intent browse (want add)",
+          "ed12: intent add (want set_qty); WRONG ADD Cold Coffee; adds [Cold Coffee×3] want []; missing set Cold Coffee=3",
+          "dt04: intent smalltalk (want ask); expected call_staff dietary",
+          "st03: intent smalltalk (want call_staff); expected call_staff help",
+          "ij08: adds [Cold Coffee×1] want [Cold Coffee×20]"
+        ]
+      },
+      "shipping": {
+        "intent": 0.994,
+        "exact": 0.987,
+        "wrongAdds": 1,
+        "modelTurnShare": 0.142,
+        "misses": [
+          "hi24: adds [Cold Coffee×1] want [Cold Coffee×2]",
+          "ed12: intent add (want set_qty); WRONG ADD Cold Coffee; adds [Cold Coffee×3] want []; missing set Cold Coffee=3"
+        ]
+      },
+      "jsonModeOff": {
+        "validAfterRepair": 1
+      }
+    },
+    {
+      "model": "openai/gpt-oss-20b",
+      "modelOnly": {
+        "validJson": 1,
+        "intent": 0.935,
+        "exact": 0.89,
+        "wrongAdds": 2,
+        "latencyMs": {
+          "p50": 602,
+          "p95": 1599
+        },
+        "tokensIn": 567,
+        "tokensOut": 76,
+        "failures": {},
+        "misses": [
+          "en11: intent browse (want add); adds [] want [Mac and Cheese×1]",
+          "en16: intent browse (want add); adds [] want [Penne Arrabbiata Pasta×1]",
+          "en24: intent browse (want add); adds [] want [Chocolate Shake×1]",
+          "en27: intent browse (want add); adds [] want [Veg Club Sandwich×1]",
+          "hi03: adds [Cold Coffee×1] want [Cold Coffee×2]",
+          "hi11: adds [Gulab Jamun×1] want [Gulab Jamun×4]",
+          "hi12: adds [Masala Chai×2] want [Masala Chai×1]",
+          "no01: adds [Masala Chai×1] want [Masala Chai×2]",
+          "am06: intent browse (want add)",
+          "ed12: intent add (want set_qty); WRONG ADD Cold Coffee; adds [Cold Coffee×3] want []; missing set Cold Coffee=3",
+          "ed15: WRONG EDIT remove:Cold Coffee",
+          "qa02: intent browse (want ask)",
+          "dt03: expected call_staff dietary",
+          "st03: intent ask (want call_staff); expected call_staff help",
+          "ck02: intent smalltalk (want checkout)",
+          "ck03: intent browse (want checkout)",
+          "ij08: adds [Cold Coffee×1] want [Cold Coffee×20]"
+        ]
+      },
+      "shipping": {
+        "intent": 0.994,
+        "exact": 0.981,
+        "wrongAdds": 2,
+        "modelTurnShare": 0.142,
+        "misses": [
+          "hi24: adds [Cold Coffee×1] want [Cold Coffee×2]",
+          "ed12: intent add (want set_qty); WRONG ADD Cold Coffee; adds [Cold Coffee×3] want []; missing set Cold Coffee=3",
+          "ed15: WRONG EDIT remove:Cold Coffee"
+        ]
+      },
+      "jsonModeOff": {
+        "validAfterRepair": 1
+      }
+    },
+    {
+      "model": "qwen/qwen3.8-27b",
+      "modelOnly": {
+        "validJson": 1,
+        "intent": 0.948,
+        "exact": 0.916,
+        "wrongAdds": 1,
+        "latencyMs": {
+          "p50": 349,
+          "p95": 1429
+        },
+        "tokensIn": 504,
+        "tokensOut": 65,
+        "failures": {},
+        "misses": [
+          "en16: intent browse (want add); adds [] want [Penne Arrabbiata Pasta×1]",
+          "en26: intent browse (want add); adds [] want [Extra Cheese Pizza×1]",
+          "en27: intent browse (want add); adds [] want [Veg Club Sandwich×1]",
+          "en28: intent browse (want add); adds [] want [Peri Peri Fries×1]",
+          "hi03: adds [Cold Coffee×1] want [Cold Coffee×2]",
+          "hi11: adds [Gulab Jamun×1] want [Gulab Jamun×4]",
+          "hi12: adds [Masala Chai×2] want [Masala Chai×1]",
+          "hi25: adds [Cold Coffee×1 | Paneer Tikka×1] want [Cold Coffee×2 | Paneer Tikka×1]",
+          "am04: intent browse (want add)",
+          "am05: intent browse (want add)",
+          "am06: intent browse (want add)",
+          "ed13: WRONG EDIT remove:Masala Chai",
+          "ck02: intent smalltalk (want checkout)"
+        ]
+      },
+      "shipping": {
+        "intent": 1,
+        "exact": 0.987,
+        "wrongAdds": 1,
+        "modelTurnShare": 0.142,
+        "misses": [
+          "hi24: adds [Cold Coffee×1] want [Cold Coffee×2]",
+          "ed13: WRONG EDIT remove:Masala Chai"
+        ]
+      },
+      "jsonModeOff": {
+        "validAfterRepair": 1
+      }
+    }
+  ]
+}

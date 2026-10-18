@@ -4,6 +4,7 @@ import React from 'react';
 import { QuickActionsDial, type DialAction } from './QuickActionsDial';
 import { FloatingCartBar } from './FloatingCartBar';
 import { GuestTabBar } from '@/components/guest/shell/GuestTabBar';
+import { VibeyLauncher } from '@/components/guest/vibey/VibeyLauncher';
 import type { GuestMenuState } from './hooks/useGuestMenuState';
 
 interface MenuDockProps {
@@ -21,6 +22,7 @@ export function MenuDock({ state, venueId, dialActions, showDial, goTab, selectT
     <aside aria-label="Guest Floating Controls Dock" className="pointer-events-none fixed inset-x-0 bottom-3 z-50 flex flex-col items-center gap-2 px-3 sm:bottom-4 sm:gap-2.5">
       <div className="relative flex w-full max-w-md flex-col items-center gap-2 sm:gap-2.5">
         {showDial && <QuickActionsDial actions={dialActions} />}
+        {venueId && <VibeyLauncher state={state} venueId={venueId} />}
         <FloatingCartBar
           totalCartCount={state.totalCartCount} cartSubtotal={state.cartSubtotal} tableNumber={state.tableNumber}
           sentItemsCount={state.sentItems.length} runningTotal={state.runningTotal} activeTab={state.activeTab}

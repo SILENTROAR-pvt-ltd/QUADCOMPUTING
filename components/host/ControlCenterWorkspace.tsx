@@ -14,6 +14,7 @@ import { useStaffAlerts } from './control-center/useStaffAlerts';
 import { StaffAlertsTray } from './control-center/StaffAlertsTray';
 import { HostAlertSound } from './control-center/HostAlertSound';
 import { useVenueTabGuard } from './control-center/useVenueTabGuard';
+import { useCopilotHost } from './vibey/useCopilotHost';
 
 interface ControlCenterWorkspaceProps {
   /** Resolved server-side from the authenticated host's session and the
@@ -64,6 +65,8 @@ export default function ControlCenterWorkspace({
   const venueName = initialBusinessName;
   const { pendingKotCount, kotArrivals } = usePendingKot(venueId);
   const staffAlerts = useStaffAlerts(venueId);
+  // Vibey, the read-only co-pilot: on every tab, honouring the master-PIN lock of this screen.
+  const copilot = useCopilotHost(venueId, activeTab, isMasterUnlocked, (tab) => handleTabChange(tab as ControlCenterTab));
 
   const handleTabChange = (tab: ControlCenterTab | 'analytics') => {
     const resolvedTab = ((tab === 'analytics' ? 'dashboard' : tab) as ControlCenterTab);
@@ -80,6 +83,7 @@ export default function ControlCenterWorkspace({
   const navProps = {
     activeTab, onTabChange: handleTabChange, securityStatus, isMasterUnlocked, isTabProtected,
     onLockSession: handleLockSession, onUnlockRequest: handleUnlockRequest, billRequests, venueName, venueId,
+    onOpenCopilot: copilot.open,
   };
 
   return (
@@ -96,6 +100,7 @@ export default function ControlCenterWorkspace({
       <StaffAlertsTray alerts={staffAlerts.alerts} freshIds={staffAlerts.freshIds} onResolve={staffAlerts.resolve} />
       {/* On every tab: the bell for new orders and guest calls. */}
       <HostAlertSound alerts={staffAlerts.alerts} freshIds={staffAlerts.freshIds} kotArrivals={kotArrivals} />
+      {copilot.drawer}
     </div>
   );
 }

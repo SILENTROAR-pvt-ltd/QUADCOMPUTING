@@ -52,6 +52,8 @@ const ALLOW: Record<StaffRole, Rule[]> = {
     { prefix: '/api/host/wallet/guest', methods: READ },
     { prefix: '/api/host/gst-status', methods: READ },
     { prefix: '/api/host/profile', methods: READ },
+    // The read-only Vibey co-pilot. Locked sections stay locked for a staff sign-in whatever the screen claims.
+    { prefix: '/api/host/vibey', methods: ['GET', 'POST'] },
   ],
 };
 

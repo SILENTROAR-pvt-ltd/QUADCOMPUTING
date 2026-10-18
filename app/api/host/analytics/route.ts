@@ -8,9 +8,9 @@ export const GET = withApiErrorBoundary(async function GET(request: Request) {
   try {
     const auth = await requireHost(request);
     if (auth.error) return auth.error;
-    const { supabase } = auth;
+    const { supabase, businessId } = auth;
 
-    const payload = await computeEodReport(request.url, supabase);
+    const payload = await computeEodReport(request.url, supabase, businessId);
     return NextResponse.json(payload);
   } catch (error: any) {
     console.error('[API Analytics]', error);
