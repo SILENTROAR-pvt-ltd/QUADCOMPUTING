@@ -1,6 +1,12 @@
 {
   "version": 1,
   "skills": {
+    "architecture-reviewer": {
+      "source": "repulsivityy/armory_skills",
+      "sourceType": "github",
+      "skillPath": "skills/architecture-reviewer/SKILL.md",
+      "computedHash": "9c2efe44089ab95c753952b2e981ee3ed836ebad0bdf83f560655ee8fc36f991"
+    },
     "security-audit": {
       "source": "cloudflare/security-audit-skill",
       "sourceType": "github",
