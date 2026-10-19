@@ -10,7 +10,8 @@ export default defineConfig({
   test: {
     environment: 'node',
     // The live A-to-Z suite writes real rows; it only runs through vitest.e2e.config.ts, never with the unit tests.
-    exclude: [...configDefaults.exclude, 'tests/e2e/**'],
+    // Also exclude agent skills and skill tests.
+    exclude: [...configDefaults.exclude, 'tests/e2e/**', '.agents/**', '.claude/**'],
     // Tests never load .env.local: they must not be able to reach the real Supabase project.
     // These placeholders point at nothing, so a test that forgets to mock a client fails loudly
     // instead of reading or writing production data.
