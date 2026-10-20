@@ -41,8 +41,9 @@ export const POST = withApiErrorBoundary(async function POST(request: Request) {
   const me = await guestContact(db, request, businessId);
   const name = (me.signedIn ? me.name : String(body?.name ?? '')).replace(/\s+/g, ' ').trim().slice(0, 60);
   // A typed phone fills a gap only; a signed-in guest's own details are never replaced by what the browser sends.
-  const phone = me.phone || normalizePhone(body?.phone);
-  const email = me.email || cleanEmail(body?.email);
+  // A signed-in guest is identified by their own account only: a typed phone or email could name another guest's row.
+  const phone = me.phone || (me.signedIn ? null : normalizePhone(body?.phone));
+  const email = me.email || (me.signedIn ? null : cleanEmail(body?.email));
   const handle = me.handle;
   if (name.length < 2) return bad('Please tell us your name.');
   // A signed-in guest is matched to their own ledger row. An anonymous caller keeps only the key their typed details give,

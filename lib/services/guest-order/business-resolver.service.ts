@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/supabase/admin';
+import { sharedGet, sharedSet } from '@/lib/cache/shared-cache';
 
 export const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -26,15 +27,19 @@ export interface ResolvedBusinessFailure {
 export type ResolvedBusinessResult = ResolvedBusinessSuccess | ResolvedBusinessFailure;
 
 // A guest phone polls the order and session status every few seconds, and each poll resolved the venue with a database
-// query. A venue's identity (id, name, slug) changes rarely, so a successful lookup by id is remembered for a minute
-// on this server instance. Failures are never remembered. Off under tests, which swap the database between cases.
+// query. A venue's identity (id, name, slug) changes rarely, so a successful lookup is remembered for a minute on this
+// server instance. An identifier that matched nothing is remembered too, for the same minute, here and in the shared
+// cache: an unknown identifier used to cost a service-role query on every request, with no limit in front of it.
+// Off under tests, which swap the database between cases.
 const VENUE_CACHE_MS = 60_000;
+const MISS_CACHE_MS = 60_000;
 const VENUE_CACHE_MAX = 500;
 const venueCache = new Map<string, { at: number; value: ResolvedBusinessSuccess }>();
+const missCache = new Map<string, number>();
 const cacheEnabled = () => process.env.NODE_ENV !== 'test';
 
 /** Forget remembered venues (a test, or a deploy that edits a venue and wants it visible at once). */
-export function clearBusinessCache() { venueCache.clear(); }
+export function clearBusinessCache() { venueCache.clear(); missCache.clear(); }
 
 export function normalizeSlug(str: string): string {
   return str
@@ -44,15 +49,43 @@ export function normalizeSlug(str: string): string {
     .replace(/^-+|-+$/g, '');
 }
 
+const remember = (map: Map<string, any>, key: string, value: any) => {
+  if (map.size >= VENUE_CACHE_MAX) map.delete(map.keys().next().value as string);
+  map.set(key, value);
+};
+
+const found = (row: any): ResolvedBusinessSuccess => ({
+  success: true,
+  businessId: row.id,
+  business: {
+    ...row,
+    name: row.business_name || row.name || 'Venue',
+    business_name: row.business_name || row.name || 'Venue',
+  },
+  error: null,
+});
+
+const notFound = (identifier: string): ResolvedBusinessFailure => ({
+  success: false,
+  businessId: null,
+  business: null,
+  error: NextResponse.json(
+    { error: `Venue '${identifier}' not found`, code: 'VENUE_NOT_FOUND' },
+    { status: 404 }
+  ),
+});
+
 /**
  * resolveBusinessId()
- * Safely maps incoming cafe identifier (UUID, venue slug, or name)
- * to the verified businesses.id UUID.
+ * Maps an incoming venue identifier to the verified businesses.id UUID.
  *
  * Rules:
+ * - A UUID resolves only by id. A slug resolves only by an exact match on businesses.slug (after normalisation).
+ *   There is no lookup by name: names are not unique, and a venue was reachable under another venue's name
+ *   through a first-match scan. In-app QR codes carry the UUID.
  * - NO hardcoded UUID fallbacks.
  * - Missing/empty -> 400 JSON response.
- * - Not found in DB -> 404 JSON response.
+ * - Not found in DB -> 404 JSON response, remembered for a minute.
  * - Never throws unhandled 500 error.
  */
 export async function resolveBusinessId(
@@ -72,120 +105,42 @@ export async function resolveBusinessId(
     };
   }
 
-  const supabase = adminDb();
+  const isUuid = UUID_REGEX.test(identifier);
+  const key = isUuid ? `id:${identifier.toLowerCase()}` : `slug:${normalizeSlug(identifier)}`;
+  const now = Date.now();
 
-  // 1. If it's a valid UUID, query directly by ID
-  if (UUID_REGEX.test(identifier)) {
-    const key = identifier.toLowerCase();
-    const remembered = cacheEnabled() ? venueCache.get(key) : undefined;
-    if (remembered && Date.now() - remembered.at < VENUE_CACHE_MS) {
-      return { ...remembered.value, business: { ...remembered.value.business } };
-    }
-    try {
-      const { data: bizById, error: idError } = await supabase
-        .from('businesses')
-        .select('*')
-        .eq('id', identifier)
-        .maybeSingle();
-
-      if (!idError && bizById) {
-        const value: ResolvedBusinessSuccess = {
-          success: true,
-          businessId: bizById.id,
-          business: {
-            ...bizById,
-            name: bizById.business_name || bizById.name || 'Venue',
-            business_name: bizById.business_name || bizById.name || 'Venue',
-          },
-          error: null,
-        };
-        if (cacheEnabled()) {
-          if (venueCache.size >= VENUE_CACHE_MAX) venueCache.delete(venueCache.keys().next().value as string);
-          venueCache.set(key, { at: Date.now(), value });
-        }
-        return { ...value, business: { ...value.business } };
-      }
-
-
-    } catch {
-      // Continue to slug resolution if exception
+  if (cacheEnabled()) {
+    const hit = venueCache.get(key);
+    if (hit && now - hit.at < VENUE_CACHE_MS) return { ...hit.value, business: { ...hit.value.business } };
+    const missedAt = missCache.get(key);
+    if (missedAt && now - missedAt < MISS_CACHE_MS) return notFound(identifier);
+    // A miss another instance has already paid for.
+    if ((await sharedGet<null>(`venue:miss:${key}`)) === null) {
+      remember(missCache, key, now);
+      return notFound(identifier);
     }
   }
 
-  // 2. Query businesses by slug, business_name, or name
+  let row: any = null;
   try {
-    const targetSlug = normalizeSlug(identifier);
-
-    // Try finding by exact slug column first if it exists
-    const { data: bizBySlug, error: slugErr } = await supabase
-      .from('businesses')
-      .select('*')
-      .eq('slug', targetSlug)
-      .maybeSingle();
-
-    if (!slugErr && bizBySlug) {
-      return {
-        success: true,
-        businessId: bizBySlug.id,
-        business: {
-          ...bizBySlug,
-          name: bizBySlug.business_name || bizBySlug.name || 'Venue',
-          business_name: bizBySlug.business_name || bizBySlug.name || 'Venue',
-        },
-        error: null,
-      };
-    }
-
-    // Try matching across businesses
-    const { data: allBusinesses, error: listErr } = await supabase
-      .from('businesses')
-      .select('*')
-      .limit(100);
-
-    if (!listErr && allBusinesses && allBusinesses.length > 0) {
-      const matched = allBusinesses.find((b: any) => {
-        if (b.id && b.id.toLowerCase() === identifier.toLowerCase()) return true;
-        if (b.slug && normalizeSlug(b.slug) === targetSlug) return true;
-
-        const name = (b.business_name || b.name || '').toLowerCase();
-        const normName = normalizeSlug(name);
-
-        if (normName === targetSlug) return true;
-        // Deliberately exact-match only. Substring matching used to be accepted
-        // here ("cafe" matching "Venus Cafe", "Bombay Cafe", ...), which made
-        // venue resolution non-deterministic across tenants — a guest could be
-        // routed into an unrelated venue's menu, and any order or wallet credit
-        // would land on that venue.
-        return false;
-      });
-
-      if (matched) {
-        return {
-          success: true,
-          businessId: matched.id,
-          business: {
-            ...matched,
-            name: matched.business_name || matched.name || 'Venue',
-            business_name: matched.business_name || matched.name || 'Venue',
-          },
-          error: null,
-        };
-      }
-    }
-
-
+    const supabase = adminDb();
+    const q = supabase.from('businesses').select('*');
+    const { data, error } = await (isUuid ? q.eq('id', identifier) : q.eq('slug', key.slice('slug:'.length))).maybeSingle();
+    if (!error && data) row = data;
   } catch {
-    // DB query issue handled by graceful 404 below
+    // A database error is answered as not found below; nothing is remembered for it.
+    return notFound(identifier);
   }
 
-  // Not found in DB
-  return {
-    success: false,
-    businessId: null,
-    business: null,
-    error: NextResponse.json(
-      { error: `Venue '${identifier}' not found`, code: 'VENUE_NOT_FOUND' },
-      { status: 404 }
-    ),
-  };
+  if (row) {
+    const value = found(row);
+    if (cacheEnabled()) remember(venueCache, key, { at: now, value });
+    return { ...value, business: { ...value.business } };
+  }
+
+  if (cacheEnabled()) {
+    remember(missCache, key, now);
+    void sharedSet(`venue:miss:${key}`, null, MISS_CACHE_MS);
+  }
+  return notFound(identifier);
 }

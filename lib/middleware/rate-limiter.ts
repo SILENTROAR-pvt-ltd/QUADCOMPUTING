@@ -34,26 +34,39 @@ if (typeof setInterval !== 'undefined') {
   }, 60000);
 }
 
+/** The limiter bucket for a request whose connecting address nothing trustworthy reports. Shared by all such requests. */
+export const UNVERIFIED_CLIENT = 'unverified';
+
 /**
- * Extract client IP address with proxy / cloudflare headers support
+ * The client's address for rate-limit keys. Only a header a trusted party set is used; a header the client itself can
+ * send is never read on its own, because a client that names its own address gets a fresh limit on every request.
+ *
+ *  - On Vercel the edge writes x-vercel-forwarded-for, x-real-ip and x-forwarded-for from the connecting address and
+ *    drops any copy the client sent, so the first entry is the client.
+ *  - Elsewhere the operator declares the proxies in front of the app: TRUSTED_PROXY_HOPS=n means n proxies each append
+ *    to x-forwarded-for, so the client is the n-th entry from the end (x-real-ip when a single proxy sets that instead).
+ *    TRUST_CF_CONNECTING_IP=1 trusts Cloudflare's header.
+ *  - With none of that declared, every request shares one bucket: limits still apply, as one global limit.
  */
 export function getClientIp(request: Request): string {
-  // On Vercel the edge sets x-vercel-forwarded-for from the real connecting address, so the client cannot choose it.
+  const h = request.headers;
   if (process.env.VERCEL) {
-    const edge = request.headers.get('x-vercel-forwarded-for');
-    if (edge?.trim()) return edge.split(',')[0].trim();
+    const edge = h.get('x-vercel-forwarded-for') || h.get('x-real-ip') || h.get('x-forwarded-for') || '';
+    const first = edge.split(',')[0].trim();
+    return first || UNVERIFIED_CLIENT;
   }
-  // Elsewhere, x-forwarded-for's first entry is client-controlled. Trust only the last hop a proxy appended.
-  const forwarded = request.headers.get('x-forwarded-for');
-  if (forwarded) {
-    const hops = forwarded.split(',').map((s) => s.trim()).filter(Boolean);
-    if (hops.length) return hops[hops.length - 1];
+  const hops = Number(process.env.TRUSTED_PROXY_HOPS || 0);
+  if (Number.isInteger(hops) && hops > 0) {
+    const forwarded = (h.get('x-forwarded-for') || '').split(',').map((s) => s.trim()).filter(Boolean);
+    if (forwarded.length >= hops) return forwarded[forwarded.length - hops];
+    const realIp = h.get('x-real-ip')?.trim();
+    if (realIp) return realIp;
   }
-  const realIp = request.headers.get('x-real-ip');
-  if (realIp) return realIp.trim();
-  const cfIp = request.headers.get('cf-connecting-ip');
-  if (cfIp) return cfIp.trim();
-  return '127.0.0.1';
+  if (process.env.TRUST_CF_CONNECTING_IP === '1') {
+    const cfIp = h.get('cf-connecting-ip')?.trim();
+    if (cfIp) return cfIp;
+  }
+  return UNVERIFIED_CLIENT;
 }
 
 /**

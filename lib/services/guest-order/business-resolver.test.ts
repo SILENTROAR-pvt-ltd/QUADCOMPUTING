@@ -48,6 +48,29 @@ describe('Task 1: Business & Slug Resolver Service', () => {
     expect(res.error!.status).toBe(404);
   });
 
+  it('resolves a slug only against the slug column: a venue is never reached under another venue\'s name', async () => {
+    admin.client = createFakeSupabase({
+      businesses: [
+        // Renamed: its slug still says "venus-cafe", its name no longer does.
+        { id: VENUE_ID, business_name: 'Venus Garden', slug: 'venus-cafe' },
+        // A newer venue that holds the name "Venus Cafe" but a different slug, and one with no slug at all.
+        { id: '22222222-2222-4333-8444-555555555555', business_name: 'Venus Cafe', slug: 'venus-cafe-2' },
+        { id: '33333333-2222-4333-8444-555555555555', business_name: 'Lotus Cafe', slug: null },
+      ],
+    });
+    const bySlug = await resolveBusinessId('venus-cafe');
+    expect(bySlug.success && bySlug.businessId).toBe(VENUE_ID);
+    const byName = await resolveBusinessId('Lotus Cafe');
+    expect(byName.success).toBe(false);
+    expect(byName.error!.status).toBe(404);
+  });
+
+  it('a UUID that matches no venue is not retried as a slug', async () => {
+    const res = await resolveBusinessId('99999999-2222-4333-8444-555555555555');
+    expect(res.success).toBe(false);
+    expect(res.error!.status).toBe(404);
+  });
+
   it('returns explicit 404 JSON response when venue is not found in database', async () => {
     const resNotFound = await resolveBusinessId('unknown-venue-slug-xyz');
     expect(resNotFound.success).toBe(false);

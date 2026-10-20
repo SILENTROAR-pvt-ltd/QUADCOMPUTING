@@ -1,3 +1,4 @@
+import { masterUnlockRequired } from '@/lib/services/security/master-unlock-guard';
 import { NextResponse } from 'next/server';
 import { requireHost } from '@/lib/auth/guards';
 import { withApiErrorBoundary } from '@/lib/middleware/error-handler';
@@ -6,6 +7,8 @@ export const POST = withApiErrorBoundary(async function POST(req: Request) {
   try {
     const auth = await requireHost(req);
     if (auth.error) return auth.error;
+    const locked = masterUnlockRequired(req, auth);
+    if (locked) return locked;
     const { user, businessId, supabase } = auth;
 
     const body = await req.json();

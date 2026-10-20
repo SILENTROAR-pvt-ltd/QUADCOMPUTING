@@ -3,6 +3,8 @@ import { requireHost } from '@/lib/auth/guards';
 import { withApiErrorBoundary } from '@/lib/middleware/error-handler';
 import { isPinSet } from '@/lib/services/security/venue-pin';
 import { readLocks } from '@/lib/services/security/protected-modules';
+import { hasMasterUnlock, masterUnlockFromCookieHeader } from '@/lib/services/security/master-unlock';
+import { MASTER_LOCKED_BUSINESS_FIELDS } from '@/lib/services/security/master-unlock-guard';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,6 +47,10 @@ export const GET = withApiErrorBoundary(async function GET(request: Request) {
 
     const safeBusiness: Record<string, unknown> = { ...business };
     for (const k of SECRET_COLUMNS) delete safeBusiness[k];
+    // Bank and UPI details are behind the master PIN: with one set, they are sent only on a valid unlock.
+    if (isPinSet(business, 'admin') && !hasMasterUnlock(masterUnlockFromCookieHeader(request.headers.get('cookie')), user.id, business.id)) {
+      for (const k of MASTER_LOCKED_BUSINESS_FIELDS) delete safeBusiness[k];
+    }
 
     return NextResponse.json({
       success: true,

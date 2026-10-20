@@ -1,4 +1,5 @@
 // lib/services/api-idempotency.util.ts
+import { IdempotencyStoreUnavailable, sharedStoreFromEnv, withSharedIdempotency } from './api-idempotency-redis.util';
 
 interface CachedResponse {
   timestamp: number;
@@ -23,9 +24,12 @@ if (typeof setInterval !== 'undefined') {
 }
 
 export function generateIdempotencyKey(scope: string, identifier: string, payload?: any): string {
-  if (payload?.idempotency_key) return `${scope}:${payload.idempotency_key}`;
+  // The identifier (venue and table) always scopes the key. A client key on its own is only unique within one venue, and
+  // the shared store spans every venue.
+  const who = identifier.trim().toUpperCase();
+  if (payload?.idempotency_key) return `${scope}:${who}:${payload.idempotency_key}`;
   const payloadFingerprint = payload ? hashString(JSON.stringify(payload)) : '0';
-  return `${scope}:${identifier.trim().toUpperCase()}:${payloadFingerprint}`;
+  return `${scope}:${who}:${payloadFingerprint}`;
 }
 
 // The key used to be the JSON's length, so two different carts of equal length sent within 2 s to one table
@@ -51,7 +55,27 @@ export function recordIdempotentResponse(key: string, response: any, status: num
   idempotencyCache.set(key, { timestamp: Date.now(), response, status });
 }
 
+/**
+ * Runs `fn` once per key within the window. With UPSTASH_REDIS_REST_URL/TOKEN set, the window is shared by every
+ * instance; if the shared store cannot be reached before `fn` starts, this instance's own window is used instead.
+ */
 export async function withIdempotency<T>(
+  key: string,
+  fn: () => Promise<{ response: T; status?: number }>
+): Promise<{ response: T; status: number; duplicate?: boolean }> {
+  const shared = sharedStoreFromEnv();
+  if (shared) {
+    try {
+      return await withSharedIdempotency(shared, key, fn);
+    } catch (err) {
+      if (!(err instanceof IdempotencyStoreUnavailable)) throw err;
+      console.warn('[idempotency] shared store unreachable, using this instance only:', err.message);
+    }
+  }
+  return withLocalIdempotency(key, fn);
+}
+
+async function withLocalIdempotency<T>(
   key: string,
   fn: () => Promise<{ response: T; status?: number }>
 ): Promise<{ response: T; status: number; duplicate?: boolean }> {

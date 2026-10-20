@@ -1,3 +1,4 @@
+import { guestSafeOrder } from './guest-safe-order.util';
 import { randomUUID } from 'crypto';
 import { calculateOrderTotals, aggregateOrderItems } from '@/lib/utils/qr-session';
 import { isValidUuid, buildTableOrFilter } from './order-utils';
@@ -37,6 +38,17 @@ export async function submitGuestOrder(body: any, supabase: any) {
       }
     }
   });
+}
+
+// How long a retry with the same key answers with the original order. Longer than any phone keeps retrying.
+export const REPLAY_WINDOW_MS = 24 * 60 * 60 * 1000;
+const tableKey = (t: unknown) => String(t || '').replace(/^(table|t-)\s*/i, '').replace(/\s+/g, '').replace(/^0+(?=\d)/, '').toUpperCase();
+
+/** Whether an order found by its idempotency key is the retried order itself: same table, placed within the window. */
+export function isReplayOfSameOrder(existing: { table_number?: unknown; created_at?: unknown }, rawTable: string, now = Date.now()): boolean {
+  if (!existing || tableKey(existing.table_number) !== tableKey(rawTable)) return false;
+  const placedAt = Date.parse(String(existing.created_at || ''));
+  return Number.isFinite(placedAt) && now - placedAt >= 0 && now - placedAt < REPLAY_WINDOW_MS;
 }
 
 async function submitGuestOrderOnce(body: any, supabase: any) {
@@ -101,6 +113,14 @@ async function submitGuestOrderOnce(body: any, supabase: any) {
 
     if (dupCheckErr) throw dupCheckErr;
     if (existingOrder) {
+      // A replay is the same phone retrying the same order: same venue, same table, within a day. A key that matches an
+      // order from another table or another day is not a retry; it is refused rather than answered with that order.
+      if (!isReplayOfSameOrder(existingOrder, rawTableNumber)) {
+        const err: any = new Error('This order reference was already used. Please place the order again.');
+        err.status = 409;
+        err.code = 'IDEMPOTENCY_KEY_REUSED';
+        throw err;
+      }
       return {
         success: true,
         is_addon: false,
@@ -108,13 +128,13 @@ async function submitGuestOrderOnce(body: any, supabase: any) {
         order_id: existingOrder.id,
         ticket_number: existingOrder.ticket_number || 'KOT-ACK',
         kot_status: existingOrder.status || 'open',
-        order: existingOrder,
+        order: guestSafeOrder(existingOrder),
         subtotal: existingOrder.subtotal,
         tax_amount: existingOrder.tax_amount,
         grand_total: existingOrder.grand_total,
         total_amount: existingOrder.total_amount,
         items: existingOrder.items || [],
-        data: existingOrder,
+        data: guestSafeOrder(existingOrder),
       };
     }
   }
@@ -298,7 +318,7 @@ async function submitGuestOrderOnce(body: any, supabase: any) {
     return {
       success: true, is_addon: false, is_duplicate: true, order_id: rpcResult.order_id,
       ticket_number: rpcResult.ticket_number, kot_status: existingOrder?.status || 'open',
-      order: existingOrder, items: existingOrder?.items || [], data: existingOrder,
+      order: guestSafeOrder(existingOrder), items: existingOrder?.items || [], data: guestSafeOrder(existingOrder),
     };
   }
 

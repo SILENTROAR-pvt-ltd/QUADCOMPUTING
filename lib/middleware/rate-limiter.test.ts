@@ -7,6 +7,7 @@ import {
   rateLimitResponse,
   resetRateLimit,
   getClientIp,
+  UNVERIFIED_CLIENT,
   PIN_FAIL_LIMIT,
 } from './rate-limiter';
 
@@ -71,8 +72,8 @@ describe('PHASE 2D: Sliding Window Rate Limiter', () => {
     expect(status.remaining).toBe(PIN_FAIL_LIMIT);
   });
 
-  it('correctly extracts client IP across various proxy headers', () => {
-    // x-forwarded-for: the first entry is client-controlled, so only the last hop a proxy appended is trusted.
+  it('behind one declared proxy, reads the hop that proxy appended and nothing the client sent', () => {
+    // vitest.config.ts sets TRUSTED_PROXY_HOPS=1: the last x-forwarded-for entry is the one the proxy appended.
     const reqWithForwarded = new Request('http://localhost', {
       headers: { 'x-forwarded-for': '203.0.113.195, 70.41.3.18, 150.172.238.178' },
     });
@@ -84,7 +85,40 @@ describe('PHASE 2D: Sliding Window Rate Limiter', () => {
     expect(getClientIp(reqWithRealIp)).toBe('198.51.100.24');
 
     const reqFallback = new Request('http://localhost');
-    expect(getClientIp(reqFallback)).toBe('127.0.0.1');
+    expect(getClientIp(reqFallback)).toBe(UNVERIFIED_CLIENT);
+  });
+
+  it('with no proxy declared and not on Vercel, a client naming its own address gets no bucket of its own', () => {
+    const previous = process.env.TRUSTED_PROXY_HOPS;
+    delete process.env.TRUSTED_PROXY_HOPS;
+    try {
+      const spoofs: Array<Record<string, string>> = [
+        { 'x-forwarded-for': '203.0.113.9' },
+        { 'x-real-ip': '203.0.113.9' },
+        { 'cf-connecting-ip': '203.0.113.9' },
+        { 'x-vercel-forwarded-for': '203.0.113.9' },
+      ];
+      for (const headers of spoofs) {
+        expect(getClientIp(new Request('http://localhost', { headers }))).toBe(UNVERIFIED_CLIENT);
+      }
+    } finally {
+      if (previous === undefined) delete process.env.TRUSTED_PROXY_HOPS;
+      else process.env.TRUSTED_PROXY_HOPS = previous;
+    }
+  });
+
+  it('two declared proxies: the client is the second entry from the end', () => {
+    const previous = process.env.TRUSTED_PROXY_HOPS;
+    process.env.TRUSTED_PROXY_HOPS = '2';
+    try {
+      const req = new Request('http://localhost', { headers: { 'x-forwarded-for': 'spoofed, 198.51.100.7, 10.0.0.2' } });
+      expect(getClientIp(req)).toBe('198.51.100.7');
+      // Fewer hops than declared: the chain is incomplete, so nothing in it is trusted.
+      expect(getClientIp(new Request('http://localhost', { headers: { 'x-forwarded-for': '10.0.0.2' } }))).toBe(UNVERIFIED_CLIENT);
+    } finally {
+      if (previous === undefined) delete process.env.TRUSTED_PROXY_HOPS;
+      else process.env.TRUSTED_PROXY_HOPS = previous;
+    }
   });
 
   it('on Vercel, trusts only the edge-set address and ignores a spoofed x-forwarded-for', () => {

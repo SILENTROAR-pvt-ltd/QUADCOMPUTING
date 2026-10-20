@@ -94,16 +94,25 @@ describe('Venue lookup behind every guest request', () => {
     expect(b.business.business_name).toBe('Bombay Rasoi');
   });
 
-  it('reads the venue again after the memory is cleared, and never remembers a venue that does not exist', async () => {
+  it('reads the venue again after the memory is cleared, and remembers a miss for a minute without reading again', async () => {
     await resolveBusinessId(BIZ);
     clearBusinessCache();
     await resolveBusinessId(BIZ);
     expect(ctx.venueReads).toBe(2);
 
+    // An identifier that matches nothing used to cost a service-role read on every request, with no limit in front
+    // of it. The miss is now remembered: the second request answers 404 from memory.
     const before = ctx.venueReads;
     const missing = await resolveBusinessId('99999999-9999-4999-8999-999999999999');
     expect(missing.success).toBe(false);
+    const again = await resolveBusinessId('99999999-9999-4999-8999-999999999999');
+    expect(again.success).toBe(false);
+    expect(again.error!.status).toBe(404);
+    expect(ctx.venueReads).toBe(before + 1);
+
+    // Clearing the memory forgets the miss too, so a venue created moments later is found.
+    clearBusinessCache();
     await resolveBusinessId('99999999-9999-4999-8999-999999999999');
-    expect(ctx.venueReads).toBeGreaterThan(before + 1); // the second miss read the database again
+    expect(ctx.venueReads).toBe(before + 2);
   });
 });

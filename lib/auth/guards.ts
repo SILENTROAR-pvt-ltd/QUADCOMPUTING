@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { adminDb } from '@/lib/supabase/admin';
 import { getVerifiedUser } from './verified-user';
 import { staffFromRequest, staffMayMake, staffUser } from './staff-access';
+import { adminAal2Failure } from './admin-aal';
 import type { StaffSession } from '@/lib/services/staff-auth/staff-session';
 import type { User, SupabaseClient } from '@supabase/supabase-js';
 
@@ -287,6 +288,10 @@ export async function requireAdmin(request?: Request): Promise<AuthAdminResult> 
         ),
       };
     }
+
+    // A session without the second factor is refused when ADMIN_REQUIRE_AAL2=1 (see lib/auth/admin-aal.ts).
+    const aalDenied = await adminAal2Failure(supabase);
+    if (aalDenied) return { error: aalDenied };
 
     return {
       user,

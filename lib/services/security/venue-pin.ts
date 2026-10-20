@@ -32,6 +32,8 @@ export const isPinSet = (row: PinRow | null | undefined, kind: PinKind) => Boole
 /** Whether the PIN matches, and whether the stored form is old plain text that should be upgraded. */
 export async function checkPin(row: PinRow, kind: PinKind, pin: unknown): Promise<{ ok: boolean; upgrade: boolean }> {
   if (typeof pin !== 'string' || !/^\d{4}$/.test(pin)) return { ok: false, upgrade: false };
+  // '0000' is the retired column default, never a PIN an owner chose. A hash derived from it is not a valid key either.
+  if (pin === '0000') return { ok: false, upgrade: false };
   const h = hashed(row, kind);
   if (h) {
     const [salt, hash] = h.slice(PREFIX.length).split(':');

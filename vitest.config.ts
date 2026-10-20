@@ -22,6 +22,8 @@ export default defineConfig({
       SUPABASE_SERVICE_ROLE_KEY: 'test-service-role-key-not-real',
       UPSTASH_REDIS_REST_URL: '',
       UPSTASH_REDIS_REST_TOKEN: '',
+      // Tests model a deployment behind one proxy that appends the client to x-forwarded-for (see getClientIp).
+      TRUSTED_PROXY_HOPS: '1',
     },
   },
 });

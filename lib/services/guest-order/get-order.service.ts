@@ -6,7 +6,7 @@ import { ownVisitOrders } from './own-visit.util';
 /** The guest's own view of the open order: the bill and its items, never the customer's name or phone. */
 function guestSafeOrder<T extends Record<string, any> | null>(order: T): T {
   if (!order) return order;
-  const { customer_name: _name, customer_phone: _phone, ...rest } = order;
+  const { customer_name: _name, customer_phone: _phone, idempotency_key: _key, ...rest } = order;
   return rest as T;
 }
 export async function getGuestActiveOrder(requestUrl: string, supabase: any) {

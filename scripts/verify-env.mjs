@@ -65,6 +65,30 @@ if (strict && !env.UPSTASH_REDIS_REST_URL) {
 
 if (!env.LLM_API_KEY) warnings.push('LLM_API_KEY is not set: menu scan and dish-photo matching run without the language model (exact matching still works)');
 
+// A preview or development build runs branch code (this script, the tests, next.config.mjs) in a container holding
+// its environment. Such a build must therefore never hold the production database: QC_PRODUCTION_SUPABASE_HOST is a
+// plain variable set on every Vercel scope naming the production project's host, and a non-production build whose
+// Supabase URL points at it fails here, before any branch code sees a production key.
+const vercelEnv = env.VERCEL_ENV || '';
+const productionHost = (env.QC_PRODUCTION_SUPABASE_HOST || '').trim().toLowerCase();
+if (vercelEnv && vercelEnv !== 'production') {
+  if (!productionHost) {
+    warnings.push('QC_PRODUCTION_SUPABASE_HOST is not set: a preview build cannot prove it is not pointed at the production database');
+  } else {
+    let host = '';
+    try { host = new URL(env.NEXT_PUBLIC_SUPABASE_URL || '').host.toLowerCase(); } catch {}
+    if (host && host === productionHost) {
+      errors.push(`${vercelEnv} build is configured with the production Supabase project (${host}); scope SUPABASE_* for Preview/Development to the staging project`);
+    }
+  }
+}
+
+// Off Vercel, the rate limiter trusts no forwarded header until the proxies in front of the app are declared; until
+// then every client shares one limit (lib/middleware/rate-limiter.ts).
+if (!env.VERCEL && !env.TRUSTED_PROXY_HOPS && env.TRUST_CF_CONNECTING_IP !== '1') {
+  warnings.push('TRUSTED_PROXY_HOPS is not set: outside Vercel, rate limits are applied per deployment, not per client, until the proxy depth is declared');
+}
+
 for (const name of Object.keys(env)) {
   if (name.startsWith('NEXT_PUBLIC_') && /(SERVICE|SECRET|PRIVATE|PASSWORD)/i.test(name)) {
     errors.push(`${name} is exposed to the browser bundle because of its NEXT_PUBLIC_ prefix`);
@@ -78,6 +102,13 @@ warnings.forEach((w) => console.warn(`  warn  ${w}`));
 if (errors.length === 0) {
   console.log('[verify-env] OK');
   process.exit(0);
+}
+
+// The preview-scope check fails any Vercel build it applies to, strict or not: it is the one error a preview must stop on.
+const previewLeak = errors.find((e) => /production Supabase project/.test(e));
+if (previewLeak && !strict) {
+  console.error(`  FAIL  ${previewLeak}`);
+  process.exit(1);
 }
 
 errors.forEach((e) => (strict ? console.error : console.warn)(`  ${strict ? 'FAIL' : 'warn'}  ${e}`));

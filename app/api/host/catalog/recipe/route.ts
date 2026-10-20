@@ -22,10 +22,13 @@ export const GET = withApiErrorBoundary(async function GET(request: Request) {
       .eq('business_id', businessId);
     if (error) throw error;
 
-    const mapped = (ingredients || []).map((ing: any) => ({
-      ...ing,
-      raw_item: Array.isArray(ing.raw_item) ? ing.raw_item[0] : ing.raw_item,
-    }));
+    // Ingredient cost is the owner's margin input. A staff terminal gets the ingredient names and quantities only.
+    const mapped = (ingredients || []).map((ing: any) => {
+      const item = Array.isArray(ing.raw_item) ? ing.raw_item[0] : ing.raw_item;
+      if (!auth.staff || !item) return { ...ing, raw_item: item };
+      const { cost_per_unit: _cost, ...withoutCost } = item;
+      return { ...ing, raw_item: withoutCost };
+    });
     return NextResponse.json({ ingredients: mapped });
   } catch (error: any) {
     console.error('[API Catalog Recipe GET]', error);

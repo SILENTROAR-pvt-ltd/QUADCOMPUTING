@@ -27,7 +27,8 @@ export async function createHostOrder(supabase: any, businessId: string, body: a
 
   // A bill that settles in this same request keeps the order's own status until the settlement closes it, so a
   // settlement that is refused leaves the table's order open instead of marked settled with the table still running.
-  const settlesNow = Boolean(body.settlement) && Boolean(existingOrderId);
+  // That holds for a bill saved for the first time too: it is inserted open, and only the settlement marks it settled.
+  const settlesNow = Boolean(body.settlement);
 
   const orderPayload = {
     business_id: businessId,
@@ -52,10 +53,11 @@ export async function createHostOrder(supabase: any, businessId: string, body: a
     staff_name: body.staffName || null,
     room_id: roomId,
     guest_id: guestId,
-    status: body.status || (settlesNow ? undefined : 'SETTLED'),
+    // While a settlement is pending, the client's status is not written: a bill cannot arrive pre-marked settled.
+    status: settlesNow ? undefined : (body.status || 'SETTLED'),
   };
 
-  const order = await executeOrderMutation(supabase, orderPayload, existingOrderId);
+  const order = await executeOrderMutation(supabase, orderPayload, existingOrderId, settlesNow ? 'open' : 'SETTLED');
   if (order?.id) {
     afterResponse('recipe-deduction', () => deductRecipeInventoryForOrder(supabase, businessId, order.id, body.items || [], order.status || orderPayload.status || 'SETTLED'));
   }

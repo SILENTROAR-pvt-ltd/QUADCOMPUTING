@@ -13,8 +13,35 @@ if (typeof globalThis !== 'undefined' && globalThis.AsyncLocalStorage && typeof 
 	globalThis.AsyncLocalStorage.snapshot = AsyncLocalStorage.snapshot;
 }
 
-// Headers every page and API response carries. No Content-Security-Policy yet: Supabase, Sentry, fonts and the dish
-// photo hosts all need allowances, and a wrong policy blanks the app, so it needs its own tested change.
+// The origins the app really loads from: the configured Supabase project (so a custom domain works), Sentry, Google Fonts,
+// and Razorpay for the Club checkout. Next's inline bootstrap script needs 'unsafe-inline' (no nonces yet), and the dev
+// server needs 'unsafe-eval' for hot reload. Images may come from any https host: dish and venue photos are not fixed.
+function contentSecurityPolicy() {
+	const isDev = process.env.NODE_ENV !== 'production';
+	let supabase = '';
+	try {
+		if (process.env.NEXT_PUBLIC_SUPABASE_URL) supabase = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).origin;
+	} catch { /* a malformed URL is caught by adminDb at runtime; the policy then uses the wildcard hosts only */ }
+	const supabaseSocket = supabase.replace(/^https:/, 'wss:');
+	return [
+		"default-src 'self'",
+		`script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''} https://checkout.razorpay.com`,
+		"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+		"font-src 'self' data: https://fonts.gstatic.com",
+		"img-src 'self' data: blob: https:",
+		"media-src 'self' blob: https:",
+		`connect-src 'self' ${supabase} ${supabaseSocket} https://*.supabase.co wss://*.supabase.co https://*.sentry.io https://api.razorpay.com`,
+		'frame-src https://api.razorpay.com https://checkout.razorpay.com',
+		"worker-src 'self' blob:",
+		"manifest-src 'self'",
+		"object-src 'none'",
+		"base-uri 'self'",
+		"form-action 'self'",
+		"frame-ancestors 'none'",
+	].join('; ');
+}
+
+// Headers every page and API response carries.
 const securityHeaders = [
 	// Browsers only use https for this site (a year). No `preload`: that is a permanent commitment to the whole domain.
 	{ key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains' },
@@ -26,6 +53,7 @@ const securityHeaders = [
 	// QC uses no camera, microphone or payment request. Location is allowed for the Club pages only.
 	{ key: 'Permissions-Policy', value: 'camera=(), microphone=(), payment=(), geolocation=(self)' },
 	{ key: 'X-DNS-Prefetch-Control', value: 'on' },
+	{ key: 'Content-Security-Policy', value: contentSecurityPolicy() },
 ];
 
 /** @type {import('next').NextConfig} */
@@ -39,6 +67,11 @@ const nextConfig = {
 	poweredByHeader: false,
 	images: {
 		unoptimized: true,
+	},
+	// Versioned API alias: /api/v1/host/* runs the same handler as /api/host/*. Middleware reads the canonical path
+	// (lib/middleware/api-path.ts), so the guards apply to both spellings.
+	async rewrites() {
+		return [{ source: '/api/v1/:path*', destination: '/api/:path*' }];
 	},
 	async headers() {
 		return [

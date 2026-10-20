@@ -15,6 +15,7 @@ import { StaffAlertsTray } from './control-center/StaffAlertsTray';
 import { HostAlertSound } from './control-center/HostAlertSound';
 import { useVenueTabGuard } from './control-center/useVenueTabGuard';
 import { useCopilotHost } from './vibey/useCopilotHost';
+import { MasterPinNotice } from './control-center/MasterPinNotice';
 
 interface ControlCenterWorkspaceProps {
   /** Resolved server-side from the authenticated host's session and the
@@ -94,6 +95,7 @@ export default function ControlCenterWorkspace({
 
       <div className="flex-1 min-w-0 flex flex-col min-h-screen">
         <MobileNavDrawer {...navProps} mobileDrawerOpen={mobileDrawerOpen} setMobileDrawerOpen={setMobileDrawerOpen} />
+        <MasterPinNotice securityStatus={securityStatus} onOpenSecurity={() => handleTabChange('profile')} />
         <WorkspaceViewRouter activeTab={activeTab} venueId={venueId} onNavigate={handleTabChange} />
       </div>
 

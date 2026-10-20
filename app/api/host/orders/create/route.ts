@@ -6,6 +6,7 @@ import { settleAndVacateSession } from '@/lib/services/session.service';
 import { withApiErrorBoundary, handleApiError } from '@/lib/middleware/error-handler';
 import { withIdempotency } from '@/lib/services/api-idempotency.util';
 import { afterResponse } from '@/lib/utils/after-response';
+import { isFeeBearingStatus } from '@/lib/services/orders/bill-status.util';
 
 const TENDERS = ['UPI', 'CASH', 'CARD'];
 
@@ -63,7 +64,7 @@ export const POST = withApiErrorBoundary(async function POST(request: Request) {
     // settlement and room stays via checkout. It runs after the response: the fee never blocks the till.
     // Any bill saved closed here, counter, table or room, reaches this point only when no settlement ran, so no other path
     // charged it. A closed status is therefore enough: the client chooses the table, room and status, so none of them can skip the fee.
-    const isClosed = Boolean(order) && ['SETTLED', 'COMPLETED', 'SERVED'].includes(String(order.status || '').toUpperCase());
+    const isClosed = Boolean(order) && isFeeBearingStatus(order.status);
     if (isClosed) {
       afterResponse('counter-bill-fee', async () => {
         const { evaluateFeeGuard } = await import('@/lib/services/wallet/fee-guard.service');

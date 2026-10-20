@@ -1,3 +1,4 @@
+import { masterUnlockRequired } from '@/lib/services/security/master-unlock-guard';
 import { NextResponse } from 'next/server';
 import { requireHost } from '@/lib/auth/guards';
 import { withApiErrorBoundary, handleApiError } from '@/lib/middleware/error-handler';
@@ -31,6 +32,8 @@ export const POST = withApiErrorBoundary(async function POST(request: Request) {
   try {
     const auth = await requireHost(request);
     if (auth.error) return auth.error;
+    const locked = masterUnlockRequired(request, auth);
+    if (locked) return locked;
     const body = await request.json().catch(() => ({}));
     const parsed = parseMoney(body, businessDateString());
     if (!parsed.ok) return bad(parsed.error);
@@ -53,6 +56,8 @@ export const DELETE = withApiErrorBoundary(async function DELETE(request: Reques
   try {
     const auth = await requireHost(request);
     if (auth.error) return auth.error;
+    const locked = masterUnlockRequired(request, auth);
+    if (locked) return locked;
     const id = new URL(request.url).searchParams.get('id');
     if (!id) return bad('Missing payment id.');
     const { data, error } = await auth.supabase.from('staff_salary_payments').delete().eq('id', id).eq('business_id', auth.businessId).select('id');

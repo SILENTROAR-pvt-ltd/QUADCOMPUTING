@@ -1,4 +1,5 @@
 import { isValidUuid, buildTableOrFilter } from './session-utils';
+import { guestSafeOrder } from '../guest-order/guest-safe-order.util';
 import { resolveTableAndBusiness, resolveOrInitMasterOrder } from './init-session-helpers.util';
 import { upsertGuestRecord } from './guest-record.util';
 import { ownVisitOrders } from '@/lib/services/guest-order/own-visit.util';
@@ -109,7 +110,7 @@ export async function initializeGuestSession(bodyOrTable: any, clientOrBiz?: any
     success: true,
     session: activeSession,
     guest: guestRecord,
-    order: masterOrder,
+    order: guestSafeOrder(masterOrder),
     items: orderItems,
     kot_status: kotStatus,
     ticket_number: ticketNumber,

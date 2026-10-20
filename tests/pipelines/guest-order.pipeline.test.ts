@@ -142,13 +142,33 @@ describe('Guest order pipeline (guards in front of the atomic order function)', 
 
   it('a retry with the same idempotency key returns the original order and does not create another', async () => {
     ctx.db = newDb({
-      orders: [{ id: 'ord-original', business_id: BIZ, idempotency_key: 'retry-1', status: 'open', ticket_number: 'KOT-1234', items: [] }],
+      orders: [{ id: 'ord-original', business_id: BIZ, idempotency_key: 'retry-1', status: 'open', ticket_number: 'KOT-1234', items: [], table_number: 'T-04', created_at: new Date().toISOString(), customer_name: 'Asha', customer_phone: '9999' }],
     });
     const res = await order({ idempotency_key: 'retry-1' }, freshIp());
     const json = await res.json();
 
     expect(res.status).toBe(200);
     expect(json).toMatchObject({ is_duplicate: true, order_id: 'ord-original' });
+    expect(ctx.db.calls.rpc).toHaveLength(0);
+    // The replay is the guest's own order; it never carries the name or phone stored on it.
+    expect(JSON.stringify(json)).not.toContain('Asha');
+    expect(JSON.stringify(json)).not.toContain('9999');
+  });
+
+  it('a key that matches an order from another table, or from another day, is refused rather than replayed', async () => {
+    ctx.db = newDb({
+      orders: [
+        { id: 'ord-other-table', business_id: BIZ, idempotency_key: 'stolen-key', status: 'open', table_number: 'T-09', created_at: new Date().toISOString(), customer_name: 'Asha', customer_phone: '9999' },
+        { id: 'ord-yesterday', business_id: BIZ, idempotency_key: 'old-key', status: 'open', table_number: 'T-04', created_at: new Date(Date.now() - 36 * 3600_000).toISOString() },
+      ],
+    });
+    for (const key of ['stolen-key', 'old-key']) {
+      const res = await order({ idempotency_key: key }, freshIp());
+      expect(res.status).toBe(409);
+      const text = JSON.stringify(await res.json());
+      expect(text).not.toContain('Asha');
+      expect(text).not.toContain('ord-other-table');
+    }
     expect(ctx.db.calls.rpc).toHaveLength(0);
   });
 

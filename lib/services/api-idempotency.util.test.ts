@@ -2,8 +2,14 @@ import { describe, it, expect } from 'vitest';
 import { generateIdempotencyKey, withIdempotency } from './api-idempotency.util';
 
 describe('idempotency key', () => {
-  it('uses the client key when one is sent', () => {
-    expect(generateIdempotencyKey('guest_order', 'biz:T-01', { idempotency_key: 'go-1', items: [] })).toBe('guest_order:go-1');
+  it('uses the client key when one is sent, scoped to the venue and table', () => {
+    expect(generateIdempotencyKey('guest_order', 'biz:T-01', { idempotency_key: 'go-1', items: [] })).toBe('guest_order:BIZ:T-01:go-1');
+  });
+
+  it('keeps the same client key from one venue apart from the same key at another venue', () => {
+    const a = generateIdempotencyKey('guest_order', 'venue-a:T-01', { idempotency_key: 'k-1' });
+    const b = generateIdempotencyKey('guest_order', 'venue-b:T-01', { idempotency_key: 'k-1' });
+    expect(a).not.toBe(b);
   });
 
   it('tells apart two different carts of the same length', () => {

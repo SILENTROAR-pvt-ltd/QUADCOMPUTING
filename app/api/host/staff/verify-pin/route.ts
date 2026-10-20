@@ -51,8 +51,9 @@ export const POST = withApiErrorBoundary(async function POST(request: Request) {
     });
   }
 
-  // On successful PIN authentication, reset failure counter
-  await resetPinFailures(ip, businessId);
+  // Only a correct master PIN clears the counter. A staff PIN is a different secret: letting its success clear the
+  // counter would let a guesser alternate wrong master PINs with a known staff PIN and never reach the limit.
+  if (data.staff?.isAdmin) await resetPinFailures(ip, businessId);
 
   const response = NextResponse.json(data, { status });
   // A correct master PIN unlocks the owner's protected sections for a short time. The server holds that unlock in a signed

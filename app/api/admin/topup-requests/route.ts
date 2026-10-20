@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/auth/guards';
+import { adminDb } from '@/lib/supabase/admin';
 import {
   getAllTopupRequests,
   approveTopupRequest,
@@ -40,7 +41,7 @@ export const POST = withApiErrorBoundary(async function POST(request: Request) {
     const reviewer = adminAuth.adminId;
 
     if (action === 'approve') {
-      return NextResponse.json(await approveTopupRequest(adminAuth.supabase, requestId, reviewer));
+      return NextResponse.json(await approveTopupRequest(adminDb(), requestId, reviewer));
     }
     if (action === 'reject') {
       const why = typeof reason === 'string' && reason.trim() ? reason.trim().slice(0, 300) : 'Payment verification failed';

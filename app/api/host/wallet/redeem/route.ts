@@ -11,10 +11,13 @@ export const POST = withApiErrorBoundary(async function POST(request: Request) {
     const { businessId } = auth;
 
     const body = await request.json();
-    if (body.cafe_id && body.cafe_id !== businessId) {
-      return NextResponse.json({ success: false, error: 'Forbidden: Cafe mismatch' }, { status: 403 });
+    // The venue is the signed-in session's, whatever the body names. verifyRedemptionCode resolves the venue from
+    // business_id first, so both names are bound here; a code of another venue then fails its venue check.
+    if ((body.cafe_id && body.cafe_id !== businessId) || (body.business_id && body.business_id !== businessId)) {
+      return NextResponse.json({ success: false, error: 'Forbidden: Business mismatch' }, { status: 403 });
     }
     body.cafe_id = businessId;
+    body.business_id = businessId;
 
     // Not replayed from the idempotency cache: a cached "verified" answer would outlive the
     // code being used on a bill. verifyRedemptionCode is itself safe to repeat (its status

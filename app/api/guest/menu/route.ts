@@ -5,6 +5,8 @@ import { withApiErrorBoundary } from '@/lib/middleware/error-handler';
 import { enforceRateLimit } from '@/lib/middleware/rate-limiter';
 import { loadVenueMenuWithSource } from '@/lib/services/guest-menu/venue-menu-cache';
 
+// Edge: the menu is the first thing a guest loads after a QR scan, and a Node cold start added most of its latency.
+export const runtime = 'edge';
 
 const categoryPriority = (cat?: string) => {
   const c = (cat || '').toLowerCase();
@@ -28,6 +30,10 @@ function findMatchingTable(tables: any[], tableParam: string, businessId: string
 
 export const GET = withApiErrorBoundary(async function GET(request: Request) {
   try {
+    // Per-address cap before any venue lookup: an unknown identifier costs database queries, and the per-venue limit
+    // below only runs once a venue has resolved.
+    const perAddress = await enforceRateLimit(request, 'guest_menu_ip', 600, 60_000);
+    if (perAddress) return perAddress;
     const { searchParams } = new URL(request.url);
     const tableParamRaw = searchParams.get('table') || searchParams.get('table_number') || 'T-01';
     const cafeParamRaw = searchParams.get('cafe_id') || searchParams.get('venue') || searchParams.get('business_id');

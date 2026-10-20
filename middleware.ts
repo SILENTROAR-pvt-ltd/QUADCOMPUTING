@@ -3,6 +3,8 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { getVerifiedUser } from '@/lib/auth/verified-user';
 import { staffMayCall } from '@/lib/services/staff-auth/staff-roles';
 import { readStaffSession, staffSecret, staffTokenFromCookieHeader, STAFF_COOKIE } from '@/lib/services/staff-auth/staff-session';
+import { canonicalApiPath } from '@/lib/middleware/api-path';
+import { adminAal2Failure } from '@/lib/auth/admin-aal';
 
 /**
  * The hot public guest endpoints (menu, catalog, order, session status) never read a Supabase user: a guest's identity
@@ -15,7 +17,9 @@ const HOT_GUEST_API = new Set(['/api/guest/menu', '/api/guest/catalog', '/api/gu
 const isPublicGuestPath = (pathname: string) => HOT_GUEST_API.has(pathname);
 
 export async function middleware(request: NextRequest) {
-  if (isPublicGuestPath(request.nextUrl.pathname)) return NextResponse.next({ request });
+  // `/api/v1/...` is rewritten to `/api/...` after this runs, so every guard below reads the canonical path.
+  const pathname = canonicalApiPath(request.nextUrl.pathname);
+  if (isPublicGuestPath(pathname)) return NextResponse.next({ request });
 
   let supabaseResponse = NextResponse.next({
     request,
@@ -46,7 +50,6 @@ export async function middleware(request: NextRequest) {
   // expired session through the cookie handlers above.
   const user = await getVerifiedUser(supabase);
 
-  const pathname = request.nextUrl.pathname;
   const isApiHostRoute = pathname.startsWith('/api/host');
   const isApiAdminRoute = pathname.startsWith('/api/admin');
   const isAdminPageRoute = pathname.startsWith('/admin');
@@ -82,6 +85,8 @@ export async function middleware(request: NextRequest) {
         { status: 403 }
       );
     }
+    const aalDenied = await adminAal2Failure(supabase);
+    if (aalDenied) return aalDenied;
   }
 
   // 2. Admin Page Protection: non-admin sent to /auth/host

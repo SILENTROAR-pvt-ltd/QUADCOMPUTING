@@ -1,0 +1,44 @@
+# Proves the production configuration is complete before anything is promoted.
+#
+# This workflow is the only one that references production secrets, and it is never triggered by a pull request: a PR
+# edits the workflow files it runs under, so a secret referenced in a workflow with a pull_request trigger is reachable
+# from any same-repository PR. The two settings that make this hold are outside the repository and are checked in
+# docs/launch/platform-settings-checklist.md:
+#   1. every secret below is defined on the "production" environment only, never as a repository secret;
+#   2. the "production" environment admits deployments from the main branch only, with a required reviewer.
+name: Production configuration
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-config-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  production-config:
+    name: Production configuration check
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - name: Verify required environment
+        run: node scripts/verify-env.mjs
+        env:
+          VERIFY_ENV_STRICT: '1'
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
+          UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
+          RATE_LIMIT_REQUIRE_REDIS: ${{ vars.RATE_LIMIT_REQUIRE_REDIS }}
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          QC_PRODUCTION_SUPABASE_HOST: ${{ vars.QC_PRODUCTION_SUPABASE_HOST }}

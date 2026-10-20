@@ -5,7 +5,8 @@ on:
   push:
     branches: [main]
 
-# Read-only token by default; only the deploy-config job below ever receives secrets.
+# Read-only token, and no secrets anywhere in this workflow: it runs on pull requests, whose branch controls these
+# files. The production configuration check lives in production-config.yml, which only a push to main triggers.
 permissions:
   contents: read
 
@@ -113,29 +114,3 @@ jobs:
       # Keeps page weight from creeping up: a route over its first-load budget fails the build.
       - name: Bundle budget
         run: node scripts/check-bundle-budget.mjs build.log
-
-  # Runs only on main, and only when production secrets are exposed to a protected "production"
-  # environment. Proves the production configuration is complete before anything is promoted.
-  production-config:
-    name: Production configuration check
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    needs: [build, audit]
-    runs-on: ubuntu-latest
-    environment: production
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: .nvmrc
-      - name: Verify required environment
-        run: node scripts/verify-env.mjs
-        env:
-          VERIFY_ENV_STRICT: '1'
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
-          UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
-          RATE_LIMIT_REQUIRE_REDIS: ${{ vars.RATE_LIMIT_REQUIRE_REDIS }}
-          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}

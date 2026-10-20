@@ -3,7 +3,9 @@ import { saveActiveOrder } from '@/lib/store/active-order-store';
 export async function executeOrderMutation(
   supabase: any,
   orderData: Record<string, any>,
-  existingOrderId: string | null
+  existingOrderId: string | null,
+  // The status a first save takes when none is given: open for a bill whose settlement follows in the same request.
+  insertDefaultStatus: string = 'SETTLED',
 ): Promise<any> {
   if (existingOrderId) {
     // A field left undefined (the status of a table order that settles in the same request) is not touched.
@@ -23,7 +25,7 @@ export async function executeOrderMutation(
   const insertPayload = {
     id: existingOrderId || generatedId,
     ...orderData,
-    status: orderData.status ?? 'SETTLED',
+    status: orderData.status ?? insertDefaultStatus,
     created_at: new Date().toISOString(),
   };
 

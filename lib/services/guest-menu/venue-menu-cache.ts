@@ -8,6 +8,8 @@
  *  - serve-stale: if the database fails, the last good copy (up to STALE_MS old) is served rather than an error.
  * The cache is per server instance, which is fine: it only bounds database reads, it is never the source of truth.
  */
+import { sharedDel, sharedGet, sharedSet } from '@/lib/cache/shared-cache';
+
 export interface VenueMenuData {
   business: any;
   tables: any[];
@@ -16,13 +18,17 @@ export interface VenueMenuData {
 
 export const FRESH_MS = 15_000;
 export const STALE_MS = 5 * 60_000;
+// A venue that does not exist is remembered in the shared cache for this long: an unknown id otherwise costs every
+// instance three service-role reads per request.
+export const MISS_MS = 60_000;
 const MAX_VENUES = 300;
 
 const store = new Map<string, { at: number; value: VenueMenuData }>();
 const inflight = new Map<string, Promise<VenueMenuData | null>>();
+const sharedKey = (businessId: string) => `menu:v1:${businessId}`;
 
 export const clearVenueMenuCache = () => { store.clear(); inflight.clear(); };
-export const invalidateVenueMenu = (businessId: string) => { store.delete(businessId); };
+export const invalidateVenueMenu = (businessId: string) => { store.delete(businessId); void sharedDel(sharedKey(businessId)); };
 
 async function readFromDatabase(db: any, businessId: string): Promise<VenueMenuData | null> {
   const [biz, tables, items] = await Promise.all([
@@ -37,8 +43,11 @@ async function readFromDatabase(db: any, businessId: string): Promise<VenueMenuD
   return { business: biz.data, tables: tables.data || [], items: items.data || [] };
 }
 
-/** How a menu read was served: from memory, by joining a read already running, or by reading the database. */
-export type MenuSource = 'HIT' | 'SHARED' | 'MISS';
+/**
+ * How a menu read was served: from this instance's memory, by joining a read already running here, from the cache
+ * shared by all instances, or by reading the database.
+ */
+export type MenuSource = 'HIT' | 'SHARED' | 'REDIS' | 'MISS';
 
 /** The venue's menu data. Returns null for a venue that does not exist; throws only when there is no copy to fall back on. */
 export async function loadVenueMenu(db: any, businessId: string, now = Date.now()): Promise<VenueMenuData | null> {
@@ -54,14 +63,20 @@ export async function loadVenueMenuWithSource(
   const running = inflight.get(businessId);
   if (running) return { value: await running, source: 'SHARED' };
 
+  let source: MenuSource = 'MISS';
   const job = (async () => {
     try {
-      const value = await readFromDatabase(db, businessId);
+      // Another instance may have read this venue moments ago (or found that it does not exist).
+      const shared = await sharedGet<VenueMenuData | null>(sharedKey(businessId));
+      if (shared !== undefined) source = 'REDIS';
+      const value = shared !== undefined ? shared : await readFromDatabase(db, businessId);
       if (value) {
         if (store.size >= MAX_VENUES) store.delete(store.keys().next().value as string);
         store.set(businessId, { at: now, value });
+        if (shared === undefined) void sharedSet(sharedKey(businessId), value, FRESH_MS);
       } else {
         store.delete(businessId);
+        if (shared === undefined) void sharedSet(sharedKey(businessId), null, MISS_MS);
       }
       return value;
     } catch (err) {
@@ -72,5 +87,6 @@ export async function loadVenueMenuWithSource(
     }
   })();
   inflight.set(businessId, job);
-  return { value: await job, source: 'MISS' };
+  const value = await job;
+  return { value, source };
 }
