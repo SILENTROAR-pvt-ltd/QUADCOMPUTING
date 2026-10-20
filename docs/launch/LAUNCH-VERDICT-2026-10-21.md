@@ -17,11 +17,12 @@ Final update 2026-10-21 01:00 IST after the Vercel settings read-back.
 
 ### Recommendations (do soon; none blocks launch)
 
-1. Vercel: remove the **Preview** scope from `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN`, and mark the
-   token Sensitive. Until then a branch build can read the production Upstash token (it can disturb rate-limit and
-   idempotency keys, not venue data).
-2. Vercel: set a dedicated `STAFF_SESSION_SECRET` in Production. Staff sessions and the master unlock are signed
-   with the service-role key as the fallback today.
+1. ~~Vercel: remove the **Preview** scope from the Upstash pair and mark the token Sensitive~~ — **done 2026-10-21**
+   in the dashboard: both Production-only, token Sensitive. Follow-up: rotate the Upstash token in the Upstash console
+   at some point, since Vercel notes its value was readable before it was marked Sensitive.
+2. Vercel: set a dedicated `STAFF_SESSION_SECRET` in Production (the owner enters the value). Generate one with
+   `node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"`, add it as a Sensitive variable
+   in the Production scope, redeploy. Everyone's staff and master sessions end once; they sign in again.
 3. Sentry: set `NEXT_PUBLIC_SENTRY_DSN` (and an auth token for source maps). Production errors are not reported
    anywhere today, as the build log warns.
 
@@ -164,6 +165,7 @@ so none of these fixes has an independent re-check.
 | 2026-10-21 | GitHub settings read: no secrets anywhere; `production-config` failed on all 10 runs for that reason; deleted with the owner's approval (`f3b5a0c`) |
 | 2026-10-21 | Vercel settings read: service-role key Production-only; Upstash pair also in Preview; no staging project; previews behind Vercel Authentication |
 | 2026-10-21 | **Verdict: launch-ready**, with the recommendations and accepted risks above |
+| 2026-10-21 | Recommendation 1 done in the Vercel dashboard: Upstash URL and token Production-only, token Sensitive |
 
 Optional release tag once step 4 is done:
 
