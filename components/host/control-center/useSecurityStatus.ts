@@ -8,7 +8,23 @@ export interface SecurityStatus {
 }
 
 const UNLOCK_KEY = 'master_admin_unlocked';
-export const markUnlocked = (on: boolean) => (on ? sessionStorage.setItem(UNLOCK_KEY, 'true') : sessionStorage.removeItem(UNLOCK_KEY));
+
+/**
+ * Locking must reach the server: the unlock itself is an HttpOnly cookie the server set at PIN entry, which the page
+ * cannot remove. Without this call, "Lock now" hid the sections but every write behind the master PIN still went
+ * through from this browser until the cookie expired. keepalive lets the request finish even if the page navigates.
+ */
+const lockOnServer = () => {
+  try {
+    void fetch('/api/host/security/lock', { method: 'POST', keepalive: true, cache: 'no-store' }).catch(() => undefined);
+  } catch { /* the page's own flag is cleared regardless; the cookie expires on its own within minutes */ }
+};
+
+export const markUnlocked = (on: boolean) => {
+  if (on) { sessionStorage.setItem(UNLOCK_KEY, 'true'); return; }
+  sessionStorage.removeItem(UNLOCK_KEY);
+  lockOnServer();
+};
 
 /**
  * The venue's PIN settings and whether this browser session has entered the master PIN.

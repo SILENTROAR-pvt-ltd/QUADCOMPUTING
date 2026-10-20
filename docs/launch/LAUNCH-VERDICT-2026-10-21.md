@@ -79,16 +79,32 @@ Vercel dashboard, not from this machine).
    Block 6 (Unified Logs, Postgres, last 24 hours, message contains `permission denied for function`): no rows.
    Note: with one pilot venue and little traffic, an empty log only shows that nothing that ran hit a revoked
    function; step 3 is what exercises every caller.
-3. Smoke test against the deployed `0785fe4` build with a dummy venue only (staging if one exists, otherwise a test
-   venue on production): guest order and kitchen cancel; settle a bill, then settle it again and expect 409
-   `SESSION_ALREADY_SETTLED`; staff PIN login; an owner write behind the master PIN with and without the unlock;
-   admin top-up approval. The per-step expectations are in `docs/launch/platform-settings-checklist.md`.
+3. Smoke test on the live `0785fe4` build, venue Bombay Rasoi (the owner's own pilot venue, used as the test venue
+   at the owner's choice), run 2026-10-21 23:49-23:58 IST in the Browser pane with the owner signed in:
+   - Guest order from the QR menu (table T-07, 1 Cutting Chai, order `f39806e4…`): **pass**. POST 200, ticket
+     KOT-7180 on the kitchen screen, "Start preparing" PATCH 200. The guest-facing order payload carried no customer
+     name, phone or idempotency key. The product has no "cancel ticket" control in the kitchen UI or its API, so a
+     kitchen cancel is not a user flow; the ticket was advanced instead, which exercises the same database function.
+   - Settle the bill from Billing (cash): **pass**. 200; session closed, table vacant, ₹0.70 cashback credited, ₹3
+     platform fee recorded (as outstanding: the venue wallet held ₹0).
+   - Settle the same visit again (the till's request naming the closed session, no order): **pass**, 409
+     `SESSION_ALREADY_SETTLED`. Retry of the settled order itself: 200, cashback 0, inventory `already_deducted`.
+   - Staff PIN sign-in: **pass** (run and confirmed by the owner).
+   - Owner write behind the master PIN, locked then unlocked: run and reported passing by the owner, then
+     **corroborated and found a gap**. With the master session unlocked, a no-op catalog price write returned 200
+     (correct). After pressing "Lock now" in the UI, the same write still returned 200. Cause: "Lock now" cleared only
+     the page's `sessionStorage` flag; the server-held unlock cookie set at PIN entry (15 minutes) was never cleared,
+     so writes behind the master PIN kept passing from that browser until it expired. The guard itself refuses a
+     request without the cookie (tested), so the gap is in the lock, not the guard.
+     **Fixed in `app/api/host/security/lock/route.ts` + `useSecurityStatus.ts`** (lock clears the cookie; test added).
+     Needs a deploy and a re-run of this step: locked write must return 403 `MASTER_UNLOCK_REQUIRED`.
+   - Admin top-up approval: **pass** (run and confirmed by the owner).
 4. Platform settings: check every row of `docs/launch/platform-settings-checklist.md` (GitHub `production`
    environment rules and secret scope; Vercel scopes and `QC_PRODUCTION_SUPABASE_HOST`; edge header check). A
    preview build of any branch must log `[verify-env] checking non-production configuration` with no `FAIL`.
-5. Owners with no master PIN (block 5 of the launch checks, run 2026-10-21): exactly one venue, **Bombay Rasoi**
-   (`189664b2-99e7-4d45-ac50-ffb647ef97df`). Its owner sees the in-app notice at next sign-in; closed when they set a
-   PIN under Profile → Security (block 5 then returns no rows).
+5. ~~Owners with no master PIN~~ (done): block 5 listed exactly one venue, **Bombay Rasoi**
+   (`189664b2-99e7-4d45-ac50-ffb647ef97df`); its owner set a master PIN during the smoke test on 2026-10-21
+   (`/api/host/security/status` → `isAdminPinSet: true`). Block 5 should now return no rows.
 
 Until step 3 is done, the fixes for NV-02, NV-03, NV-07, NV-09, NV-14, NV-15 and NV-19 are verified by tests,
 reading and the database read-back only, not by exercising the running system. The audit run (run 2) stays `incomplete`: its verifier budget is spent,
@@ -109,6 +125,8 @@ so none of these fixes has an independent re-check.
 | 2026-10-21 | Launch check block 5 run on production: one venue without a master PIN (Bombay Rasoi) |
 | 2026-10-21 | Launch checks blocks 1-4 run on production: all as expected; migration 3 confirmed; `verify_staff_pin` absent and unused |
 | 2026-10-21 | Block 6: no `permission denied for function` rows in the last 24 hours of Postgres logs |
+| 2026-10-21 | Smoke test on the live build (Bombay Rasoi): guest order, kitchen, settle, repeat-settle 409, staff PIN, top-up approval pass; master PIN set on the venue |
+| 2026-10-21 | Smoke test finding: "Lock now" did not clear the server unlock cookie, so writes behind the master PIN still passed after locking. Fixed (`/api/host/security/lock`), pending deploy and re-test |
 
 Optional release tag once step 4 is done:
 

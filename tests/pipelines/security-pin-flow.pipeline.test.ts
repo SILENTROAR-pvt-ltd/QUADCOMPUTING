@@ -13,7 +13,9 @@ vi.mock('@/lib/middleware/rate-limiter', async () => {
 });
 import { POST as setPin } from '@/app/api/host/security/pin/route';
 import { GET as status } from '@/app/api/host/security/status/route';
+import { POST as lock } from '@/app/api/host/security/lock/route';
 import { verifyPinCode } from '@/app/api/host/staff/verify-pin/verify-pin.service';
+import { MASTER_UNLOCK_COOKIE } from '@/lib/services/security/master-unlock';
 
 const post = (body: any) => setPin(new Request('http://x/api/host/security/pin', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }));
 const readStatus = async () => (await (await status(new Request('http://x/api/host/security/status'))).json());
@@ -57,6 +59,15 @@ describe('Master PIN, end to end', () => {
     await post({ kind: 'admin', pin: '4821', currentPin: '' });
     expect(await (await post({ kind: 'admin', pin: null, currentPin: '4821' })).json()).toMatchObject({ isAdminPinSet: false });
     expect((await readStatus()).isAdminPinActive).toBe(false);
+  });
+
+  it('"Lock now" clears the server-held unlock cookie, not just the page flag', async () => {
+    const res = await lock(new Request('http://x/api/host/security/lock', { method: 'POST', headers: { cookie: `${MASTER_UNLOCK_COOKIE}=whatever` } }));
+    expect(res.status).toBe(200);
+    const setCookie = res.headers.get('set-cookie') || '';
+    expect(setCookie).toContain(`${MASTER_UNLOCK_COOKIE}=;`);
+    expect(setCookie.toLowerCase()).toMatch(/max-age=0/);
+    expect(setCookie.toLowerCase()).toContain('httponly');
   });
 
   it('keeps master and staff PINs different', async () => {
