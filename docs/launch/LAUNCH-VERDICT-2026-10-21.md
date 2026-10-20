@@ -1,13 +1,14 @@
 # Quad Computing launch verdict, 2026-10-21
 
-**Verdict: NOT YET LAUNCH-READY; code, database and repository are complete, and the deployment of the fixed code is
-pending confirmation.** Every open audit item (NV-01 to NV-19) has a fix on `origin/main` (`98f3e29`, which includes
-`faff057` and the earlier batch `5734e2f`) or a migration applied to the database, and the full gate passes. The
-Vercel deployment made before the push (2026-10-21) was built from `cca0078` and carries no fixes; the push should
-have started a new build of `98f3e29`. The verdict turns to launch-ready when that build is confirmed live and the
-"Remaining steps" below are checked off, and not before.
+**Verdict: NOT YET LAUNCH-READY; code, database, repository and deployment are complete, and validation of the
+running system is what remains.** Every open audit item (NV-01 to NV-19) has a fix on `origin/main` (`0785fe4`,
+which includes `faff057` and the earlier batch `5734e2f`) or a migration applied to the database; the full gate
+passes, including under Vercel's build conditions; and the production deployment `dpl_Hd8qngcFk72beMPDaEb7nuwBGj1r`
+is reported Ready from `0785fe4`. The verdict turns to launch-ready when the "Remaining steps" below are checked
+off, and not before: none of the fixes has yet been exercised against the running system.
 
-Updated 2026-10-21 after the push of `main` to GitHub (`origin/main` = `98f3e29`, confirmed with `git fetch`).
+Updated 2026-10-21 after the deployment of `0785fe4` (reported by the user; the deployment's commit is read from the
+Vercel dashboard, not from this machine).
 
 ## Gate on the working tree (run 2026-10-21)
 
@@ -51,28 +52,24 @@ Updated 2026-10-21 after the push of `main` to GitHub (`origin/main` = `98f3e29`
 - Migration `20261021000003`: applied on 2026-10-21 per the user. Not yet confirmed by a read-back: block 4 of
   `scripts/db/launch-checks-20261021.sql` must return `has_session_guard = true` and
   `has_server_cashback_base = true`. Until it does, the database side of NV-03 and NV-19 is reported, not verified.
-- Source: `origin/main` is `98f3e29` (confirmed by `git fetch` on 2026-10-21). It holds the remediation `faff057`
-  (61 files) and the earlier lead-fix batch `5734e2f` (NV-01 to NV-24 of run 1). The push also triggers the
-  `production-config` workflow, which must pass (its result is not visible from this machine).
-- Deployment: the Vercel deployment made before the push was built from `cca0078` and carries no fixes. The push
-  should have started a build of `98f3e29`; the Vercel dashboard shows the commit on each deployment, and the
-  production deployment must read `98f3e29` for the fixes to be live. Until it does, NV-01, NV-02, NV-07, NV-09,
-  NV-11, NV-13, NV-14, NV-15 and every run-1 lead fix are not in effect.
-- Database and code are out of step until that build is live: the new settlement function accepts the old
-  application's calls (same signature), so the live app keeps working; the new database guards simply apply without
-  the application-side checks that `faff057` adds.
+- Source: `origin/main` is `0785fe4` (confirmed by `git fetch` on 2026-10-21). It holds the remediation `faff057`
+  (61 files), the earlier lead-fix batch `5734e2f` (NV-01 to NV-24 of run 1), and `0785fe4`, which pins `VERCEL` in
+  the test environment after the first Vercel build of `98f3e29` failed in the build-time suite. The push triggers
+  the `production-config` workflow, whose result is not visible from this machine.
+- Deployment: `dpl_Hd8qngcFk72beMPDaEb7nuwBGj1r`, reported Ready from `0785fe4`. The deployment made earlier the
+  same day from `cca0078` carried no fixes and is superseded. With this build live, every source fix is in effect.
+- Database and code are in step: migrations 1-3 applied (3 pending read-back), application from `0785fe4`.
 - Owners whose master PIN was cleared by block 2 of migration 1: not yet identified or told. Block 5 of the launch
   checks lists them; `MasterPinNotice` will show them a notice once `faff057` is deployed.
 
 ## Remaining steps to launch-ready
 
-1. ~~Push `main`~~ (done: `origin/main` = `98f3e29`). Open the production deployment in the Vercel dashboard and
-   confirm its commit is `98f3e29`; if Vercel did not build on the push, redeploy from that commit. Confirm the
-   `production-config` workflow run for `98f3e29` passed in GitHub Actions.
+1. ~~Push `main` and deploy~~ (done: `origin/main` = `0785fe4`; deployment `dpl_Hd8qngcFk72beMPDaEb7nuwBGj1r`
+   Ready). Still to confirm: the `production-config` workflow run for `0785fe4` passed in GitHub Actions.
 2. Read back the production checks: run blocks 1-5 of `scripts/db/launch-checks-20261021.sql` and the Logs Explorer
    query in block 6. Expected: 7 functions present with `anon_can`/`auth_can` false; one `session_version` row; audit
    table with RLS and 3 triggers; block 4 both true; no `permission denied for function` rows since the revoke.
-3. Smoke test against the deployed `98f3e29` build with a dummy venue only (staging if one exists, otherwise a test
+3. Smoke test against the deployed `0785fe4` build with a dummy venue only (staging if one exists, otherwise a test
    venue on production): guest order and kitchen cancel; settle a bill, then settle it again and expect 409
    `SESSION_ALREADY_SETTLED`; staff PIN login; an owner write behind the master PIN with and without the unlock;
    admin top-up approval. The per-step expectations are in `docs/launch/platform-settings-checklist.md`.
@@ -81,8 +78,8 @@ Updated 2026-10-21 after the push of `main` to GitHub (`origin/main` = `98f3e29`
    preview build of any branch must log `[verify-env] checking non-production configuration` with no `FAIL`.
 5. Owners with no master PIN (block 5 of the launch checks): confirm each has set one or has seen the notice.
 
-Until steps 1-3 are done, the fixes for NV-02, NV-03, NV-07, NV-09, NV-14, NV-15 and NV-19 are verified by tests
-and reading only, not by a running system. The audit run (run 2) stays `incomplete`: its verifier budget is spent,
+Until steps 2 and 3 are done, the fixes for NV-02, NV-03, NV-07, NV-09, NV-14, NV-15 and NV-19 are verified by
+tests and reading only, not by a running system. The audit run (run 2) stays `incomplete`: its verifier budget is spent,
 so none of these fixes has an independent re-check.
 
 ## Record
@@ -94,10 +91,12 @@ so none of these fixes has an independent re-check.
 | 2026-10-21 | Migration 20261021000003 applied (reported by the user; read-back pending) |
 | 2026-10-21 | Verdict update committed as `98f3e29` |
 | 2026-10-21 | Vercel deployment reported while `origin/main` was still `cca0078`: that build carries no fixes |
-| 2026-10-21 | `main` pushed; `origin/main` = `98f3e29` (confirmed). New Vercel build of `98f3e29` pending confirmation |
+| 2026-10-21 | `main` pushed; `origin/main` = `98f3e29` (confirmed). Vercel build of `98f3e29` failed in the build-time test suite (`VERCEL=1` in the container) |
+| 2026-10-21 | `0785fe4` pins `VERCEL` in the test environment; pushed; suite verified green under `VERCEL=1` locally |
+| 2026-10-21 | Deployment `dpl_Hd8qngcFk72beMPDaEb7nuwBGj1r` Ready from `0785fe4` (reported by the user) |
 
 Optional release tag once step 4 is done:
 
 ```bash
-git tag -a v1.0.0-rc.1 faff057 -m "Release candidate: audit run-2 remediation; staging validation pending"
+git tag -a v1.0.0-rc.1 0785fe4 -m "Release candidate: audit run-2 remediation; staging validation pending"
 ```
