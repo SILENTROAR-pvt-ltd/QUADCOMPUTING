@@ -120,6 +120,12 @@ on `catalog_items` and `restaurant_tables` for the public menu marquee; the gues
 channels, not table subscriptions, except two `postgres_changes` listeners on `venue_live_offers` that already receive
 nothing (the table has no anon policy) and fall back to polling.
 
+## Result after applying the migration (2026-10-21 00:45 UTC)
+
+Linter re-run: **0 errors, 2 warnings**: `get_auth_business_ids()` executable by `authenticated` (intentional: the
+RLS helper the host's own policies call; returns an empty array without a uid) and `auth_leaked_password_protection`
+(dashboard toggle, pending). Every other finding above is closed.
+
 ## Order of work
 
 1. Run block 7 (a-d) of `scripts/db/launch-checks-20261021.sql` on production and keep the output as the "before".

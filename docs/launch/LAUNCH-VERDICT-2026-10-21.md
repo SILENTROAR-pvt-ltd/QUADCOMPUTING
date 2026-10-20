@@ -166,6 +166,7 @@ so none of these fixes has an independent re-check.
 | 2026-10-21 | Vercel settings read: service-role key Production-only; Upstash pair also in Preview; no staging project; previews behind Vercel Authentication |
 | 2026-10-21 | **Verdict: launch-ready**, with the recommendations and accepted risks above |
 | 2026-10-21 | Recommendation 1 done in the Vercel dashboard: Upstash URL and token Production-only, token Sensitive |
+| 2026-10-21 | Database audit (`docs/launch/database-audit-2026-10-21.md`); migration `20261021000004_linter_hardening.sql` applied; linter now 0 errors, 2 known warnings |
 
 Optional release tag once step 4 is done:
 
