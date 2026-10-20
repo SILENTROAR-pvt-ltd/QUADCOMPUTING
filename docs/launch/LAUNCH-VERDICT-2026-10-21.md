@@ -75,9 +75,10 @@ Vercel dashboard, not from this machine).
 
 1. ~~Push `main` and deploy~~ (done: `origin/main` = `0785fe4`; deployment `dpl_Hd8qngcFk72beMPDaEb7nuwBGj1r`
    Ready). Still to confirm: the `production-config` workflow run for `0785fe4` passed in GitHub Actions.
-2. ~~Read back the production checks, blocks 1-5~~ (done 2026-10-21, all as expected; see "Production state").
-   Still to run: block 6, the Logs Explorer query for `permission denied for function` since the revoke; expected
-   no rows.
+2. ~~Read back the production checks, blocks 1-6~~ (done 2026-10-21, all as expected; see "Production state").
+   Block 6 (Unified Logs, Postgres, last 24 hours, message contains `permission denied for function`): no rows.
+   Note: with one pilot venue and little traffic, an empty log only shows that nothing that ran hit a revoked
+   function; step 3 is what exercises every caller.
 3. Smoke test against the deployed `0785fe4` build with a dummy venue only (staging if one exists, otherwise a test
    venue on production): guest order and kitchen cancel; settle a bill, then settle it again and expect 409
    `SESSION_ALREADY_SETTLED`; staff PIN login; an owner write behind the master PIN with and without the unlock;
@@ -107,6 +108,7 @@ so none of these fixes has an independent re-check.
 | 2026-10-21 | Deployment `dpl_Hd8qngcFk72beMPDaEb7nuwBGj1r` Ready from `0785fe4` (reported by the user) |
 | 2026-10-21 | Launch check block 5 run on production: one venue without a master PIN (Bombay Rasoi) |
 | 2026-10-21 | Launch checks blocks 1-4 run on production: all as expected; migration 3 confirmed; `verify_staff_pin` absent and unused |
+| 2026-10-21 | Block 6: no `permission denied for function` rows in the last 24 hours of Postgres logs |
 
 Optional release tag once step 4 is done:
 
