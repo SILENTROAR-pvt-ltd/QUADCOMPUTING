@@ -6,14 +6,24 @@ checked it in the last column; the launch verdict depends on every row being che
 
 ## GitHub (NV-07: production secrets reachable from a pull-request run)
 
-The repository now references production secrets only in `.github/workflows/production-config.yml`, which only a push
-to `main` triggers. That holds only with these settings:
+Checked on 2026-10-21: the repository has no repository-scoped secrets, and the `Production` environment has no
+secrets and no variables. GitHub therefore holds **no secrets at all**, which is the strongest answer to NV-07. The
+`production-config.yml` workflow, which expects production secrets on that environment, has failed on every push
+for the same reason (nothing to read). Owner decision, one of:
+
+- **(a) Recommended: delete `.github/workflows/production-config.yml`.** The same `scripts/verify-env.mjs` check
+  runs in strict mode inside every Vercel production build (`build:release` with `VERCEL_ENV=production`), where
+  the configuration lives, so the workflow is a duplicate. After deletion no workflow references `secrets.*`.
+- **(b) Keep it:** add `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` and `SUPABASE_SERVICE_ROLE_KEY`
+  (plus the Upstash pair and `LLM_API_KEY`) as *environment* secrets on `Production`, restrict its deployment
+  branches to `main`, and add a required reviewer. Secrets must be entered by the owner, never by an agent.
 
 | Setting | Value | Confirm | Checked |
 |---|---|---|---|
-| Settings > Environments > `production` > Deployment branches and tags | Selected branches: `main` only | A workflow run from any other ref shows "environment protection rules" and does not start | |
-| Settings > Environments > `production` > Required reviewers | At least one owner account | A push to `main` waits for approval before the job starts | |
-| Settings > Secrets and variables > Actions > Repository secrets | None of: `SUPABASE_SERVICE_ROLE_KEY`, `UPSTASH_REDIS_REST_TOKEN`, `LLM_API_KEY`, `STAFF_SESSION_SECRET`, `NEXT_PUBLIC_SUPABASE_*`, `UPSTASH_REDIS_REST_URL` | The repository-secrets list is empty of these names; each exists only under the `production` environment | |
+| Settings > Secrets and variables > Actions > Repository secrets | None | "This repository has no secrets" | 2026-10-21 |
+| Settings > Environments > `Production` > Environment secrets and variables | None | "This environment has no secrets / no variables" | 2026-10-21 |
+| `.github/workflows/*.yml` | No `secrets.` references (true once option (a) is done) | `grep -r "secrets\." .github/workflows` is empty | pending decision |
+| Settings > Environments > `Production` > Deployment branches | Recommended: `main` only (harmless while the environment holds nothing; required the day a secret is added) | | not set |
 | Settings > Actions > General > Fork pull request workflows | Require approval for all outside collaborators | | |
 | Settings > Actions > General > Workflow permissions | Read repository contents and packages permissions | | |
 

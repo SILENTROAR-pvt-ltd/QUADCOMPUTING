@@ -73,8 +73,12 @@ Vercel dashboard, not from this machine).
 
 ## Remaining steps to launch-ready
 
-1. ~~Push `main` and deploy~~ (done: `origin/main` = `0785fe4`; deployment `dpl_Hd8qngcFk72beMPDaEb7nuwBGj1r`
-   Ready). Still to confirm: the `production-config` workflow run for `0785fe4` passed in GitHub Actions.
+1. ~~Push `main` and deploy~~ (done; the live build is `44168f4`). The `production-config` workflow: checked on
+   GitHub 2026-10-21, it had **failed on every one of its 10 runs**, because the `Production` environment holds no
+   secrets (`verify-env` found no `NEXT_PUBLIC_SUPABASE_URL`, `ANON_KEY` or `SERVICE_ROLE_KEY`). GitHub holds no
+   secrets at all, repository or environment, which is the strongest answer to NV-07. The workflow duplicates the
+   strict `verify-env` that already runs inside every Vercel production build, so the recommendation is to delete
+   it rather than feed it secrets. **Owner decision pending** (see the checklist, GitHub section, options a/b).
 2. ~~Read back the production checks, blocks 1-6~~ (done 2026-10-21, all as expected; see "Production state").
    Block 6 (Unified Logs, Postgres, last 24 hours, message contains `permission denied for function`): no rows.
    Note: with one pilot venue and little traffic, an empty log only shows that nothing that ran hit a revoked
@@ -101,9 +105,14 @@ Vercel dashboard, not from this machine).
      still valid the write returned 200 (the old gap, observed live); after `POST /api/host/security/lock` the same
      write returned 403 `MASTER_UNLOCK_REQUIRED`. The UI's "Lock now" calls that endpoint (`markUnlocked(false)`).
    - Admin top-up approval: **pass** (run and confirmed by the owner).
-4. Platform settings: check every row of `docs/launch/platform-settings-checklist.md` (GitHub `production`
-   environment rules and secret scope; Vercel scopes and `QC_PRODUCTION_SUPABASE_HOST`; edge header check). A
-   preview build of any branch must log `[verify-env] checking non-production configuration` with no `FAIL`.
+4. Platform settings (`docs/launch/platform-settings-checklist.md`):
+   - GitHub: **read** 2026-10-21 in the Browser pane: no repository secrets, no environment secrets or variables;
+     `Production` deployment branches "No restriction", no required reviewer; `production-config` failing on every
+     run. Open decision: delete that workflow (recommended) or give the environment its secrets plus the branch
+     rule and reviewer.
+   - Vercel: **pending**. `QC_PRODUCTION_SUPABASE_HOST` in all three scopes; Preview/Development `SUPABASE_*`
+     pointing at a staging project (or, with no staging project, an accepted risk recorded here); a preview build
+     logging `[verify-env] checking non-production configuration` with no `FAIL`.
 5. ~~Owners with no master PIN~~ (done): block 5 listed exactly one venue, **Bombay Rasoi**
    (`189664b2-99e7-4d45-ac50-ffb647ef97df`); its owner set a master PIN during the smoke test on 2026-10-21
    (`/api/host/security/status` → `isAdminPinSet: true`). Block 5 should now return no rows.
