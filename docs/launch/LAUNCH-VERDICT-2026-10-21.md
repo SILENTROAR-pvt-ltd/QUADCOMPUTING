@@ -76,9 +76,9 @@ Vercel dashboard, not from this machine).
 1. ~~Push `main` and deploy~~ (done; the live build is `44168f4`). The `production-config` workflow: checked on
    GitHub 2026-10-21, it had **failed on every one of its 10 runs**, because the `Production` environment holds no
    secrets (`verify-env` found no `NEXT_PUBLIC_SUPABASE_URL`, `ANON_KEY` or `SERVICE_ROLE_KEY`). GitHub holds no
-   secrets at all, repository or environment, which is the strongest answer to NV-07. The workflow duplicates the
-   strict `verify-env` that already runs inside every Vercel production build, so the recommendation is to delete
-   it rather than feed it secrets. **Owner decision pending** (see the checklist, GitHub section, options a/b).
+   secrets at all, repository or environment, which is the strongest answer to NV-07. The workflow duplicated the
+   strict `verify-env` that already runs inside every Vercel production build, so with the owner's approval it was
+   **deleted** on 2026-10-21 rather than fed secrets. No workflow references `secrets.*` any more.
 2. ~~Read back the production checks, blocks 1-6~~ (done 2026-10-21, all as expected; see "Production state").
    Block 6 (Unified Logs, Postgres, last 24 hours, message contains `permission denied for function`): no rows.
    Note: with one pilot venue and little traffic, an empty log only shows that nothing that ran hit a revoked
@@ -106,10 +106,9 @@ Vercel dashboard, not from this machine).
      write returned 403 `MASTER_UNLOCK_REQUIRED`. The UI's "Lock now" calls that endpoint (`markUnlocked(false)`).
    - Admin top-up approval: **pass** (run and confirmed by the owner).
 4. Platform settings (`docs/launch/platform-settings-checklist.md`):
-   - GitHub: **read** 2026-10-21 in the Browser pane: no repository secrets, no environment secrets or variables;
-     `Production` deployment branches "No restriction", no required reviewer; `production-config` failing on every
-     run. Open decision: delete that workflow (recommended) or give the environment its secrets plus the branch
-     rule and reviewer.
+   - GitHub: **done** 2026-10-21 (read in the Browser pane): no repository secrets, no environment secrets or
+     variables, and after the deletion of `production-config.yml` no workflow references secrets. The `Production`
+     environment's "No restriction" on deployment branches is harmless while it holds nothing.
    - Vercel: **pending**. `QC_PRODUCTION_SUPABASE_HOST` in all three scopes; Preview/Development `SUPABASE_*`
      pointing at a staging project (or, with no staging project, an accepted risk recorded here); a preview build
      logging `[verify-env] checking non-production configuration` with no `FAIL`.
@@ -139,6 +138,7 @@ so none of these fixes has an independent re-check.
 | 2026-10-21 | Smoke test on the live build (Bombay Rasoi): guest order, kitchen, settle, repeat-settle 409, staff PIN, top-up approval pass; master PIN set on the venue |
 | 2026-10-21 | Smoke test finding: "Lock now" did not clear the server unlock cookie, so writes behind the master PIN still passed after locking. Fixed (`/api/host/security/lock`, `44168f4`) |
 | 2026-10-21 | `44168f4` deployed; re-test on the live build: write after lock → 403 `MASTER_UNLOCK_REQUIRED`. Smoke test complete, all steps pass |
+| 2026-10-21 | GitHub settings read: no secrets anywhere; `production-config` failed on all 10 runs for that reason; deleted with the owner's approval |
 
 Optional release tag once step 4 is done:
 

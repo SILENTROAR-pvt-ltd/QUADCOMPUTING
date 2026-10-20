@@ -9,20 +9,17 @@ checked it in the last column; the launch verdict depends on every row being che
 Checked on 2026-10-21: the repository has no repository-scoped secrets, and the `Production` environment has no
 secrets and no variables. GitHub therefore holds **no secrets at all**, which is the strongest answer to NV-07. The
 `production-config.yml` workflow, which expects production secrets on that environment, has failed on every push
-for the same reason (nothing to read). Owner decision, one of:
-
-- **(a) Recommended: delete `.github/workflows/production-config.yml`.** The same `scripts/verify-env.mjs` check
-  runs in strict mode inside every Vercel production build (`build:release` with `VERCEL_ENV=production`), where
-  the configuration lives, so the workflow is a duplicate. After deletion no workflow references `secrets.*`.
-- **(b) Keep it:** add `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` and `SUPABASE_SERVICE_ROLE_KEY`
-  (plus the Upstash pair and `LLM_API_KEY`) as *environment* secrets on `Production`, restrict its deployment
-  branches to `main`, and add a required reviewer. Secrets must be entered by the owner, never by an agent.
+for the same reason (nothing to read). Owner decision on 2026-10-21: **the workflow was deleted.** The same
+`scripts/verify-env.mjs` check runs in strict mode inside every Vercel production build (`build:release` with
+`VERCEL_ENV=production`), where the configuration lives, so the workflow was a duplicate. No workflow references
+`secrets.*` any more. Should a secret ever be added to GitHub, restrict the environment's deployment branches to
+`main` and add a required reviewer first.
 
 | Setting | Value | Confirm | Checked |
 |---|---|---|---|
 | Settings > Secrets and variables > Actions > Repository secrets | None | "This repository has no secrets" | 2026-10-21 |
 | Settings > Environments > `Production` > Environment secrets and variables | None | "This environment has no secrets / no variables" | 2026-10-21 |
-| `.github/workflows/*.yml` | No `secrets.` references (true once option (a) is done) | `grep -r "secrets\." .github/workflows` is empty | pending decision |
+| `.github/workflows/*.yml` | No `secrets.` references | `grep -r "secrets\." .github/workflows` is empty | 2026-10-21 |
 | Settings > Environments > `Production` > Deployment branches | Recommended: `main` only (harmless while the environment holds nothing; required the day a secret is added) | | not set |
 | Settings > Actions > General > Fork pull request workflows | Require approval for all outside collaborators | | |
 | Settings > Actions > General > Workflow permissions | Read repository contents and packages permissions | | |
