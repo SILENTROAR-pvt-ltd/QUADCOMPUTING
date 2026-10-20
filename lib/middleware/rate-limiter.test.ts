@@ -72,26 +72,36 @@ describe('PHASE 2D: Sliding Window Rate Limiter', () => {
     expect(status.remaining).toBe(PIN_FAIL_LIMIT);
   });
 
+  /** Runs `fn` with the given variables set (undefined = unset) and restores them after, so the host's own
+   *  environment (Vercel's build container sets VERCEL=1) never decides which branch a test exercises. */
+  const withEnv = (vars: Record<string, string | undefined>, fn: () => void) => {
+    const saved = Object.fromEntries(Object.keys(vars).map((k) => [k, process.env[k]]));
+    for (const [k, v] of Object.entries(vars)) { if (v === undefined) delete process.env[k]; else process.env[k] = v; }
+    try { fn(); } finally {
+      for (const [k, v] of Object.entries(saved)) { if (v === undefined) delete process.env[k]; else process.env[k] = v; }
+    }
+  };
+  const offVercel = (vars: Record<string, string | undefined>, fn: () => void) => withEnv({ VERCEL: undefined, ...vars }, fn);
+
   it('behind one declared proxy, reads the hop that proxy appended and nothing the client sent', () => {
-    // vitest.config.ts sets TRUSTED_PROXY_HOPS=1: the last x-forwarded-for entry is the one the proxy appended.
-    const reqWithForwarded = new Request('http://localhost', {
-      headers: { 'x-forwarded-for': '203.0.113.195, 70.41.3.18, 150.172.238.178' },
-    });
-    expect(getClientIp(reqWithForwarded)).toBe('150.172.238.178');
+    offVercel({ TRUSTED_PROXY_HOPS: '1' }, () => {
+      const reqWithForwarded = new Request('http://localhost', {
+        headers: { 'x-forwarded-for': '203.0.113.195, 70.41.3.18, 150.172.238.178' },
+      });
+      expect(getClientIp(reqWithForwarded)).toBe('150.172.238.178');
 
-    const reqWithRealIp = new Request('http://localhost', {
-      headers: { 'x-real-ip': '198.51.100.24' },
-    });
-    expect(getClientIp(reqWithRealIp)).toBe('198.51.100.24');
+      const reqWithRealIp = new Request('http://localhost', {
+        headers: { 'x-real-ip': '198.51.100.24' },
+      });
+      expect(getClientIp(reqWithRealIp)).toBe('198.51.100.24');
 
-    const reqFallback = new Request('http://localhost');
-    expect(getClientIp(reqFallback)).toBe(UNVERIFIED_CLIENT);
+      const reqFallback = new Request('http://localhost');
+      expect(getClientIp(reqFallback)).toBe(UNVERIFIED_CLIENT);
+    });
   });
 
   it('with no proxy declared and not on Vercel, a client naming its own address gets no bucket of its own', () => {
-    const previous = process.env.TRUSTED_PROXY_HOPS;
-    delete process.env.TRUSTED_PROXY_HOPS;
-    try {
+    offVercel({ TRUSTED_PROXY_HOPS: undefined, TRUST_CF_CONNECTING_IP: undefined }, () => {
       const spoofs: Array<Record<string, string>> = [
         { 'x-forwarded-for': '203.0.113.9' },
         { 'x-real-ip': '203.0.113.9' },
@@ -101,24 +111,16 @@ describe('PHASE 2D: Sliding Window Rate Limiter', () => {
       for (const headers of spoofs) {
         expect(getClientIp(new Request('http://localhost', { headers }))).toBe(UNVERIFIED_CLIENT);
       }
-    } finally {
-      if (previous === undefined) delete process.env.TRUSTED_PROXY_HOPS;
-      else process.env.TRUSTED_PROXY_HOPS = previous;
-    }
+    });
   });
 
   it('two declared proxies: the client is the second entry from the end', () => {
-    const previous = process.env.TRUSTED_PROXY_HOPS;
-    process.env.TRUSTED_PROXY_HOPS = '2';
-    try {
+    offVercel({ TRUSTED_PROXY_HOPS: '2' }, () => {
       const req = new Request('http://localhost', { headers: { 'x-forwarded-for': 'spoofed, 198.51.100.7, 10.0.0.2' } });
       expect(getClientIp(req)).toBe('198.51.100.7');
       // Fewer hops than declared: the chain is incomplete, so nothing in it is trusted.
       expect(getClientIp(new Request('http://localhost', { headers: { 'x-forwarded-for': '10.0.0.2' } }))).toBe(UNVERIFIED_CLIENT);
-    } finally {
-      if (previous === undefined) delete process.env.TRUSTED_PROXY_HOPS;
-      else process.env.TRUSTED_PROXY_HOPS = previous;
-    }
+    });
   });
 
   it('on Vercel, trusts only the edge-set address and ignores a spoofed x-forwarded-for', () => {
