@@ -23,7 +23,7 @@ export async function currentStaff(venue: VenueRef): Promise<StaffSession | null
   const jar = await cookies();
   const session = await readStaffSession(jar.get(STAFF_COOKIE)?.value, staffSecret());
   if (!session || session.bid !== venue.id) return null;
-  return (await staffStillValid(adminDb(), venue.id, session.sid, session.role)) ? session : null;
+  return (await staffStillValid(adminDb(), venue.id, session.sid, session.role, session.sv)) ? session : null;
 }
 
 /** Whether the signed-in owner (a real host session) owns this venue. They may open every terminal. */

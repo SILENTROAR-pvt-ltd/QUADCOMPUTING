@@ -13,7 +13,7 @@ async function stillValid(session: StaffSession): Promise<boolean> {
   const hit = checked.get(key);
   const now = Date.now();
   if (hit && now - hit.at < FRESH_MS) return hit.ok;
-  const ok = await staffStillValid(adminDb(), session.bid, session.sid, session.role).catch(() => false);
+  const ok = await staffStillValid(adminDb(), session.bid, session.sid, session.role, session.sv).catch(() => false);
   checked.set(key, { ok, at: now });
   if (checked.size > 500) checked.clear();
   return ok;

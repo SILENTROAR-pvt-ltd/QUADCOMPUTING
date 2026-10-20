@@ -1,7 +1,8 @@
 // Sign in with @handle + 6-digit PIN, for people who set a PIN when they made their Vibers profile. One handle and one
 // PIN work at every property: at a venue the person has not visited yet, the PIN is checked against the one they set
 // elsewhere and this venue's guest record is created on the spot.
-import { isValidPin, nextFailureState, normalizeHandle, pinLockState, verifyPin } from '@/lib/auth/guest-auth';
+import { isValidPin, normalizeHandle, pinLockState, verifyPin } from '@/lib/auth/guest-auth';
+import { recordPinFailure } from './guest-account.service';
 import { findAccount, signIn, type GuestAuthResult } from './guest-account.service';
 import { connectVenue, pinFromOtherVenue } from './vibers-connect.service';
 
@@ -29,7 +30,7 @@ export async function pinSignIn(args: { db: any; businessId: string; rawHandle: 
     return { ok: false, status: 423, error: `Too many wrong PINs. Try again in ${Math.ceil(lock.retryAfterSeconds / 60)} min.`, retryAfterSeconds: lock.retryAfterSeconds };
   }
   if (!(await verifyPin(args.pin as string, { hash: reference.hash, salt: reference.salt }))) {
-    await db.from('guest_accounts').update(nextFailureState(reference.failed_attempts, now)).eq('id', reference.id);
+    await recordPinFailure(db, reference.id, now);
     return { ok: false, status: 401, error: REFUSED };
   }
   await db.from('guest_accounts').update({ failed_attempts: 0, locked_until: null }).eq('id', reference.id);

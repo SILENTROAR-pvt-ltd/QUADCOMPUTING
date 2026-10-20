@@ -9,6 +9,11 @@ const nameKey = (v: unknown) => {
   return GENERIC_NAMES.has(n) ? '' : `n:${n}`;
 };
 
+/** The key their details give on their own, with no lookup into existing ledger rows. */
+export function ownGuestKey(who: GuestIdentity): string | null {
+  return guestKey(who);
+}
+
 /**
  * The key this person already has at this venue, if a ledger row holds their handle, phone or email; otherwise the key
  * their details give. A guest who gave a phone once and an email the next is the same person.

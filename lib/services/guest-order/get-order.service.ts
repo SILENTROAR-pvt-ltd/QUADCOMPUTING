@@ -3,6 +3,12 @@ import { isValidUuid, CLOSED_STATUSES, normalizeCumulativeItems, buildTableOrFil
 import { resolveLatestKitchenTicket } from './active-ticket.util';
 import { ownVisitOrders } from './own-visit.util';
 
+/** The guest's own view of the open order: the bill and its items, never the customer's name or phone. */
+function guestSafeOrder<T extends Record<string, any> | null>(order: T): T {
+  if (!order) return order;
+  const { customer_name: _name, customer_phone: _phone, ...rest } = order;
+  return rest as T;
+}
 export async function getGuestActiveOrder(requestUrl: string, supabase: any) {
   const { searchParams } = new URL(requestUrl);
   const tableParamRaw = searchParams.get('table') || searchParams.get('table_number');
@@ -123,7 +129,7 @@ export async function getGuestActiveOrder(requestUrl: string, supabase: any) {
     (activeOrder?.status && ['preparing', 'ready', 'served'].includes(activeOrder.status.toLowerCase()) ? activeOrder.status.toUpperCase() : 'PENDING')) : null;
 
   return {
-    success: true, has_active_order: hasActive, order: activeOrder, items: normalizedItems,
+    success: true, has_active_order: hasActive, order: guestSafeOrder(activeOrder), items: normalizedItems,
     aggregated: aggregateOrderItems(normalizedItems), kot_status: derivedKot,
     ticket: latestTicket, is_bill_requested: isBillRequested, is_settled: isSettled, settled_total: settledTotal,
     cashback_credited: cashbackCredited,

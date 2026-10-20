@@ -4,7 +4,8 @@
 //   - nobody else's profile has it;
 //   - an old @handle + PIN account with it is linked only after its PIN is proven here;
 //   - a wallet that already exists under it is claimed only by the device that holds its claim.
-import { isValidPin, nextFailureState, normalizeDisplayName, normalizeHandle, normalizePhone, pinLockState, verifyPin } from '@/lib/auth/guest-auth';
+import { recordPinFailure } from './guest-account.service';
+import { isValidPin, normalizeDisplayName, normalizeHandle, normalizePhone, pinLockState, verifyPin } from '@/lib/auth/guest-auth';
 import { authorizeGuestIdentifiers } from '@/lib/services/wallet/wallet-claim.service';
 import { rebindWalletToDevice } from './guest-account.service';
 import { isTravellerType, normalizeIntro } from '@/lib/guest/traveller-types';
@@ -35,7 +36,7 @@ async function provePin(db: any, rows: any[], pin: unknown): Promise<ProfileResu
   for (const row of rows) {
     if (pinLockState(row.locked_until).locked) return { ok: false, status: 423, error: 'Too many wrong PINs. Try again later.' };
     if (!row.pin_hash || !(await verifyPin(pin as string, { hash: row.pin_hash, salt: row.pin_salt }))) {
-      await db.from('guest_accounts').update(nextFailureState(row.failed_attempts || 0)).eq('id', row.id);
+      await recordPinFailure(db, row.id, new Date());
       return { ok: false, status: 401, code: 'legacy_pin_required', error: 'That PIN is not right for this handle.' };
     }
   }

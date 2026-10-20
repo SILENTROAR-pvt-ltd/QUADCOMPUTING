@@ -93,9 +93,10 @@ describe('Guest order pipeline (guards in front of the atomic order function)', 
     expect(args.p_business_id).toBe(BIZ);
   });
 
-  it("an item from another venue's catalog gets no price (cannot borrow another tenant's menu)", async () => {
-    await order({ items: [{ item_id: FOREIGN_ITEM, quantity: 1, price: 999 }] }, freshIp());
-    expect(ctx.db.calls.rpc[0].args.p_order_items[0].price).toBe(0);
+  it("an item from another venue's catalog is refused (cannot borrow another tenant's menu)", async () => {
+    const res = await order({ items: [{ item_id: FOREIGN_ITEM, quantity: 1, price: 999 }] }, freshIp());
+    expect(res.status).toBe(400);
+    expect(ctx.db.calls.rpc).toHaveLength(0);
   });
 
   it('rejects a malformed table or an empty basket before touching the order function', async () => {

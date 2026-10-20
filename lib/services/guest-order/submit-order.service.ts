@@ -128,6 +128,23 @@ async function submitGuestOrderOnce(body: any, supabase: any) {
   );
   const stations = enabledStations(stationRes.data?.kitchen_stations);
 
+  // A failed menu read must not turn every line into an unpriced one.
+  if (catalogRes.error) {
+    const err: any = new Error('We could not check the menu just now. Please try again.');
+    err.status = 503;
+    throw err;
+  }
+  // Every line must be a dish on this venue's menu. A line without a match would be priced at 0 under a name the client chose.
+  const hasMatch = (item: any) => {
+    const id = item.item_id || item.id;
+    return typeof id === 'string' && catalogMap.has(id);
+  };
+  if (!incomingItems.every(hasMatch)) {
+    const err: any = new Error('Some items are not on this venue\'s menu. Please refresh the menu and try again.');
+    err.status = 400;
+    throw err;
+  }
+
   // The menu a guest holds can be minutes old. A dish the host has switched off since then must not reach the kitchen.
   // Only an explicit `false` blocks it: a row without the flag (null) still orders as before.
   const unavailable = incomingItems

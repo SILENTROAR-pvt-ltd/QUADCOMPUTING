@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireHost } from '@/lib/auth/guards';
 import { verifyPinCode } from './verify-pin.service';
+import { issueMasterUnlock, MASTER_UNLOCK_COOKIE, MASTER_UNLOCK_SECONDS } from '@/lib/services/security/master-unlock';
 import {
   getClientIp,
   recordPinFailure,
@@ -14,7 +15,7 @@ export const dynamic = 'force-dynamic';
 export const POST = withApiErrorBoundary(async function POST(request: Request) {
   const auth = await requireHost(request);
   if (auth.error) return auth.error;
-  const { businessId, supabase } = auth;
+  const { businessId, supabase, user } = auth;
 
   const ip = getClientIp(request);
 
@@ -53,5 +54,16 @@ export const POST = withApiErrorBoundary(async function POST(request: Request) {
   // On successful PIN authentication, reset failure counter
   await resetPinFailures(ip, businessId);
 
-  return NextResponse.json(data, { status });
+  const response = NextResponse.json(data, { status });
+  // A correct master PIN unlocks the owner's protected sections for a short time. The server holds that unlock in a signed
+  // cookie, so the browser cannot set it.
+  if (data.staff?.isAdmin && user?.id) {
+    const token = issueMasterUnlock(user.id, businessId);
+    if (token) {
+      response.cookies.set(MASTER_UNLOCK_COOKIE, token, {
+        httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', path: '/', maxAge: MASTER_UNLOCK_SECONDS,
+      });
+    }
+  }
+  return response;
 }, 'StaffVerifyPIN');

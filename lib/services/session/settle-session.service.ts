@@ -70,7 +70,7 @@ export async function settleAndVacateSession(body: any, supabase: any) {
       .eq('id', resolvedTableId)
       .eq('business_id', businessId)
       .maybeSingle();
-    if (t) { if (!rawTable) { rawTable = t.table_number || rawTable; normTable = normalizeTable(rawTable); } }
+    if (t) { if (!rawTable) { rawTable = t.table_number || rawTable; normTable = normalizeTable(rawTable); } } else { resolvedTableId = null; }
   } else if (rawTable && tableOr) {
     const { data: t } = await supabase
       .from('restaurant_tables')
@@ -94,13 +94,14 @@ export async function settleAndVacateSession(body: any, supabase: any) {
   };
 
   if (targetSessionId) {
-    const { data: s } = await supabase.from('dine_in_sessions').select(SESSION_GUEST_COLUMNS).eq('id', targetSessionId).maybeSingle();
-    if (s) { captureSessionGuest(s); businessId = s.business_id || businessId; resolvedTableId = resolvedTableId || (IS_UUID(s.table_id) ? s.table_id : null); if (!rawTable) { rawTable = s.table_number || ''; normTable = normalizeTable(rawTable); } }
+    // Only a session of the caller's own venue counts. A session id from another venue is treated as not found.
+    const { data: s } = await supabase.from('dine_in_sessions').select(SESSION_GUEST_COLUMNS).eq('id', targetSessionId).eq('business_id', businessId).maybeSingle();
+    if (s) { captureSessionGuest(s); resolvedTableId = resolvedTableId || (IS_UUID(s.table_id) ? s.table_id : null); if (!rawTable) { rawTable = s.table_number || ''; normTable = normalizeTable(rawTable); } }
   } else if (resolvedTableId || rawTable) {
-    let q = supabase.from('dine_in_sessions').select(SESSION_GUEST_COLUMNS).in('status', ['open', 'bill_requested']).order('created_at', { ascending: false }).limit(1);
+    let q = supabase.from('dine_in_sessions').select(SESSION_GUEST_COLUMNS).eq('business_id', businessId).in('status', ['open', 'bill_requested']).order('created_at', { ascending: false }).limit(1);
     q = resolvedTableId ? q.eq('table_id', resolvedTableId) : q.eq('business_id', businessId).or(tableOr);
     const { data: s } = await q.maybeSingle();
-    if (s) { captureSessionGuest(s); targetSessionId = s.id; businessId = s.business_id || businessId; resolvedTableId = resolvedTableId || (IS_UUID(s.table_id) ? s.table_id : null); if (!rawTable) { rawTable = s.table_number || ''; normTable = normalizeTable(rawTable); } }
+    if (s) { captureSessionGuest(s); targetSessionId = s.id; resolvedTableId = resolvedTableId || (IS_UUID(s.table_id) ? s.table_id : null); if (!rawTable) { rawTable = s.table_number || ''; normTable = normalizeTable(rawTable); } }
   }
 
   // ── Venue Credit & Subscription Guard ──────────────────────────────────────
@@ -118,7 +119,7 @@ export async function settleAndVacateSession(body: any, supabase: any) {
 
   if (!resolvedOrder && (targetSessionId || rawTable)) {
     const q = targetSessionId
-      ? supabase.from('orders').select('id, business_id, session_id, table_id, table_number, customer_name, customer_phone, grand_total, subtotal').eq('session_id', targetSessionId).order('created_at', { ascending: false }).limit(1)
+      ? supabase.from('orders').select('id, business_id, session_id, table_id, table_number, customer_name, customer_phone, grand_total, subtotal').eq('session_id', targetSessionId).eq('business_id', businessId).order('created_at', { ascending: false }).limit(1)
       : supabase.from('orders').select('id, business_id, session_id, table_id, table_number, customer_name, customer_phone, grand_total, subtotal').eq('business_id', businessId).or(tableOr).order('created_at', { ascending: false }).limit(1);
     const { data: ord, error: ordLookupErr } = await q.maybeSingle();
     if (ordLookupErr) throw ordLookupErr;

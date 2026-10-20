@@ -46,6 +46,18 @@ export async function createKitchenTicketRecord(
     updated_at: now,
   }));
 
+  // A ticket can only point at this venue's own order or room. A foreign id is refused, never linked.
+  if (orderId) {
+    const { data: order, error: orderErr } = await supabase.from('orders').select('id').eq('id', orderId).eq('business_id', businessId).maybeSingle();
+    if (orderErr) throw orderErr;
+    if (!order) throw Object.assign(new Error('That order does not belong to this venue.'), { status: 409 });
+  }
+  if (roomId) {
+    const { data: room, error: roomErr } = await supabase.from('rooms').select('id').eq('id', roomId).eq('business_id', businessId).maybeSingle();
+    if (roomErr) throw roomErr;
+    if (!room) throw Object.assign(new Error('That room does not belong to this venue.'), { status: 409 });
+  }
+
   const { data: tickets, error } = await supabase.from('kitchen_tickets').insert(rows).select();
   if (error) throw error;
   const saved = Array.isArray(tickets) ? tickets : [];

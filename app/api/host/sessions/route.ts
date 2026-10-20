@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireHost } from '@/lib/auth/guards';
+import { requireHost, adminDb } from '@/lib/auth/guards';
 import {
   getActiveHostSessions,
   getBillRequestHistory,
@@ -109,7 +109,6 @@ export const PATCH = withApiErrorBoundary(async function PATCH(request: Request)
     if (body.action === 'waiter_settle') {
       // The owner decides whether waiters may settle at all; until they turn it on, the bill goes to billing.
       const { readWaiterCanSettle } = await import('@/lib/services/venue/waiter-settle-setting');
-      const { adminDb } = await import('@/lib/auth/guards');
       if (!(await readWaiterCanSettle(adminDb(), venueId))) {
         return NextResponse.json(
           { success: false, code: 'WAITER_SETTLE_OFF', error: 'Settling is done by the cashier at this venue. Send the bill to billing.' },
@@ -131,7 +130,8 @@ export const PATCH = withApiErrorBoundary(async function PATCH(request: Request)
       // Platform fee is deducted exactly once, inside settleAndVacateSession
       // (previously this route ALSO called evaluateFeeGuard before it, with a
       // different invoice ref, double-charging the venue's wallet per settlement).
-      const result = await settleAndVacateSession(body, supabase);
+      // Service client: the venue checks in settlement bind it to the caller's own venue.
+      const result = await settleAndVacateSession(body, adminDb());
       const feeResult = result.platform_fee;
       const invoiceRef = feeResult?.invoiceRef ?? null;
       return { response: { ...result, feeResult, invoiceRef, data: { ...result, feeResult, invoiceRef } }, status: 200 };

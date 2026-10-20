@@ -8,6 +8,7 @@ import { spendModelBudget, vibeyFlags } from '@/lib/vibey/core/flags';
 import { recordTurn } from '@/lib/vibey/core/telemetry';
 import { buildHostGraph, runHostTurn } from '@/lib/vibey/host/graph';
 import { loadLockedModules } from '@/lib/vibey/host/locks';
+import { hasMasterUnlock, masterUnlockFromCookieHeader } from '@/lib/services/security/master-unlock';
 import { hostReplySchema, hostRequestSchema } from '@/lib/vibey/host/schema';
 import { makeContext } from '@/lib/vibey/host/tools';
 
@@ -48,9 +49,11 @@ export const POST = withApiErrorBoundary(async function POST(request: Request) {
   const perVenue = await checkRateLimit({ key: `vibey_host_venue:${businessId}`, limit: 40, windowMs: 60_000 });
   if (!perVenue.allowed) return rateLimitResponse(perVenue, 'Vibey is busy for this venue. Try again in a moment.');
 
-  const locked = await loadLockedModules(businessId, parsed.data.unlocked, Boolean(auth.staff));
+  // The owner's unlock is the server-held master-PIN cookie, never a flag in the request body.
+  const screenUnlocked = !auth.staff && hasMasterUnlock(masterUnlockFromCookieHeader(request.headers.get('cookie')), auth.user.id, businessId);
+  const locked = await loadLockedModules(businessId, screenUnlocked, Boolean(auth.staff));
   const ctx = makeContext(businessId, auth.supabase, adminDb());
-  const { reply, usage, errorCode } = await runHostTurn(graph, { businessId, req: parsed.data, ctx, locked });
+  const { reply, usage, errorCode } = await runHostTurn(graph, { businessId, req: parsed.data, ctx, locked, staff: Boolean(auth.staff) });
   const safe = hostReplySchema.parse(reply);
 
   later(() => recordTurn(adminDb(), {

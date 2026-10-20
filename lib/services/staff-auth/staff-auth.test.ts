@@ -4,7 +4,7 @@ import { readStaffSession, signStaffSession, staffTokenFromCookieHeader, STAFF_C
 import { checkStaffPin, hashStaffPin, isFourDigitPin, listLoginStaff, MAX_PIN_FAILURES } from './staff-login.service';
 
 const SECRET = 'test-secret-value';
-const session = { sid: 's1', bid: 'b1', role: 'WAITER' as const, name: 'Rahul', exp: Math.floor(Date.now() / 1000) + 600 };
+const session = { sid: 's1', bid: 'b1', role: 'WAITER' as const, name: 'Rahul', exp: Math.floor(Date.now() / 1000) + 600, sv: 0 };
 
 describe('roles and routes', () => {
   it('sends each role to its own terminal', () => {

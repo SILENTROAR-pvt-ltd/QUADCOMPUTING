@@ -55,7 +55,7 @@ export const POST = withApiErrorBoundary(async function POST(request: Request) {
   }
 
   const exp = Math.floor(Date.now() / 1000) + STAFF_SESSION_SECONDS;
-  const token = await signStaffSession({ sid: out.staff.id, bid: venue.id, role: out.staff.role, name: out.staff.name, exp }, secret);
+  const token = await signStaffSession({ sid: out.staff.id, bid: venue.id, role: out.staff.role, name: out.staff.name, exp, sv: out.staff.sessionVersion ?? 0 }, secret);
   const res = NextResponse.json(
     { success: true, staff: { name: out.staff.name, role: out.staff.role }, redirect: terminalPath(venue.id, out.staff.role) },
     { headers: NO_STORE },

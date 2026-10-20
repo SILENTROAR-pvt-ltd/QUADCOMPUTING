@@ -18,6 +18,8 @@ export interface StaffSession {
   name: string;
   /** Expiry, seconds since the epoch. */
   exp: number;
+  /** The staff member's session version when this token was issued. A PIN, role or access change bumps it and ends this token. */
+  sv: number;
 }
 
 const enc = new TextEncoder();
@@ -67,7 +69,7 @@ export async function readStaffSession(token: string | undefined | null, secret:
     const role = asStaffRole(raw?.role);
     if (!role || typeof raw.sid !== 'string' || typeof raw.bid !== 'string' || typeof raw.exp !== 'number') return null;
     if (raw.exp <= nowSeconds) return null;
-    return { sid: raw.sid, bid: raw.bid, role, name: String(raw.name ?? ''), exp: raw.exp };
+    return { sid: raw.sid, bid: raw.bid, role, name: String(raw.name ?? ''), exp: raw.exp, sv: typeof raw.sv === 'number' ? raw.sv : 0 };
   } catch {
     return null;
   }

@@ -1,4 +1,5 @@
 import { settleAndVacateSession } from '../session/settle-session.service';
+import { adminDb } from '@/lib/supabase/admin';
 import { resolveTargetTable } from './resolve-table.util';
 import { invalidateTablesCache } from './get-tables.service';
 import { renameZone, resolveZone, zoneColumnAvailable } from './table-zone.service';
@@ -136,7 +137,7 @@ export async function updateHostTable(body: any, user: any, supabase: any, autho
 
   // 6. Clear sessions if marked VACANT
   if (normalizedStatus === 'VACANT') {
-    await settleAndVacateSession({ table_id: updatedTable.id, table_number: updatedTable.table_number, business_id: resolvedBizId }, supabase);
+    await settleAndVacateSession({ table_id: updatedTable.id, table_number: updatedTable.table_number, business_id: resolvedBizId }, adminDb());
   }
 
   return {

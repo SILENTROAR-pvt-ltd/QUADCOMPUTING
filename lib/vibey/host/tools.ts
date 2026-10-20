@@ -20,6 +20,9 @@ export interface ToolResult { cards: HostCard[]; facts?: Record<string, number |
 
 interface ToolDef { module: string; run: (ctx: ToolContext, args: ToolArgs) => Promise<ToolResult>; label: string }
 
+/** The only co-pilot tools a staff session (a cashier at the till) may use. Everything else needs the owner. */
+export const STAFF_TOOLS: ReadonlySet<string> = new Set(['live_tables', 'find_invoice']);
+
 export const TOOLS: Record<ToolName, ToolDef> = {
   sales_summary: { module: 'dashboard', run: salesSummary, label: 'sales' },
   profit_and_loss: { module: 'dashboard', run: profitAndLoss, label: 'profit and loss' },

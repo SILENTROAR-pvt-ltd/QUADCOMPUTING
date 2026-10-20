@@ -1,6 +1,6 @@
 import { safeMessage } from '@/lib/utils/safe-message';
 import { NextResponse } from 'next/server';
-import { requireHost } from '@/lib/auth/guards';
+import { requireHost, adminDb } from '@/lib/auth/guards';
 import { createHostOrder } from '@/lib/services/orders.service';
 import { settleAndVacateSession } from '@/lib/services/session.service';
 import { withApiErrorBoundary, handleApiError } from '@/lib/middleware/error-handler';
@@ -49,7 +49,7 @@ export const POST = withApiErrorBoundary(async function POST(request: Request) {
             redemption_code: s.redemption_code || undefined,
             credit_cashback: s.credit_cashback !== false,
             payment_method: TENDERS.includes(tender) ? tender : undefined,
-          }, supabase);
+          }, adminDb());
           return { response: result, status: 200 };
         });
         return NextResponse.json({ success: true, order, settled: true, settlement: response });
@@ -58,12 +58,13 @@ export const POST = withApiErrorBoundary(async function POST(request: Request) {
       }
     }
 
-    // Counter/takeaway bills have no table session or room checkout to carry the platform fee, and
-    // the browser used to trigger it in a separate fire-and-forget call a host could simply skip.
+    // A bill saved without a settlement has no table session or room checkout to carry the platform fee, and
     // Charged here, keyed to the order id, so a retry is idempotent. Table bills pay via session
     // settlement and room stays via checkout. It runs after the response: the fee never blocks the till.
-    const isCounterBill = order && !order.table_id && !order.room_id;
-    if (isCounterBill && String(order.status || '').toUpperCase() === 'SETTLED') {
+    // Any bill saved closed here, counter, table or room, reaches this point only when no settlement ran, so no other path
+    // charged it. A closed status is therefore enough: the client chooses the table, room and status, so none of them can skip the fee.
+    const isClosed = Boolean(order) && ['SETTLED', 'COMPLETED', 'SERVED'].includes(String(order.status || '').toUpperCase());
+    if (isClosed) {
       afterResponse('counter-bill-fee', async () => {
         const { evaluateFeeGuard } = await import('@/lib/services/wallet/fee-guard.service');
         const { feeReferenceFor } = await import('@/lib/services/wallet/invoice-history.util');

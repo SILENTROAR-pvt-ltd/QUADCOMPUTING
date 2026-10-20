@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireHost } from '@/lib/auth/guards';
+import { requireHost, adminDb } from '@/lib/auth/guards';
 import { hostOnboardingSchema } from '@/lib/validations/onboarding';
 import { generateOwnerCafeId } from '@/lib/utils/ids';
 import { withApiErrorBoundary } from '@/lib/middleware/error-handler';
@@ -32,7 +32,8 @@ export const POST = withApiErrorBoundary(async function POST(request: Request) {
         .replace(/^-+|-+$/g, '');
       const qrCodeHash = `qr_${crypto.randomUUID().slice(0, 12)}`;
 
-      const { data: rpcResult, error: rpcErr } = await supabase.rpc('provision_host_business', {
+      // Server-side only: the function trusts p_host_id, so it is called with the service client and only with the session's own user id.
+      const { data: rpcResult, error: rpcErr } = await adminDb().rpc('provision_host_business', {
         p_host_id: hostId,
         p_full_name: validatedData.fullName,
         p_gender: validatedData.gender,

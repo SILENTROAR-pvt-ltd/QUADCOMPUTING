@@ -1,10 +1,6 @@
 import type { AnalyticsReports } from '@/lib/services/analytics/reports.util';
 import type { ProfitAndLoss } from '@/lib/services/analytics/pnl.util';
-
-const cell = (v: unknown) => {
-  const s = String(v ?? '');
-  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-};
+import { csvCell as cell } from '@/lib/utils/csv';
 const row = (...values: unknown[]) => values.map(cell).join(',');
 
 /** The whole report as one CSV: summary, hours, weekdays, channels, categories and top dishes. Plain rupees, no symbols. */

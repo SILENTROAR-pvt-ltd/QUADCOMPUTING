@@ -64,7 +64,7 @@ export const PATCH = withApiErrorBoundary(async function PATCH(request: Request)
     const db = supabase || adminDb();
 
     const body = await request.json().catch(() => ({}));
-    const { id, status, items, staff_id } = body;
+    const { id, status, items } = body;
 
     // Item ticks send only { id, items }; a status change needs status.
     const itemsOnly = !status && Array.isArray(items);
@@ -122,16 +122,26 @@ export const PATCH = withApiErrorBoundary(async function PATCH(request: Request)
       }
     }
 
-    // Execute atomic update_kot_status RPC
-    const staffId = staff_id || (user?.id && UUID_REGEX.test(user.id) ? user.id : null);
+    // The linked order must belong to this venue: a ticket only ever changes its own venue's order.
+    if (ticketRecord.order_id) {
+      const { data: linkedOrder, error: orderErr } = await adminDb()
+        .from('orders').select('id').eq('id', ticketRecord.order_id).eq('business_id', businessId).maybeSingle();
+      if (orderErr) return handleApiError(orderErr, request, 'KitchenTicketsOrderCheck');
+      if (!linkedOrder) return NextResponse.json({ error: 'The order on this ticket does not belong to this venue' }, { status: 409 });
+    }
+
+    // Execute atomic update_kot_status RPC    // The audit actor is the signed-in person; the request body never names one.
+    const actor: string | null = user?.id ?? null;
+    const staffId = actor && actor.startsWith('staff:') ? actor.slice(6) : actor;
+    const auditStaffId = staffId && UUID_REGEX.test(staffId) ? staffId : null;
     let rpcData: any = null;
     let rpcError: any = null;
 
     try {
-      const res = await db.rpc('update_kot_status', {
+      const res = await adminDb().rpc('update_kot_status', {
         p_ticket_id: id,
         p_new_status: status,
-        p_staff_id: staffId,
+        p_staff_id: auditStaffId,
       });
       rpcData = res.data;
       rpcError = res.error;
@@ -139,38 +149,9 @@ export const PATCH = withApiErrorBoundary(async function PATCH(request: Request)
       rpcError = err;
     }
 
-    // Fallback direct update if RPC is restricted or unmigrated
+    // The state machine refused the change, or the RPC failed. Return its reason. Never write the status directly.
     if (rpcError) {
-      // Service role for the same reason as the items write above (RLS would
-      // turn this into a silent 0-row "success"). The stage time is recorded the
-      // same way update_kot_status records it, so the kitchen timeline stays whole.
-      const nowIso = new Date().toISOString();
-      const history = Array.isArray(ticketRecord.status_history) ? ticketRecord.status_history : [];
-      const { data: directUpdated, error: directErr } = await adminDb()
-        .from('kitchen_tickets')
-        .update({
-          status: status.toUpperCase(),
-          updated_at: nowIso,
-          status_history: [...history, { from: String(ticketRecord.status || '').toUpperCase(), to: status.toUpperCase(), at: nowIso, staff_id: staffId }],
-        })
-        .eq('id', id)
-        .eq('business_id', businessId)
-        .select()
-        .maybeSingle();
-
-      if (directErr || !directUpdated) {
-        return NextResponse.json(
-          { error: rpcError.message || directErr?.message || 'Failed to update KOT status' },
-          { status: 400 }
-        );
-      }
-
-      await notifyGuestTable(db, businessId, ticketRecord, status.toUpperCase());
-      return NextResponse.json({
-        success: true,
-        ticket: directUpdated,
-        status: status.toUpperCase(),
-      });
+      return NextResponse.json({ error: rpcError.message || 'Failed to update KOT status' }, { status: 400 });
     }
 
     await notifyGuestTable(db, businessId, ticketRecord, String(rpcData?.ticket?.status || status).toUpperCase());

@@ -70,6 +70,12 @@ export const PUT = withApiErrorBoundary(async function PUT(request: Request) {
     if (c.role !== undefined) patch.role = c.role;
     if (c.active !== undefined) patch.is_pos_active = c.active;
     if (c.pin !== undefined) Object.assign(patch, { pin_hash: await hashStaffPin(c.pin), pin_failures: 0, pin_locked_until: null });
+    // A PIN, role or active change ends every session already issued to this staff member.
+    if (c.pin !== undefined || c.role !== undefined || c.active !== undefined) {
+      const { data: current } = await adminDb().from('staff_profiles').select('session_version')
+        .eq('id', c.id).eq('business_id', auth.businessId).maybeSingle();
+      patch.session_version = Number(current?.session_version ?? 0) + 1;
+    }
     const { data, error } = await adminDb().from('staff_profiles').update(patch)
       .eq('id', c.id).eq('business_id', auth.businessId).select('id').maybeSingle();
     if (error) return dbProblem(error);

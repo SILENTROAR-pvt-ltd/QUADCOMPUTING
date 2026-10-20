@@ -18,7 +18,9 @@ export async function encodePin(pin: string): Promise<string> {
 
 const legacy = (row: PinRow, kind: PinKind) => {
   const v = row[`${kind}_pin`];
-  return v === null || v === undefined || String(v).trim() === '' ? null : String(v).trim();
+  const s = v === null || v === undefined ? '' : String(v).trim();
+  // '0000' was the column default, not a PIN an owner chose (pinProblem rejects it), so it is never a set PIN.
+  return s === '' || s === '0000' ? null : s;
 };
 const hashed = (row: PinRow, kind: PinKind) => {
   const v = row[`${kind}_pin_hash`];

@@ -38,10 +38,16 @@ if (typeof setInterval !== 'undefined') {
  * Extract client IP address with proxy / cloudflare headers support
  */
 export function getClientIp(request: Request): string {
+  // On Vercel the edge sets x-vercel-forwarded-for from the real connecting address, so the client cannot choose it.
+  if (process.env.VERCEL) {
+    const edge = request.headers.get('x-vercel-forwarded-for');
+    if (edge?.trim()) return edge.split(',')[0].trim();
+  }
+  // Elsewhere, x-forwarded-for's first entry is client-controlled. Trust only the last hop a proxy appended.
   const forwarded = request.headers.get('x-forwarded-for');
   if (forwarded) {
-    const firstIp = forwarded.split(',')[0].trim();
-    if (firstIp) return firstIp;
+    const hops = forwarded.split(',').map((s) => s.trim()).filter(Boolean);
+    if (hops.length) return hops[hops.length - 1];
   }
   const realIp = request.headers.get('x-real-ip');
   if (realIp) return realIp.trim();

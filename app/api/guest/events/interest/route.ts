@@ -6,7 +6,7 @@ import { enforceRateLimit } from '@/lib/middleware/rate-limiter';
 import { bookedSeats } from '@/lib/services/live-events/events.service';
 import { guestContact } from '@/lib/services/live-events/guest-identity';
 import { cleanEmail, normalizePhone } from '@/lib/services/live-events/guest-key';
-import { resolveGuestKey } from '@/lib/services/live-events/ledger.service';
+import { ownGuestKey, resolveGuestKey } from '@/lib/services/live-events/ledger.service';
 import { checkParty, fitsSeats, seatsLeft } from '@/lib/services/live-events/party';
 
 export const dynamic = 'force-dynamic';
@@ -45,13 +45,21 @@ export const POST = withApiErrorBoundary(async function POST(request: Request) {
   const email = me.email || cleanEmail(body?.email);
   const handle = me.handle;
   if (name.length < 2) return bad('Please tell us your name.');
-  const key = await resolveGuestKey(db, businessId, { handle, phone, email });
+  // A signed-in guest is matched to their own ledger row. An anonymous caller keeps only the key their typed details give,
+  // so a phone or email typed by someone else can never be matched to (and overwrite) another guest's lead.
+  const key = me.signedIn
+    ? await resolveGuestKey(db, businessId, { handle, phone, email })
+    : ownGuestKey({ handle: null, phone, email });
   if (!key) return bad('Please add a phone number or email so the team can reach you.');
 
   // The friendly check: what is left, ignoring this guest's own earlier booking (a change of party replaces it).
   const seats = { capacity: event.capacity ?? null, male_capacity: event.male_capacity ?? null, female_capacity: event.female_capacity ?? null };
   const booked = (await bookedSeats(db, [eventId])).get(eventId) || { total: 0, male: 0, female: 0 };
   const { data: mine } = await db.from('event_guest_leads').select('party_size, party_male, party_female, status').eq('event_id', eventId).eq('guest_key', key).maybeSingle();
+  // An anonymous booking can't change an existing lead: the details were typed by whoever sent them.
+  if (!me.signedIn && mine && mine.status !== 'DECLINED') {
+    return bad('You are already on the guest list for this event. The lounge team will be in touch to change it.', 409);
+  }
   if (mine && mine.status !== 'DECLINED') { booked.total -= mine.party_size; booked.male -= mine.party_male; booked.female -= mine.party_female; }
   const fit = fitsSeats(party.mix, seatsLeft(seats, booked));
   if (!fit.ok) return bad(fit.error, 409);

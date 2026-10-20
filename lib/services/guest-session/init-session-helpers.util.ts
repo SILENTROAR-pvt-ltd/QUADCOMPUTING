@@ -7,9 +7,14 @@ export async function resolveTableAndBusiness(supabase: any, tableId?: string | 
     if (!targetBizId || !resolvedTableId) {
       const tableOr = tableNumber ? buildTableOrFilter(tableNumber) : '';
       let q = supabase.from('restaurant_tables').select('id, business_id, table_number');
+      // A venue the route already validated stays the venue: its tables are the only ones considered, and it is never replaced.
+      if (targetBizId) q = q.eq('business_id', targetBizId);
       if (tableOr) q = q.or(tableOr);
       const { data: t } = await q.limit(1).maybeSingle();
-      if (t) { resolvedTableId = isValidUuid(t.id) ? t.id : resolvedTableId; targetBizId = isValidUuid(t.business_id) ? t.business_id : targetBizId; }
+      if (t) {
+        resolvedTableId = isValidUuid(t.id) ? t.id : resolvedTableId;
+        if (!targetBizId) targetBizId = isValidUuid(t.business_id) ? t.business_id : null;
+      }
     }
   } catch {}
   return { targetBizId, resolvedTableId };

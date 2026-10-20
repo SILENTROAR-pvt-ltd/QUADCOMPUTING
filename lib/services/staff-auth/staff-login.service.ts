@@ -7,7 +7,7 @@ export const MAX_PIN_FAILURES = 5;
 export const LOCK_MINUTES = 5;
 
 export interface VenueRef { id: string; name: string }
-export interface LoginStaff { id: string; name: string; role: StaffRole }
+export interface LoginStaff { id: string; name: string; role: StaffRole; sessionVersion?: number }
 
 export const isFourDigitPin = (pin: unknown): pin is string => typeof pin === 'string' && /^\d{4}$/.test(pin);
 
@@ -72,7 +72,7 @@ const CLAIM_RETRIES = 8;
 export async function checkStaffPin(db: any, businessId: string, staffId: string, pin: string, now = Date.now()): Promise<PinOutcome> {
   for (let spin = 0; spin < CLAIM_RETRIES; spin += 1) {
     const { data: row, error } = await db.from('staff_profiles')
-      .select('id, name, role, status, is_pos_active, pin_hash, pin_failures, pin_locked_until')
+      .select('id, name, role, status, is_pos_active, pin_hash, pin_failures, pin_locked_until, session_version')
       .eq('id', staffId).eq('business_id', businessId).maybeSingle();
     const role = asStaffRole(row?.role);
     if (error || !row || !role || !row.is_pos_active || String(row.status || 'ACTIVE').toUpperCase() === 'INACTIVE' || !row.pin_hash) {
@@ -98,7 +98,7 @@ export async function checkStaffPin(db: any, businessId: string, staffId: string
 
     if (await matchesStoredPin(row.pin_hash, pin)) {
       await db.from('staff_profiles').update({ pin_failures: 0, pin_locked_until: null, last_login_at: new Date(now).toISOString() }).eq('id', staffId);
-      return { ok: true, staff: { id: String(row.id), name: String(row.name), role } };
+      return { ok: true, staff: { id: String(row.id), name: String(row.name), role, sessionVersion: Number(row.session_version ?? 0) } };
     }
     return after >= MAX_PIN_FAILURES
       ? { ok: false, code: 'LOCKED', retryAfterSeconds: LOCK_MINUTES * 60 }
@@ -108,8 +108,8 @@ export async function checkStaffPin(db: any, businessId: string, staffId: string
   return { ok: false, code: 'LOCKED', retryAfterSeconds: 10 };
 }
 /** Whether a signed-in staff member still has access: still active, same venue, same role. Used to cut a session short. */
-export async function staffStillValid(db: any, businessId: string, staffId: string, role: StaffRole): Promise<boolean> {
-  const { data, error } = await db.from('staff_profiles').select('id, role, status, is_pos_active, pin_hash').eq('id', staffId).eq('business_id', businessId).maybeSingle();
+export async function staffStillValid(db: any, businessId: string, staffId: string, role: StaffRole, sessionVersion: number): Promise<boolean> {
+  const { data, error } = await db.from('staff_profiles').select('id, role, status, is_pos_active, pin_hash, session_version').eq('id', staffId).eq('business_id', businessId).maybeSingle();
   if (error || !data) return false;
-  return Boolean(data.is_pos_active) && Boolean(data.pin_hash) && String(data.status || 'ACTIVE').toUpperCase() !== 'INACTIVE' && asStaffRole(data.role) === role;
+  return Boolean(data.is_pos_active) && Boolean(data.pin_hash) && String(data.status || 'ACTIVE').toUpperCase() !== 'INACTIVE' && asStaffRole(data.role) === role && Number(data.session_version ?? 0) === sessionVersion;
 }

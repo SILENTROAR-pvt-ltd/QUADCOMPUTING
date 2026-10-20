@@ -2,7 +2,9 @@ import { closeActiveOrder } from '@/lib/store/active-order-store';
 import { CLOSED_STATUSES, buildTableOrFilter } from './session-entry.util';
 
 const LIVE_SESSION = ['open', 'bill_requested'];
-const CLOSED_LIST = `(${CLOSED_STATUSES.map((s) => `"${s}"`).join(',')})`;
+const CLOSED_LOWER = new Set(CLOSED_STATUSES.map((s: string) => s.toLowerCase()));
+// Settled or otherwise finished. A cancelled order is not in this set, so its lines are still checked.
+const SETTLED_LIKE = new Set(Array.from(CLOSED_LOWER).filter((s) => s !== 'cancelled'));
 // Lines the kitchen has not started. Anything else has been cooked or served and must be settled.
 const NOT_STARTED = ['', 'pending', 'cancelled'];
 
@@ -19,18 +21,23 @@ export async function releaseTable(body: any, supabase: any, businessId: string)
   if (!rawTable) return { ok: false, status: 400, error: 'Choose a table to free.' };
   const tableOr = buildTableOrFilter(rawTable);
 
-  const { data: orders, error: ordersErr } = await supabase.from('orders').select('id')
-    .eq('business_id', businessId).or(tableOr).not('status', 'in', CLOSED_LIST);
+  // Every order of this table that was never settled, including one a KOT cancel already marked 'cancelled':
+  // its served lines still count, so a cancelled order cannot hide food that was cooked.
+  const { data: orders, error: ordersErr } = await supabase.from('orders').select('id, status').eq('business_id', businessId).or(tableOr);
   if (ordersErr) throw ordersErr;
-  const orderIds: string[] = (orders || []).map((o: any) => o.id);
+  const unsettled = (orders || []).filter((o: any) => !SETTLED_LIKE.has(String(o.status ?? '').toLowerCase()));
+  const liveIds: string[] = unsettled.map((o: any) => o.id);
+  const orderIds: string[] = unsettled.filter((o: any) => !CLOSED_LOWER.has(String(o.status ?? '').toLowerCase())).map((o: any) => o.id);
 
-  if (orderIds.length) {
-    const { data: items, error: itemsErr } = await supabase.from('order_items').select('kot_status').in('order_id', orderIds);
+  if (liveIds.length) {
+    const { data: items, error: itemsErr } = await supabase.from('order_items').select('kot_status').in('order_id', liveIds);
     if (itemsErr) throw itemsErr;
     const started = (items || []).some((i: any) => !NOT_STARTED.includes(String(i.kot_status ?? '').toLowerCase()));
     if (started) {
       return { ok: false, status: 409, error: 'The kitchen has started items on this table. Settle the bill instead.' };
     }
+  }
+  if (orderIds.length) {
     const { error: cancelErr } = await supabase.from('orders')
       .update({ status: 'cancelled', updated_at: new Date().toISOString() })
       .in('id', orderIds).eq('business_id', businessId);

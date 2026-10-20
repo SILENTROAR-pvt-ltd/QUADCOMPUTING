@@ -72,10 +72,11 @@ describe('PHASE 2D: Sliding Window Rate Limiter', () => {
   });
 
   it('correctly extracts client IP across various proxy headers', () => {
+    // x-forwarded-for: the first entry is client-controlled, so only the last hop a proxy appended is trusted.
     const reqWithForwarded = new Request('http://localhost', {
       headers: { 'x-forwarded-for': '203.0.113.195, 70.41.3.18, 150.172.238.178' },
     });
-    expect(getClientIp(reqWithForwarded)).toBe('203.0.113.195');
+    expect(getClientIp(reqWithForwarded)).toBe('150.172.238.178');
 
     const reqWithRealIp = new Request('http://localhost', {
       headers: { 'x-real-ip': '198.51.100.24' },
@@ -84,6 +85,23 @@ describe('PHASE 2D: Sliding Window Rate Limiter', () => {
 
     const reqFallback = new Request('http://localhost');
     expect(getClientIp(reqFallback)).toBe('127.0.0.1');
+  });
+
+  it('on Vercel, trusts only the edge-set address and ignores a spoofed x-forwarded-for', () => {
+    const previous = process.env.VERCEL;
+    process.env.VERCEL = '1';
+    try {
+      const spoofed = new Request('http://localhost', {
+        headers: {
+          'x-forwarded-for': '10.0.0.1',
+          'x-vercel-forwarded-for': '203.0.113.50',
+        },
+      });
+      expect(getClientIp(spoofed)).toBe('203.0.113.50');
+    } finally {
+      if (previous === undefined) delete process.env.VERCEL;
+      else process.env.VERCEL = previous;
+    }
   });
 
   it('handles custom sliding window and auto-eviction', async () => {

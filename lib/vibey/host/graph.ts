@@ -3,7 +3,7 @@
 import { Annotation, END, START, StateGraph } from '@langchain/langgraph';
 import { routeByKeywords, invoiceRefOf } from './router';
 import { compose } from './compose';
-import { runTools, TOOLS, type ToolContext, type ToolResult } from './tools';
+import { runTools, STAFF_TOOLS, TOOLS, type ToolContext, type ToolResult } from './tools';
 import { routeSchema, TOOL_NAMES, type HostRequest, type ToolCall, type VibeyHostReply } from './schema';
 import type { LlmUsage } from '../core/llm';
 import type { z } from 'zod';
@@ -28,6 +28,7 @@ const State = Annotation.Root({
   req: Annotation<HostRequest>,
   ctx: Annotation<ToolContext>,
   locked: Annotation<string[]>,
+  staff: Annotation<boolean>,
   started: Annotation<number>,
   calls: Annotation<ToolCall[]>,
   blocked: Annotation<ToolCall[]>,
@@ -59,7 +60,9 @@ export function buildHostGraph(deps: HostGraphDeps) {
     })
     .addNode('gate', (s: S) => {
       const locked = new Set(s.locked);
-      return { calls: s.calls.filter((c) => !locked.has(TOOLS[c.name].module)), blocked: s.calls.filter((c) => locked.has(TOOLS[c.name].module)) };
+      // A staff session gets only the tools staff may use, whatever the owner's locks say. The owner's locks still apply to everyone.
+      const allowed = (c: ToolCall) => !locked.has(TOOLS[c.name].module) && (!s.staff || STAFF_TOOLS.has(c.name));
+      return { calls: s.calls.filter(allowed), blocked: s.calls.filter((c) => !allowed(c)) };
     })
     .addNode('tools', async (s: S) => ({ results: s.calls.length ? await runTools(s.ctx, s.calls) : [] }))
     .addNode('compose', (s: S) => ({ reply: compose({ results: s.results, blocked: s.blocked, tab: s.req.tab, path: s.path, ms: Date.now() - s.started }) }))
@@ -73,7 +76,7 @@ export function buildHostGraph(deps: HostGraphDeps) {
 
 export type HostGraph = ReturnType<typeof buildHostGraph>;
 
-export async function runHostTurn(graph: HostGraph, input: { businessId: string; req: HostRequest; ctx: ToolContext; locked: string[] }) {
+export async function runHostTurn(graph: HostGraph, input: { businessId: string; req: HostRequest; ctx: ToolContext; locked: string[]; staff?: boolean }) {
   const s = await graph.invoke({ ...input, started: Date.now(), calls: [], blocked: [], results: [], path: 'keyword', usage: null, errorCode: null, reply: null });
   return { reply: s.reply!, usage: s.usage ?? null, errorCode: s.errorCode ?? null };
 }

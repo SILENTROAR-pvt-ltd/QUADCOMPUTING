@@ -31,6 +31,7 @@ export interface GuestAccount {
   pin_hash: string | null;
   pin_salt: string | null;
   failed_attempts: number;
+  user_id?: string | null;
   locked_until: string | null;
 }
 
@@ -66,7 +67,7 @@ export function summarize(account: GuestAccount): GuestAccountSummary {
   };
 }
 
-export const ACCOUNT_COLUMNS = 'id, business_id, handle, display_name, phone, avatar, photo_path, traveller_type, intro, pin_hash, pin_salt, failed_attempts, locked_until';
+export const ACCOUNT_COLUMNS = 'id, business_id, handle, display_name, phone, avatar, photo_path, traveller_type, intro, pin_hash, pin_salt, failed_attempts, locked_until, user_id';
 
 export async function findAccount(db: any, businessId: string, handle: string): Promise<GuestAccount | null> {
   const { data, error } = await db
@@ -168,8 +169,36 @@ export async function signUp(args: {
   return { ok: true, account: data, sessionToken, walletRebound: true };
 }
 
-export async function signIn(args: {
-  db: any;
+/**
+ * Counts one wrong PIN. The counter is updated only if it still holds the value this attempt read; if a
+ * parallel guess changed it first, the failure is re-read and counted again. So N parallel wrong guesses
+ * count as N failures, not one.
+ */
+export async function recordPinFailure(db: any, accountId: string, now: Date): Promise<void> {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const { data: row, error: readErr } = await db.from('guest_accounts').select('failed_attempts').eq('id', accountId).maybeSingle();
+    if (readErr) throw readErr;
+    if (!row) return;
+    // A row that has never failed stores no counter yet, so there is nothing to compare; it counts from zero.
+    const current = Number(row.failed_attempts ?? 0);
+    let write = db.from('guest_accounts').update(nextFailureState(current, now)).eq('id', accountId);
+    if (row.failed_attempts !== null && row.failed_attempts !== undefined) write = write.eq('failed_attempts', row.failed_attempts);
+    const { data, error } = await write.select('id');
+    if (error) throw error;
+    if (Array.isArray(data) ? data.length > 0 : Boolean(data)) return;
+  }
+}
+
+/** Every guest_accounts row for the same person (same platform user). An unlinked row is just itself. */
+async function siblingAccountIds(db: any, account: GuestAccount): Promise<string[]> {
+  if (!account.user_id) return [account.id];
+  const { data, error } = await db.from('guest_accounts').select('id').eq('user_id', account.user_id);
+  if (error) throw error;
+  const ids = (data || []).map((r: any) => r.id as string);
+  return ids.includes(account.id) ? ids : [account.id, ...ids];
+}
+
+export async function signIn(args: {  db: any;
   businessId: string;
   rawHandle: unknown;
   pin: unknown;
@@ -203,8 +232,7 @@ export async function signIn(args: {
   }
   const valid = await verifyPin(args.pin as string, { hash: account.pin_hash, salt: account.pin_salt });
   if (!valid) {
-    const next = nextFailureState(account.failed_attempts, now);
-    await db.from('guest_accounts').update(next).eq('id', account.id);
+    await recordPinFailure(db, account.id, now);
     return { ok: false, status: 401, error: 'Handle or PIN is incorrect.' };
   }
 
@@ -331,7 +359,7 @@ export async function changeGuestPin(
   }
   const valid = await verifyPin(input.currentPin as string, { hash: account.pin_hash, salt: account.pin_salt });
   if (!valid) {
-    await db.from('guest_accounts').update(nextFailureState(account.failed_attempts, now)).eq('id', account.id);
+    await recordPinFailure(db, account.id, now);
     return { ok: false, status: 401, error: 'Your current PIN is incorrect.' };
   }
 
@@ -339,10 +367,10 @@ export async function changeGuestPin(
   const { error } = await db
     .from('guest_accounts')
     .update({ pin_hash: stored.hash, pin_salt: stored.salt, failed_attempts: 0, locked_until: null })
-    .eq('id', account.id);
+    .in('id', await siblingAccountIds(db, account));
   if (error) throw error;
 
-  const { error: endErr } = await db.from('guest_auth_sessions').delete().eq('account_id', account.id);
+  const { error: endErr } = await db.from('guest_auth_sessions').delete().in('account_id', await siblingAccountIds(db, account));
   if (endErr) throw endErr;
   const sessionToken = await createSessionRow(db, account.id, account.business_id);
   return { ok: true, sessionToken };
@@ -389,7 +417,7 @@ export async function recoverGuestPin(db: any, input: PinRecoveryInput, now: Dat
   const phoneMatches = normalizePhone(input.rawPhone) !== null && normalizePhone(input.rawPhone) === account.phone;
 
   if (!onThisDevice || !phoneMatches) {
-    await db.from('guest_accounts').update(nextFailureState(account.failed_attempts, now)).eq('id', account.id);
+    await recordPinFailure(db, account.id, now);
     return { ok: false, status: 401, error: RECOVERY_REFUSED };
   }
 
@@ -397,10 +425,10 @@ export async function recoverGuestPin(db: any, input: PinRecoveryInput, now: Dat
   const { error } = await db
     .from('guest_accounts')
     .update({ pin_hash: stored.hash, pin_salt: stored.salt, failed_attempts: 0, locked_until: null })
-    .eq('id', account.id);
+    .in('id', await siblingAccountIds(db, account));
   if (error) throw error;
 
-  const { error: endErr } = await db.from('guest_auth_sessions').delete().eq('account_id', account.id);
+  const { error: endErr } = await db.from('guest_auth_sessions').delete().in('account_id', await siblingAccountIds(db, account));
   if (endErr) throw endErr;
   const sessionToken = await createSessionRow(db, account.id, account.business_id);
   return { ok: true, sessionToken };

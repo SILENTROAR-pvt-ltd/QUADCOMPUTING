@@ -3,6 +3,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextResponse } from 'next/server';
 import { DEMO_MENU } from './fixtures/demo-menu';
+import { issueMasterUnlock, MASTER_UNLOCK_COOKIE } from '@/lib/services/security/master-unlock';
 
 const m = vi.hoisted(() => ({
   validate: vi.fn(), loadVenue: vi.fn(), requireHost: vi.fn(), eod: vi.fn(), locks: vi.fn(), turns: vi.fn(),
@@ -29,7 +30,7 @@ beforeEach(() => {
     cafe === 'biz-own' || cafe === 'biz-other' ? { businessId: cafe, tableNumber: table, error: null } : { error: NextResponse.json({ error: 'Invalid venue' }, { status: 404 }) });
   m.loadVenue.mockImplementation(async (_db: any, id: string) => ({ business: { id }, dishes: DEMO_MENU, featured: [] }));
   m.turns.mockResolvedValue({ error: null });
-  m.requireHost.mockResolvedValue({ businessId: 'biz-own', business: { id: 'biz-own' }, supabase: {}, error: null });
+  m.requireHost.mockResolvedValue({ user: { id: 'owner-1' }, businessId: 'biz-own', business: { id: 'biz-own' }, supabase: {}, error: null });
   m.eod.mockResolvedValue({ kpis: { net_sales: 1000, settled_bills: 4, avg_bill: 250, open_bills: 0, open_value: 0, growth_pct: null }, pnl: {}, reports: { items: [], guests: {} }, critical_items: [] });
   m.locks.mockResolvedValue([]);
 });
@@ -95,11 +96,40 @@ describe('host vibey route', () => {
   });
 
   it('never lets a staff sign-in lift a lock', async () => {
-    m.requireHost.mockResolvedValueOnce({ businessId: 'biz-own', business: { id: 'biz-own' }, supabase: {}, staff: { role: 'CASHIER' }, error: null });
+    m.requireHost.mockResolvedValueOnce({ user: { id: 'staff:s1' }, businessId: 'biz-own', business: { id: 'biz-own' }, supabase: {}, staff: { role: 'CASHIER' }, error: null });
     m.locks.mockResolvedValueOnce(['dashboard']);
     const body = await (await hostPOST(post('http://x/api/host/vibey', { text: 'sales today', unlocked: true }, nextIp()))).json();
-    expect(m.locks).toHaveBeenCalledWith('biz-own', true, true);
+    expect(m.locks).toHaveBeenCalledWith('biz-own', false, true);
     expect(body.cards[0]).toMatchObject({ kind: 'note', title: 'Locked' });
     expect(m.eod).not.toHaveBeenCalled();
+  });
+
+  it('lifts a lock only with the owner\'s own server-held master unlock cookie', async () => {
+    const previous = process.env.STAFF_SESSION_SECRET;
+    process.env.STAFF_SESSION_SECRET = 'test-secret-for-master-unlock';
+    try {
+      const token = issueMasterUnlock('owner-1', 'biz-own');
+      expect(token).toBeTruthy();
+
+      // The body's `unlocked` flag does nothing; only the signed cookie counts.
+      await hostPOST(new Request('http://x/api/host/vibey', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-forwarded-for': nextIp(), cookie: `${MASTER_UNLOCK_COOKIE}=${token}` },
+        body: JSON.stringify({ text: 'sales today', unlocked: false }),
+      }));
+      expect(m.locks).toHaveBeenLastCalledWith('biz-own', true, false);
+
+      // The same cookie held by another owner, or a forged one, does not.
+      m.requireHost.mockResolvedValueOnce({ user: { id: 'owner-2' }, businessId: 'biz-own', business: { id: 'biz-own' }, supabase: {}, error: null });
+      await hostPOST(new Request('http://x/api/host/vibey', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-forwarded-for': nextIp(), cookie: `${MASTER_UNLOCK_COOKIE}=${token}` },
+        body: JSON.stringify({ text: 'sales today' }),
+      }));
+      expect(m.locks).toHaveBeenLastCalledWith('biz-own', false, false);
+    } finally {
+      if (previous === undefined) delete process.env.STAFF_SESSION_SECRET;
+      else process.env.STAFF_SESSION_SECRET = previous;
+    }
   });
 });
