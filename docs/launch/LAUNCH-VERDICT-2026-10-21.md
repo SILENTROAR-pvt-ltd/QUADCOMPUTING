@@ -96,8 +96,10 @@ Vercel dashboard, not from this machine).
      the page's `sessionStorage` flag; the server-held unlock cookie set at PIN entry (15 minutes) was never cleared,
      so writes behind the master PIN kept passing from that browser until it expired. The guard itself refuses a
      request without the cookie (tested), so the gap is in the lock, not the guard.
-     **Fixed in `app/api/host/security/lock/route.ts` + `useSecurityStatus.ts`** (lock clears the cookie; test added).
-     Needs a deploy and a re-run of this step: locked write must return 403 `MASTER_UNLOCK_REQUIRED`.
+     **Fixed in `app/api/host/security/lock/route.ts` + `useSecurityStatus.ts`** (lock clears the cookie; test added),
+     commit `44168f4`, deployed 2026-10-21 00:05 IST. **Re-tested on the live build: pass.** With the pre-fix cookie
+     still valid the write returned 200 (the old gap, observed live); after `POST /api/host/security/lock` the same
+     write returned 403 `MASTER_UNLOCK_REQUIRED`. The UI's "Lock now" calls that endpoint (`markUnlocked(false)`).
    - Admin top-up approval: **pass** (run and confirmed by the owner).
 4. Platform settings: check every row of `docs/launch/platform-settings-checklist.md` (GitHub `production`
    environment rules and secret scope; Vercel scopes and `QC_PRODUCTION_SUPABASE_HOST`; edge header check). A
@@ -106,8 +108,8 @@ Vercel dashboard, not from this machine).
    (`189664b2-99e7-4d45-ac50-ffb647ef97df`); its owner set a master PIN during the smoke test on 2026-10-21
    (`/api/host/security/status` → `isAdminPinSet: true`). Block 5 should now return no rows.
 
-Until step 3 is done, the fixes for NV-02, NV-03, NV-07, NV-09, NV-14, NV-15 and NV-19 are verified by tests,
-reading and the database read-back only, not by exercising the running system. The audit run (run 2) stays `incomplete`: its verifier budget is spent,
+Step 3 is done: NV-02, NV-03, NV-10, NV-12, NV-16 and NV-19 have been exercised on the running system. NV-07,
+NV-09, NV-14 and NV-15 are platform-side and are verified by tests, reading and the step-4 checklist. The audit run (run 2) stays `incomplete`: its verifier budget is spent,
 so none of these fixes has an independent re-check.
 
 ## Record
@@ -126,7 +128,8 @@ so none of these fixes has an independent re-check.
 | 2026-10-21 | Launch checks blocks 1-4 run on production: all as expected; migration 3 confirmed; `verify_staff_pin` absent and unused |
 | 2026-10-21 | Block 6: no `permission denied for function` rows in the last 24 hours of Postgres logs |
 | 2026-10-21 | Smoke test on the live build (Bombay Rasoi): guest order, kitchen, settle, repeat-settle 409, staff PIN, top-up approval pass; master PIN set on the venue |
-| 2026-10-21 | Smoke test finding: "Lock now" did not clear the server unlock cookie, so writes behind the master PIN still passed after locking. Fixed (`/api/host/security/lock`), pending deploy and re-test |
+| 2026-10-21 | Smoke test finding: "Lock now" did not clear the server unlock cookie, so writes behind the master PIN still passed after locking. Fixed (`/api/host/security/lock`, `44168f4`) |
+| 2026-10-21 | `44168f4` deployed; re-test on the live build: write after lock → 403 `MASTER_UNLOCK_REQUIRED`. Smoke test complete, all steps pass |
 
 Optional release tag once step 4 is done:
 
