@@ -1,9 +1,12 @@
 # Quad Computing launch verdict, 2026-10-21
 
-**Verdict: CODE-COMPLETE, NOT YET LAUNCH-READY.** Every open audit item (NV-01 to NV-19) now has a fix in source or
-a database migration, and the full gate passes on the working tree. What is missing is not code: migration
-20261021000003 is unapplied, nothing has run on staging, and five platform settings have not been confirmed.
-The verdict turns to launch-ready when the "Remaining steps" below are checked off, and not before.
+**Verdict: CODE AND DATABASE COMPLETE, NOT YET LAUNCH-READY.** Every open audit item (NV-01 to NV-19) has a fix
+committed on `main` (`faff057`) or a migration applied to the database, and the full gate passes. What is missing is
+confirmation: nothing has run on staging, the deployed build does not yet carry `faff057`, the post-migration checks
+have not been read back, and five platform settings are unconfirmed. The verdict turns to launch-ready when the
+"Remaining steps" below are checked off, and not before.
+
+Updated 2026-10-21 after the user reported migration 20261021000003 applied and the remediation committed.
 
 ## Gate on the working tree (run 2026-10-21)
 
@@ -42,37 +45,49 @@ The verdict turns to launch-ready when the "Remaining steps" below are checked o
 
 ## Production state today
 
-- Migrations `20261021000001` and `20261021000002` were applied to the production project on 2026-10-20 (confirmed
-  from the SQL editor: revokes in place, three audit triggers present). They were not run on staging first.
-- Migration `20261021000003` is **not applied** anywhere.
-- The source changes (60 paths) are **uncommitted** on `main` and **not deployed**.
-- Owners whose master PIN was cleared by block 2 of migration 1 have not been identified or told; the app now shows
-  them a notice at sign-in (`MasterPinNotice`), and block 5 of `scripts/db/launch-checks-20261021.sql` lists them.
+- Migrations `20261021000001` and `20261021000002`: applied to the production project on 2026-10-20, confirmed from
+  the SQL editor (revokes in place, three audit triggers present). Not run on staging first.
+- Migration `20261021000003`: applied on 2026-10-21 per the user. Not yet confirmed by a read-back: block 4 of
+  `scripts/db/launch-checks-20261021.sql` must return `has_session_guard = true` and
+  `has_server_cashback_base = true`. Until it does, the database side of NV-03 and NV-19 is reported, not verified.
+- Source: the remediation is committed on `main` as `faff057` (61 files). It is **not pushed and not deployed**; the
+  live build still runs the pre-remediation code, so NV-01, NV-02, NV-07, NV-09, NV-11, NV-13, NV-14 and NV-15 are
+  not in effect for guests and hosts until a deploy from `faff057` or later.
+- Database and code are now out of step by design until that deploy: the new settlement function accepts the old
+  application's calls (same signature), so the live app keeps working; the new guards simply apply earlier than the
+  application-side checks that `faff057` adds.
+- Owners whose master PIN was cleared by block 2 of migration 1: not yet identified or told. Block 5 of the launch
+  checks lists them; `MasterPinNotice` will show them a notice once `faff057` is deployed.
 
 ## Remaining steps to launch-ready
 
-1. Staging: paste `scripts/db/staging-20261021-security-bundle.sql`, run every block of
-   `scripts/db/launch-checks-20261021.sql`, then the smoke test in `docs/launch/platform-settings-checklist.md`.
-2. Platform settings: check every row of `docs/launch/platform-settings-checklist.md` (GitHub environment and
-   secret scope, Vercel scopes and `QC_PRODUCTION_SUPABASE_HOST`, edge header check).
-3. Production: run the Logs Explorer query (block 6) for `permission denied for function`; apply migration
-   `20261021000003`; confirm block 4.
-4. Commit and deploy the source changes (commands below), then re-run the smoke test against production with a
-   dummy venue only.
-5. Owners with no master PIN: confirm each has set one or seen the notice.
+1. Read back the production checks: run blocks 1-5 of `scripts/db/launch-checks-20261021.sql` and the Logs Explorer
+   query in block 6. Expected: 7 functions present with `anon_can`/`auth_can` false; one `session_version` row; audit
+   table with RLS and 3 triggers; block 4 both true; no `permission denied for function` rows since the revoke.
+2. Staging: paste `scripts/db/staging-20261021-security-bundle.sql`, run the same checks, then the smoke test in
+   `docs/launch/platform-settings-checklist.md` against a build of `faff057` (guest order and kitchen cancel; settle a
+   bill, then settle it again and expect 409 `SESSION_ALREADY_SETTLED`; staff PIN login; an owner write behind the
+   master PIN with and without the unlock; admin top-up approval).
+3. Platform settings: check every row of `docs/launch/platform-settings-checklist.md` (GitHub `production`
+   environment rules and secret scope; Vercel scopes and `QC_PRODUCTION_SUPABASE_HOST`; edge header check).
+4. Push `main` and deploy `faff057`; confirm the preview build of a branch logs `[verify-env] checking non-production
+   configuration` with no `FAIL`, and the production deploy passes the production-config workflow.
+5. Owners with no master PIN: confirm each has set one or has seen the notice.
 
-Until 1-3 are done, the fixes for NV-02, NV-03, NV-07, NV-09, NV-14, NV-15 and NV-19 are verified by tests and
-reading only, not by a running system. The audit run (run 2) stays `incomplete`: its verifier budget is spent, so
-none of these fixes has an independent re-check.
+Until steps 1, 2 and 4 are done, the fixes for NV-02, NV-03, NV-07, NV-09, NV-14, NV-15 and NV-19 are verified by
+tests and reading only, not by a running system. The audit run (run 2) stays `incomplete`: its verifier budget is
+spent, so none of these fixes has an independent re-check.
 
-## Commit
+## Record
+
+| Date | Event |
+|---|---|
+| 2026-10-20 | Migrations 20261021000001 and 20261021000002 applied to production from the SQL editor (confirmed) |
+| 2026-10-21 | Remediation committed on `main` as `faff057`; gate green (tsc 0, 1162 tests, migrations, guards, lint) |
+| 2026-10-21 | Migration 20261021000003 applied (reported by the user; read-back pending) |
+
+Optional release tag once step 4 is done:
 
 ```bash
-git add -A
-```
-```bash
-git commit -m "fix(security): close audit run-2 open items NV-01 to NV-19" -m "Settlement guards (migration 20261021000003: session lock, replay, server-side cashback base); open status for a bill that settles in the same request; fee on every closed status; guest-order replay bound to table and day; venue lookup by id or exact slug with a shared negative cache; shared menu cache; rate-limit address from trusted headers only; production-config workflow split from CI; preview builds refuse the production Supabase project; master-PIN notice for owners; launch checks and staging bundle."
-```
-```bash
-git tag -a v1.0.0-rc.1 -m "Release candidate: audit run-2 remediation; pending staging validation"
+git tag -a v1.0.0-rc.1 faff057 -m "Release candidate: audit run-2 remediation; staging validation pending"
 ```
