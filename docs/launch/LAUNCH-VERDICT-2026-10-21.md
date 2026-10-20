@@ -76,7 +76,9 @@ Vercel dashboard, not from this machine).
 4. Platform settings: check every row of `docs/launch/platform-settings-checklist.md` (GitHub `production`
    environment rules and secret scope; Vercel scopes and `QC_PRODUCTION_SUPABASE_HOST`; edge header check). A
    preview build of any branch must log `[verify-env] checking non-production configuration` with no `FAIL`.
-5. Owners with no master PIN (block 5 of the launch checks): confirm each has set one or has seen the notice.
+5. Owners with no master PIN (block 5 of the launch checks, run 2026-10-21): exactly one venue, **Bombay Rasoi**
+   (`189664b2-99e7-4d45-ac50-ffb647ef97df`). Its owner sees the in-app notice at next sign-in; closed when they set a
+   PIN under Profile → Security (block 5 then returns no rows).
 
 Until steps 2 and 3 are done, the fixes for NV-02, NV-03, NV-07, NV-09, NV-14, NV-15 and NV-19 are verified by
 tests and reading only, not by a running system. The audit run (run 2) stays `incomplete`: its verifier budget is spent,
@@ -94,6 +96,7 @@ so none of these fixes has an independent re-check.
 | 2026-10-21 | `main` pushed; `origin/main` = `98f3e29` (confirmed). Vercel build of `98f3e29` failed in the build-time test suite (`VERCEL=1` in the container) |
 | 2026-10-21 | `0785fe4` pins `VERCEL` in the test environment; pushed; suite verified green under `VERCEL=1` locally |
 | 2026-10-21 | Deployment `dpl_Hd8qngcFk72beMPDaEb7nuwBGj1r` Ready from `0785fe4` (reported by the user) |
+| 2026-10-21 | Launch check block 5 run on production: one venue without a master PIN (Bombay Rasoi) |
 
 Optional release tag once step 4 is done:
 
