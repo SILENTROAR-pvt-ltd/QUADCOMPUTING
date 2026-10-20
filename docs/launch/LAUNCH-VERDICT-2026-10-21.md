@@ -1,7 +1,7 @@
 # Quad Computing launch verdict, 2026-10-21
 
-**Verdict: NOT YET LAUNCH-READY; code, database, repository and deployment are complete, and validation of the
-running system is what remains.** Every open audit item (NV-01 to NV-19) has a fix on `origin/main` (`0785fe4`,
+**Verdict: NOT YET LAUNCH-READY; code, database (read back and confirmed), repository and deployment are
+complete, and exercising the running system is what remains.** Every open audit item (NV-01 to NV-19) has a fix on `origin/main` (`0785fe4`,
 which includes `faff057` and the earlier batch `5734e2f`) or a migration applied to the database; the full gate
 passes, including under Vercel's build conditions; and the production deployment `dpl_Hd8qngcFk72beMPDaEb7nuwBGj1r`
 is reported Ready from `0785fe4`. The verdict turns to launch-ready when the "Remaining steps" below are checked
@@ -49,9 +49,18 @@ Vercel dashboard, not from this machine).
 
 - Migrations `20261021000001` and `20261021000002`: applied to the production project on 2026-10-20, confirmed from
   the SQL editor (revokes in place, three audit triggers present). Not run on staging first.
-- Migration `20261021000003`: applied on 2026-10-21 per the user. Not yet confirmed by a read-back: block 4 of
-  `scripts/db/launch-checks-20261021.sql` must return `has_session_guard = true` and
-  `has_server_cashback_base = true`. Until it does, the database side of NV-03 and NV-19 is reported, not verified.
+- Migration `20261021000003`: applied on 2026-10-21 and **confirmed by read-back** (block 4: `has_session_guard`
+  and `has_server_cashback_base` both true on the deployed function).
+- Production read-back of blocks 1-5 (2026-10-21):
+  - Block 1: 6 of the 7 named functions present, each with `anon_can` and `auth_can` false and `service_can` true.
+    `verify_staff_pin` does not exist on production; nothing in the application calls it (staff PIN checks run in
+    the application), so there is nothing to revoke. The earlier "6 rows for 7 names" is explained.
+  - Block 2: `staff_profiles.session_version integer default 0` present.
+  - Block 3: `admin_audit_logs` grants are `SELECT` for `authenticated` and owner rights for `postgres` only; no
+    `service_role`, `anon`, or write grant to any client role. The three `audit_*` triggers were confirmed on
+    2026-10-20; the `ENABLE ROW LEVEL SECURITY` statement precedes them in the same script, so it ran too.
+  - Block 4: both guards present (above).
+  - Block 5: one venue without a master PIN (Bombay Rasoi; see step 5).
 - Source: `origin/main` is `0785fe4` (confirmed by `git fetch` on 2026-10-21). It holds the remediation `faff057`
   (61 files), the earlier lead-fix batch `5734e2f` (NV-01 to NV-24 of run 1), and `0785fe4`, which pins `VERCEL` in
   the test environment after the first Vercel build of `98f3e29` failed in the build-time suite. The push triggers
@@ -66,9 +75,9 @@ Vercel dashboard, not from this machine).
 
 1. ~~Push `main` and deploy~~ (done: `origin/main` = `0785fe4`; deployment `dpl_Hd8qngcFk72beMPDaEb7nuwBGj1r`
    Ready). Still to confirm: the `production-config` workflow run for `0785fe4` passed in GitHub Actions.
-2. Read back the production checks: run blocks 1-5 of `scripts/db/launch-checks-20261021.sql` and the Logs Explorer
-   query in block 6. Expected: 7 functions present with `anon_can`/`auth_can` false; one `session_version` row; audit
-   table with RLS and 3 triggers; block 4 both true; no `permission denied for function` rows since the revoke.
+2. ~~Read back the production checks, blocks 1-5~~ (done 2026-10-21, all as expected; see "Production state").
+   Still to run: block 6, the Logs Explorer query for `permission denied for function` since the revoke; expected
+   no rows.
 3. Smoke test against the deployed `0785fe4` build with a dummy venue only (staging if one exists, otherwise a test
    venue on production): guest order and kitchen cancel; settle a bill, then settle it again and expect 409
    `SESSION_ALREADY_SETTLED`; staff PIN login; an owner write behind the master PIN with and without the unlock;
@@ -80,8 +89,8 @@ Vercel dashboard, not from this machine).
    (`189664b2-99e7-4d45-ac50-ffb647ef97df`). Its owner sees the in-app notice at next sign-in; closed when they set a
    PIN under Profile → Security (block 5 then returns no rows).
 
-Until steps 2 and 3 are done, the fixes for NV-02, NV-03, NV-07, NV-09, NV-14, NV-15 and NV-19 are verified by
-tests and reading only, not by a running system. The audit run (run 2) stays `incomplete`: its verifier budget is spent,
+Until step 3 is done, the fixes for NV-02, NV-03, NV-07, NV-09, NV-14, NV-15 and NV-19 are verified by tests,
+reading and the database read-back only, not by exercising the running system. The audit run (run 2) stays `incomplete`: its verifier budget is spent,
 so none of these fixes has an independent re-check.
 
 ## Record
@@ -97,6 +106,7 @@ so none of these fixes has an independent re-check.
 | 2026-10-21 | `0785fe4` pins `VERCEL` in the test environment; pushed; suite verified green under `VERCEL=1` locally |
 | 2026-10-21 | Deployment `dpl_Hd8qngcFk72beMPDaEb7nuwBGj1r` Ready from `0785fe4` (reported by the user) |
 | 2026-10-21 | Launch check block 5 run on production: one venue without a master PIN (Bombay Rasoi) |
+| 2026-10-21 | Launch checks blocks 1-4 run on production: all as expected; migration 3 confirmed; `verify_staff_pin` absent and unused |
 
 Optional release tag once step 4 is done:
 
