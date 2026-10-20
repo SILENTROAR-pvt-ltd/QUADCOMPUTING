@@ -60,6 +60,40 @@ WHERE (b.admin_pin_hash IS NULL OR b.admin_pin_hash NOT LIKE 'scrypt:%')
   AND (b.admin_pin IS NULL OR btrim(b.admin_pin) IN ('', '0000'))
 ORDER BY b.created_at;
 
+-- ── 7. What the public anon key can reach (run before AND after 20261021000004) ─────────────────────────────────
+-- 7a. Policies that admit anon or admit everyone unconditionally. After the migration, only the three deliberate
+--     public reads remain: catalog_items, restaurant_tables, venue_photo_vault (is_active).
+SELECT tablename, policyname, cmd, roles::text AS roles, qual, with_check
+FROM pg_policies
+WHERE schemaname = 'public'
+  AND ( lower(coalesce(qual, '')) IN ('true', '(true)')
+     OR lower(coalesce(with_check, '')) IN ('true', '(true)')
+     OR 'anon' = ANY (roles::text[]) )
+ORDER BY tablename, policyname;
+
+-- 7b. Table privileges the anon role holds. After the migration: SELECT on catalog_items and restaurant_tables only.
+SELECT table_name, string_agg(privilege_type, ', ' ORDER BY privilege_type) AS privileges
+FROM information_schema.role_table_grants
+WHERE grantee = 'anon' AND table_schema = 'public'
+GROUP BY table_name ORDER BY table_name;
+
+-- 7c. SECURITY DEFINER functions anon or authenticated may still execute. After the migration, expected:
+--     get_auth_business_ids (authenticated only) and nothing for anon.
+SELECT p.proname, p.oid::regprocedure AS signature,
+       has_function_privilege('anon', p.oid, 'EXECUTE') AS anon_can,
+       has_function_privilege('authenticated', p.oid, 'EXECUTE') AS auth_can
+FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+WHERE n.nspname = 'public' AND p.prosecdef
+  AND (has_function_privilege('anon', p.oid, 'EXECUTE') OR has_function_privilege('authenticated', p.oid, 'EXECUTE'))
+ORDER BY p.proname;
+
+-- 7d. Plain-text PIN columns still holding a value (expect 0 / 0 / 0 after the migration, unless a venue has never
+--     entered its PIN since hashing began; those rows upgrade on next use).
+SELECT
+  (SELECT count(*) FROM public.businesses WHERE admin_pin IS NOT NULL) AS admin_pin_plain,
+  (SELECT count(*) FROM public.businesses WHERE staff_pin IS NOT NULL) AS staff_pin_plain,
+  (SELECT count(*) FROM public.staff_profiles WHERE pin_code IS NOT NULL) AS staff_profile_pin_plain;
+
 -- ── 6. Permission-denied errors since the revoke (Supabase Logs > Postgres, Logs Explorer) ────────────────────────
 -- Paste this in the Logs Explorer, not the SQL editor. A row here means a caller still reaches one of the revoked
 -- functions with the anon or authenticated role; the error_severity/message name the function.
