@@ -64,6 +64,11 @@ export interface PhysicalRoom {
   category?: RoomCategory;
   activeOrdersCount?: number;
   activeOrdersTotal?: number;
+  /** How the guest arrived: at the desk, by self check-in, or from an advance booking (migration 20261021000005). */
+  checkin_source?: 'desk' | 'self' | 'booking' | null;
+  /** Object path of the ID photo in the private bucket; the host views it through a signed URL. */
+  id_proof_path?: string | null;
+  id_verified_at?: string | null;
 }
 
 export interface RoomStayLog {

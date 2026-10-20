@@ -10,6 +10,7 @@ import { OccupiedRoomHistory } from './occupied/OccupiedRoomHistory';
 import { printOccupiedFolio } from './occupied/printOccupiedFolio';
 import { useOccupiedRoomDossier } from './occupied/useOccupiedRoomDossier';
 import { OccupiedRoomHeader } from './occupied/OccupiedRoomHeader';
+import { IdProofPanel } from './occupied/IdProofPanel';
 
 interface Props {
   room: PhysicalRoom | null;
@@ -78,6 +79,7 @@ export function OccupiedRoomModal({ room, isOpen, onClose, onRoomUpdated, onNavi
                 </div>
               )}
               <OccupiedGuestDossier room={r} />
+              <IdProofPanel room={r} onVerified={() => { onRoomUpdated(); void d.loadDossier(r.id); }} />
               <OccupiedRoomOrders orders={d.actualRoomServiceOrders} tickets={d.tickets} roomNumber={r.room_number} />
               {d.isLoading
                 ? <div className="h-64 animate-pulse rounded-2xl border border-neutral-200 bg-white" aria-busy="true" />

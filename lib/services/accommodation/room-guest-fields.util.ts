@@ -17,6 +17,10 @@ export const CLEARED_GUEST_FIELDS = {
   celebration_type: null,
   celebration_note: null,
   selected_addons: [],
+  // Self check-in leaves these (migration 20261021000005); the next guest must never inherit an ID photo.
+  id_proof_path: null,
+  id_verified_at: null,
+  checkin_source: 'desk',
 } as const;
 
 export interface CheckInBody {

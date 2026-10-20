@@ -6,13 +6,13 @@ import { FrontDeskGrid } from './accommodations/FrontDeskGrid';
 import { CategoryConfigurator } from './accommodations/CategoryConfigurator';
 import { ExistingCategoriesList } from './accommodations/ExistingCategoriesList';
 import { StayHistoryLedger } from './accommodations/StayHistoryLedger';
-import { AccommodationsWorkspaceHeader } from './accommodations/AccommodationsWorkspaceHeader';
+import { AccommodationsWorkspaceHeader, type AccommodationsTab as Tab } from './accommodations/AccommodationsWorkspaceHeader';
 import { AccommodationsModalsHost } from './accommodations/AccommodationsModalsHost';
 import { DEFAULT_COMMON_AMENITIES } from './accommodations/configurator/room-category.constants';
 import { useAccommodationsData } from './accommodations/hooks/useAccommodationsData';
 import { useCategoryActions } from './accommodations/hooks/useCategoryActions';
-
-type Tab = 'front-desk' | 'configurator' | 'history';
+import { StayBookingsPanel } from './accommodations/bookings/StayBookingsPanel';
+import { StaySettingsCard } from './accommodations/bookings/StaySettingsCard';
 
 /** Front desk, room setup and stay history for a venue's rooms. */
 export function AccommodationsWorkspace({ onNavigate }: { onNavigate?: (tab: string, meta?: any) => void }) {
@@ -82,8 +82,11 @@ export function AccommodationsWorkspace({ onNavigate }: { onNavigate?: (tab: str
         />
       )}
 
+      {activeMainTab === 'bookings' && <StayBookingsPanel categories={categories} onShowToast={showToast} />}
+
       {activeMainTab === 'configurator' && (
         <div className="space-y-12">
+          <StaySettingsCard rooms={rooms} onShowToast={showToast} />
           <CategoryConfigurator commonAmenities={DEFAULT_COMMON_AMENITIES} isSubmitting={actions.isSubmitting} onSubmit={actions.createCategory} />
           <ExistingCategoriesList
             categories={categories}

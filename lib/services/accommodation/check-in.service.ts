@@ -8,7 +8,11 @@ interface RoomRow { id: string; room_number: string; category?: { name?: string 
  * log entry. Only an 'active' folio of this room is reused; a previous guest's invoice waiting for
  * payment ('ready_for_settlement') is never overwritten.
  */
-export async function openStayFolio(supabase: any, businessId: string, room: RoomRow, f: CheckInFields): Promise<number> {
+export async function openStayFolio(
+  supabase: any, businessId: string, room: RoomRow, f: CheckInFields,
+  // Extra stay-log columns a self check-in records (where the ID photo is, how the guest arrived).
+  logExtra: Record<string, unknown> = {},
+): Promise<number> {
   const nights = stayNights(f.check_in_time, f.check_out_time);
   const folio = buildStayFolio({
     roomId: room.id,
@@ -62,6 +66,7 @@ export async function openStayFolio(supabase: any, businessId: string, room: Roo
     celebration_note: f.celebration_note,
     selected_addons: f.selected_addons,
     total_billed_amount: folio.total,
+    ...logExtra,
   });
   if (logErr) console.error('[check-in] stay log insert failed', logErr.message);
   return folio.total;

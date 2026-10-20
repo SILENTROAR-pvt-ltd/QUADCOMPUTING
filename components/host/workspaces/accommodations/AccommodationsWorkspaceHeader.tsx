@@ -4,7 +4,8 @@ import React from 'react';
 import { CheckCircle2, Plus, X } from 'lucide-react';
 import type { LiveState } from './hooks/useAccommodationsData';
 
-type Tab = 'front-desk' | 'configurator' | 'history';
+export type AccommodationsTab = 'front-desk' | 'bookings' | 'configurator' | 'history';
+type Tab = AccommodationsTab;
 
 interface AccommodationsWorkspaceHeaderProps {
   activeMainTab: Tab;
@@ -16,6 +17,7 @@ interface AccommodationsWorkspaceHeaderProps {
 
 const TABS: Array<{ id: Tab; label: string }> = [
   { id: 'front-desk', label: 'Front desk' },
+  { id: 'bookings', label: 'Bookings' },
   { id: 'configurator', label: 'Room setup' },
   { id: 'history', label: 'Stay history' },
 ];
@@ -49,7 +51,7 @@ export function AccommodationsWorkspaceHeader({ activeMainTab, setActiveMainTab,
         )}
       </div>
 
-      <div role="tablist" aria-label="Accommodations sections" className="grid w-full grid-cols-3 gap-1 rounded-xl bg-neutral-100 p-1 sm:inline-grid sm:w-auto">
+      <div role="tablist" aria-label="Accommodations sections" className="grid w-full grid-cols-4 gap-1 rounded-xl bg-neutral-100 p-1 sm:inline-grid sm:w-auto">
         {TABS.map((t) => (
           <button key={t.id} type="button" role="tab" aria-selected={activeMainTab === t.id} onClick={() => setActiveMainTab(t.id)}
             className={`h-10 rounded-lg px-4 text-sm font-semibold transition-colors cursor-pointer sm:px-6 ${activeMainTab === t.id ? 'bg-white text-neutral-950 shadow-xs' : 'text-neutral-500 hover:text-neutral-900'}`}>

@@ -8,7 +8,8 @@ import { createHmac, timingSafeEqual } from 'crypto';
 export const MASTER_UNLOCK_COOKIE = 'qc_master_unlock';
 export const MASTER_UNLOCK_SECONDS = 15 * 60;
 
-function signingSecret(): string | null {
+/** The server's signing secret for short-lived session cookies (master unlock, room sessions). */
+export function signingSecret(): string | null {
   return process.env.STAFF_SESSION_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY || null;
 }
 

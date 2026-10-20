@@ -284,7 +284,11 @@ export const POST = withApiErrorBoundary(async function POST(
         is_celebration: false,
         celebration_type: null,
         celebration_note: null,
-        selected_addons: []
+        selected_addons: [],
+        // The ID photo path stays on the stay log; the room itself forgets it (migration 20261021000005).
+        id_proof_path: null,
+        id_verified_at: null,
+        checkin_source: 'desk',
       })
       .eq('id', roomId)
       .eq('business_id', businessId)
