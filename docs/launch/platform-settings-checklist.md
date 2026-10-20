@@ -26,17 +26,20 @@ for the same reason (nothing to read). Owner decision on 2026-10-21: **the workf
 
 ## Vercel (NV-15: preview builds holding production secrets)
 
-A preview or development build runs branch code with the environment of its scope. The build now fails when a
-non-production build's Supabase URL is the production project (`scripts/verify-env.mjs`), which needs one variable:
+A preview or development build runs branch code with the environment of its scope. Read in the Vercel dashboard
+on 2026-10-21 (project `qc-aa70/quadcomputing`, Project variables; no team-shared variables are linked):
 
-| Setting | Value | Confirm | Checked |
+| Variable / setting | Found | Verdict | Checked |
 |---|---|---|---|
-| Environment Variables > `QC_PRODUCTION_SUPABASE_HOST` | The production project host, e.g. `<ref>.supabase.co`, in all three scopes (Production, Preview, Development). Not a secret. | Present in all scopes | |
-| Environment Variables > `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` | Production scope: production project. Preview and Development scope: the **staging** project only | A preview deployment's build log shows `[verify-env] checking non-production configuration` and no `FAIL` line | |
-| Environment Variables > `UPSTASH_REDIS_REST_URL/TOKEN`, `LLM_API_KEY`, `STAFF_SESSION_SECRET` | Preview and Development scope: separate staging values, or unset | No production value has a Preview or Development entry | |
-| Settings > Git > Fork protection | On (default) | | |
-| Settings > Git > Deploy Hooks / Ignored Build Step | Optional: `git diff --quiet HEAD^ HEAD -- . ':!docs'` to skip docs-only builds | | |
-| Settings > Deployment Protection > Vercel Authentication | On for Preview | A preview URL asks for a Vercel sign-in | |
+| `SUPABASE_SERVICE_ROLE_KEY` | **Production only** | Pass: a branch build cannot reach the production database with admin rights, which was the serious part of NV-15 | 2026-10-21 |
+| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Production and Preview (one value) | Accepted risk: previews point at the production project with the public anon key, under RLS. There is no staging Supabase project yet. | 2026-10-21 |
+| `QC_PRODUCTION_SUPABASE_HOST` | Not set | Correct for now: setting it would fail every preview build until a staging project exists. Set it, with staging values in Preview, the day staging is created. | 2026-10-21 |
+| `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | Production and Preview | **Recommended change:** remove the Preview scope (previews fall back to the per-instance limiter). Until then a branch build can read the production Upstash token; it can disturb rate-limit and idempotency keys, not venue data. | pending |
+| `STAFF_SESSION_SECRET` | Not set | Recommended: set a dedicated value in Production. Staff sessions and the master unlock are currently signed with the service-role key as the fallback, which works but couples two secrets. | pending |
+| `LLM_API_KEY` | Not set | Fine: the model features degrade to exact matching, as the build log says. | 2026-10-21 |
+| Legacy integration variables (`POSTGRES_*`, `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `SUPABASE_JWT_SECRET`, `SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`) | Production only | Fine. `UPSTASH_REDIS_REST_TOKEN` shows "Needs Attention": mark it Sensitive. | 2026-10-21 |
+| Settings > Git | Connected to `SILENTROAR-pvt-ltd/QUADCOMPUTING`; no deploy hooks | Fork protection is a team-level setting (Team Settings > Security), not read here; Vercel's default is on | 2026-10-21 |
+| Settings > Deployment Protection > Vercel Authentication | Standard Protection (previews require a Vercel sign-in; production public) | Pass | 2026-10-21 |
 
 ## Edge and forwarded headers (NV-14)
 

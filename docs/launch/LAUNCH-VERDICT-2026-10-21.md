@@ -1,14 +1,37 @@
 # Quad Computing launch verdict, 2026-10-21
 
-**Verdict: NOT YET LAUNCH-READY; code, database (read back and confirmed), repository and deployment are
-complete, and exercising the running system is what remains.** Every open audit item (NV-01 to NV-19) has a fix on `origin/main` (`0785fe4`,
-which includes `faff057` and the earlier batch `5734e2f`) or a migration applied to the database; the full gate
-passes, including under Vercel's build conditions; and the production deployment `dpl_Hd8qngcFk72beMPDaEb7nuwBGj1r`
-is reported Ready from `0785fe4`. The verdict turns to launch-ready when the "Remaining steps" below are checked
-off, and not before: none of the fixes has yet been exercised against the running system.
+**Verdict: LAUNCH-READY, with three recommendations and two accepted risks recorded below.** Every open audit item
+(NV-01 to NV-19) has a fix on `origin/main` (live build `44168f4`, which includes `faff057` and the earlier batch
+`5734e2f`) or a migration applied to the database; the full gate passes, including under Vercel's build
+conditions; the database was read back and confirmed (blocks 1-6); the running system was exercised end to end on
+the live build (guest order, kitchen, settlement, repeat-settlement refusal, staff PIN, master-PIN lock, top-up
+approval), which found and fixed one more gap (the lock button); GitHub holds no secrets; and Vercel keeps the
+service-role key in Production only. The platform items that remain are recommendations, listed with their impact,
+not blockers.
 
-Updated 2026-10-21 after the deployment of `0785fe4` (reported by the user; the deployment's commit is read from the
-Vercel dashboard, not from this machine).
+This verdict is mine, from direct observation on 2026-10-21. The audit run (run 2) itself stays marked `incomplete`
+under its own rules, because its verifier budget was spent before these fixes existed; the smoke test on the live
+system stands in for that re-check.
+
+Final update 2026-10-21 01:00 IST after the Vercel settings read-back.
+
+### Recommendations (do soon; none blocks launch)
+
+1. Vercel: remove the **Preview** scope from `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN`, and mark the
+   token Sensitive. Until then a branch build can read the production Upstash token (it can disturb rate-limit and
+   idempotency keys, not venue data).
+2. Vercel: set a dedicated `STAFF_SESSION_SECRET` in Production. Staff sessions and the master unlock are signed
+   with the service-role key as the fallback today.
+3. Sentry: set `NEXT_PUBLIC_SENTRY_DSN` (and an auth token for source maps). Production errors are not reported
+   anywhere today, as the build log warns.
+
+### Accepted risks (recorded; revisit when a staging project exists)
+
+1. Previews point at the production Supabase project with the public anon key, under RLS, because there is no
+   staging project. `QC_PRODUCTION_SUPABASE_HOST` is deliberately unset until one exists; setting it then makes a
+   mis-scoped preview build fail by itself.
+2. The `Production` GitHub environment has no deployment-branch restriction. Harmless while GitHub holds no secrets,
+   which it does not; set the restriction before any secret is ever added.
 
 ## Gate on the working tree (run 2026-10-21)
 
@@ -109,9 +132,9 @@ Vercel dashboard, not from this machine).
    - GitHub: **done** 2026-10-21 (read in the Browser pane): no repository secrets, no environment secrets or
      variables, and after the deletion of `production-config.yml` no workflow references secrets. The `Production`
      environment's "No restriction" on deployment branches is harmless while it holds nothing.
-   - Vercel: **pending**. `QC_PRODUCTION_SUPABASE_HOST` in all three scopes; Preview/Development `SUPABASE_*`
-     pointing at a staging project (or, with no staging project, an accepted risk recorded here); a preview build
-     logging `[verify-env] checking non-production configuration` with no `FAIL`.
+   - Vercel: **done** 2026-10-21 (read in the Browser pane; details in the checklist): `SUPABASE_SERVICE_ROLE_KEY`
+     is Production-only; no shared variables; Vercel Authentication protects previews. The Upstash pair is also in
+     Preview (recommendation 1) and there is no staging project (accepted risk 1).
 5. ~~Owners with no master PIN~~ (done): block 5 listed exactly one venue, **Bombay Rasoi**
    (`189664b2-99e7-4d45-ac50-ffb647ef97df`); its owner set a master PIN during the smoke test on 2026-10-21
    (`/api/host/security/status` → `isAdminPinSet: true`). Block 5 should now return no rows.
@@ -138,7 +161,9 @@ so none of these fixes has an independent re-check.
 | 2026-10-21 | Smoke test on the live build (Bombay Rasoi): guest order, kitchen, settle, repeat-settle 409, staff PIN, top-up approval pass; master PIN set on the venue |
 | 2026-10-21 | Smoke test finding: "Lock now" did not clear the server unlock cookie, so writes behind the master PIN still passed after locking. Fixed (`/api/host/security/lock`, `44168f4`) |
 | 2026-10-21 | `44168f4` deployed; re-test on the live build: write after lock → 403 `MASTER_UNLOCK_REQUIRED`. Smoke test complete, all steps pass |
-| 2026-10-21 | GitHub settings read: no secrets anywhere; `production-config` failed on all 10 runs for that reason; deleted with the owner's approval |
+| 2026-10-21 | GitHub settings read: no secrets anywhere; `production-config` failed on all 10 runs for that reason; deleted with the owner's approval (`f3b5a0c`) |
+| 2026-10-21 | Vercel settings read: service-role key Production-only; Upstash pair also in Preview; no staging project; previews behind Vercel Authentication |
+| 2026-10-21 | **Verdict: launch-ready**, with the recommendations and accepted risks above |
 
 Optional release tag once step 4 is done:
 
