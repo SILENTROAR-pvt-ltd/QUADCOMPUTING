@@ -11,6 +11,8 @@ import { printOccupiedFolio } from './occupied/printOccupiedFolio';
 import { useOccupiedRoomDossier } from './occupied/useOccupiedRoomDossier';
 import { OccupiedRoomHeader } from './occupied/OccupiedRoomHeader';
 import { IdProofPanel } from './occupied/IdProofPanel';
+import { LateCheckoutPanel } from './occupied/LateCheckoutPanel';
+import { CheckoutRequestPanel } from './occupied/CheckoutRequestPanel';
 
 interface Props {
   room: PhysicalRoom | null;
@@ -40,10 +42,10 @@ export function OccupiedRoomModal({ room, isOpen, onClose, onRoomUpdated, onNavi
     `flex items-center gap-1.5 border-b-2 py-2.5 transition-colors cursor-pointer ${activeTab === id ? 'border-neutral-950 font-semibold text-neutral-950' : 'border-transparent text-neutral-500 hover:text-neutral-900'}`;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/30 p-3 backdrop-blur-sm animate-in fade-in duration-200 sm:p-6">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-neutral-950/30 backdrop-blur-sm animate-in fade-in duration-200 sm:items-center sm:p-6">
       <div className="fixed inset-0" onClick={onClose} />
       <div role="dialog" aria-modal="true" aria-label={`Room ${r.room_number}`}
-        className="relative z-10 flex max-h-[94vh] w-full max-w-4xl flex-col overflow-hidden rounded-3xl border border-neutral-200 bg-neutral-50 text-neutral-900 shadow-2xl animate-in zoom-in-95 duration-200">
+        className="relative z-10 flex h-[100dvh] w-full flex-col overflow-hidden bg-neutral-50 text-neutral-900 shadow-2xl animate-in slide-in-from-bottom-4 duration-200 sm:h-auto sm:max-h-[94vh] sm:max-w-4xl sm:rounded-3xl sm:border sm:border-neutral-200">
         <OccupiedRoomHeader
           activeRoom={r}
           isEditingRoomNumber={d.isEditingRoomNumber}
@@ -78,8 +80,11 @@ export function OccupiedRoomModal({ room, isOpen, onClose, onRoomUpdated, onNavi
                   </div>
                 </div>
               )}
+              <CheckoutRequestPanel room={r} balance={d.isLoading ? null : Number(d.effectiveBillingSummary?.grandTotalPayable ?? 0)}
+                onSettle={d.handleCheckoutAndSettle} settling={d.isCheckingOut} onChanged={() => { onRoomUpdated(); void d.loadDossier(r.id); }} />
               <OccupiedGuestDossier room={r} />
               <IdProofPanel room={r} onVerified={() => { onRoomUpdated(); void d.loadDossier(r.id); }} />
+              <LateCheckoutPanel room={r} onChanged={() => { onRoomUpdated(); void d.loadDossier(r.id); }} />
               <OccupiedRoomOrders orders={d.actualRoomServiceOrders} tickets={d.tickets} roomNumber={r.room_number} />
               {d.isLoading
                 ? <div className="h-64 animate-pulse rounded-2xl border border-neutral-200 bg-white" aria-busy="true" />

@@ -18,6 +18,8 @@ function GuestLobbyContent() {
   const searchParams = useSearchParams();
   const tableParam = searchParams.get('table') || 'T-01';
   const viewParam = searchParams.get('view');
+  // A guest who came from their room keeps the room on the way back to the menu.
+  const roomParam = searchParams.get('room') || undefined;
 
   const { session } = useGuestLobbyStore();
   const cafeId = resolveLoungeCafeId(
@@ -87,7 +89,7 @@ function GuestLobbyContent() {
       </main>
 
       <aside className="fixed bottom-3 sm:bottom-4 inset-x-0 z-50 flex justify-center px-3 pointer-events-none pb-[env(safe-area-inset-bottom,0px)]">
-        <GuestTabBar active="lounge" tableNumber={currentUserTable} cafeId={cafeId} />
+        <GuestTabBar active="lounge" tableNumber={currentUserTable} cafeId={cafeId} roomCode={roomParam} />
       </aside>
 
       {selectedTargetUser && (

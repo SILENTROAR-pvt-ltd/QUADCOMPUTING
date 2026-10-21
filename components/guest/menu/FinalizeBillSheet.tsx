@@ -11,6 +11,7 @@ import { BottomSheet } from "@/components/guest/shared/BottomSheet";
 import { SheetHeader } from "@/components/guest/shared/SheetHeader";
 import { WalletSwitch } from "./bill/WalletSwitch";
 import { press } from "./motion";
+import { tableLabel } from "@/lib/guest/room-mode";
 
 const rupees = (n: number) => `₹${Number(n || 0).toFixed(2).replace(/\.00$/, "")}`;
 
@@ -83,7 +84,7 @@ export function FinalizeBillSheet({ cafeId, tableNumber, billTotal, onConfirm, o
     <BottomSheet labelledBy="finalize-title" onClose={onClose} locked={busy}>
       <SheetHeader
         id="finalize-title" icon={<Receipt className="h-[18px] w-[18px]" />} title="Shall we prepare your bill?" onClose={onClose} disabled={busy}
-        subtitle={<>{total > 0 ? <>Table {tableNumber} · {rupees(total)} so far. </> : null}Once you confirm, our team will bring the final bill to your table. You can still order more until it is settled.</>}
+        subtitle={<>{total > 0 ? <>{tableLabel(tableNumber)} · {rupees(total)} so far. </> : null}Once you confirm, our team will bring the final bill to your table. You can still order more until it is settled.</>}
       />
 
       {canOfferWallet && <WalletSwitch on={useWallet} busy={busy} balance={balance} amount={amount} onToggle={() => setUseWallet((v) => !v)} />}

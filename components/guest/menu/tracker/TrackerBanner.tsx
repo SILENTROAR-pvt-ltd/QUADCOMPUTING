@@ -6,6 +6,7 @@ import { ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
 import { TrackerVideo } from './TrackerVideo';
 import { TRACKER_MEDIA, type StageCopy } from './tracker-copy';
 import { press } from '../motion';
+import { tableLabel } from '@/lib/guest/room-mode';
 
 const SERIF = { fontFamily: "'Playfair Display', Georgia, serif" } as const;
 const ROUND = 'grid h-9 w-9 cursor-pointer place-items-center rounded-full bg-white/10 text-neutral-200 ring-1 ring-white/15 backdrop-blur-sm hover:bg-white/20 hover:text-white';
@@ -78,7 +79,7 @@ export function TrackerBanner(p: TrackerBannerProps) {
         </div>
 
         <p className="mt-4 text-[11px] tracking-wide text-neutral-300/80">
-          {p.table === 'Table' ? 'Your table' : `Table ${p.table}`} &middot; {p.itemCount} {p.itemCount === 1 ? 'item' : 'items'} &middot; ₹{p.total}
+          {p.table === 'Table' ? 'Your table' : tableLabel(p.table)} &middot; {p.itemCount} {p.itemCount === 1 ? 'item' : 'items'} &middot; ₹{p.total}
         </p>
       </div>
     </header>

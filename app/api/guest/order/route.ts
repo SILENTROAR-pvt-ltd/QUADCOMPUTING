@@ -13,6 +13,7 @@ import {
 import { withApiErrorBoundary, handleApiError } from '@/lib/middleware/error-handler';
 import { applyRequestIdentity } from '@/lib/services/guest-auth/request-identity';
 import { newDeliveryTableNumber } from '@/lib/services/delivery/delivery-input';
+import { isRoomTable } from '@/lib/guest/room-mode';
 
 /**
  * GET /api/guest/order
@@ -61,6 +62,12 @@ export const POST = withApiErrorBoundary(async function POST(request: Request) {
     if (validation.error) return validation.error;
     const businessId = validation.businessId;
     const tableNumber = isDelivery ? newDeliveryTableNumber() : validation.tableNumber;
+
+    // A room's label ("RS-101") is not a table: an order under it goes through the room's own endpoint, which ties it to
+    // the stay and its bill. Taken here it would be a loose table order that no checkout ever settles.
+    if (!isDelivery && isRoomTable(tableNumber)) {
+      return apiError('Order to your room from your room page, so it goes on your room bill.', 'ROOM_ORDER_MISROUTED', 400);
+    }
 
     // Rate Limiting: Apply sliding window rate limit per IP & venue
     const ip = getClientIp(request);

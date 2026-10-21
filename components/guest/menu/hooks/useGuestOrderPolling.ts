@@ -8,6 +8,8 @@ interface PollingProps {
   tableNumber: string; cafeParam: string; guestId: string; activeSessionId?: string; hasActiveOrder: boolean; sentItemsCount: number;
   /** The table's push channel is up: the polls below are then only a slow safety net. */
   pushUp?: boolean;
+  /** Room mode: a room has no table session to ask about; only the order itself is followed. */
+  roomMode?: boolean;
   billRequestedBanner: boolean; markBillSettled: (t?: number, cashback?: number) => void; setSentItems: (it: any[]) => void;
   setMasterOrder: (o: any) => void; setKotStatus: (s: string) => void; setTicketNumber: (t: string) => void; setBillRequestedBanner: (v: boolean) => void;
 }
@@ -33,7 +35,7 @@ export function useGuestOrderPolling(props: PollingProps) {
   const latest = useRef(props);
   latest.current = props;
   const { tableNumber, cafeParam } = props;
-  const statusId = props.activeSessionId || props.guestId;
+  const statusId = props.roomMode ? '' : props.activeSessionId || props.guestId;
   const isActive = props.hasActiveOrder || props.sentItemsCount > 0 || props.billRequestedBanner;
   const pushUp = Boolean(props.pushUp);
   const statusEveryMs = pushUp ? (isActive ? STATUS_POLL_PUSHED_MS : POLL_IDLE_PUSHED_MS) : (isActive ? STATUS_POLL_ACTIVE_MS : POLL_IDLE_MS);
@@ -68,7 +70,7 @@ export function useGuestOrderPolling(props: PollingProps) {
 
   useEffect(() => {
     // The session endpoint requires an id; the guest id is assigned in an effect
-    // after first render, so wait for it instead of sending session_id= (a 500).
+    // after first render, so wait for it instead of sending session_id= (a 500). A room never has one.
     if (!statusId) return;
 
     // The first check always runs (a page opened in a background tab must still

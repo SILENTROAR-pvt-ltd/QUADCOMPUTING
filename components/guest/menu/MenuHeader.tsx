@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { Receipt, Sparkles } from "lucide-react";
 import { GUEST_BRAND } from "@/lib/brand";
 import { greetingFor, greetingName } from "@/lib/guest/greeting";
+import { isRoomTable } from "@/lib/guest/room-mode";
 
 export interface MenuHeaderProps {
   guestName?: string;
@@ -44,8 +45,8 @@ export function MenuHeader({
           <div className="relative flex items-center justify-between gap-2">
             <span className="inline-flex h-9 items-center gap-2 whitespace-nowrap rounded-full border border-[#e6d9b8] bg-white/90 pl-3 pr-3.5 shadow-[0_6px_16px_-10px_rgba(10,50,34,0.5)]">
               <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500 shadow-[0_0_8px_2px_rgba(16,185,129,0.45)]" />
-              <span className="text-[9px] font-semibold uppercase tracking-[0.22em] text-zinc-500">Table</span>
-              <span className="text-[13px] font-semibold leading-none tracking-wide text-zinc-950">{tableNo}</span>
+              <span className="text-[9px] font-semibold uppercase tracking-[0.22em] text-zinc-500">{isRoomTable(tableNo) ? 'Room' : 'Table'}</span>
+              <span className="text-[13px] font-semibold leading-none tracking-wide text-zinc-950">{isRoomTable(tableNo) ? tableNo.slice(3) : tableNo}</span>
             </span>
             <span aria-hidden className="pointer-events-none absolute left-1/2 hidden -translate-x-1/2 whitespace-nowrap text-[9px] font-semibold uppercase tracking-[0.26em] text-zinc-400 min-[480px]:block">{GUEST_BRAND.name}</span>
             {activeOrdersCount > 0 ? (
@@ -75,7 +76,7 @@ export function MenuHeader({
               <p className="mt-2 max-w-md text-[13px] italic leading-snug text-zinc-500 [text-wrap:balance] sm:text-sm" style={serif}>{tagline}</p>
             )}
             <span className="mt-3.5 inline-flex items-center gap-1.5 rounded-full border border-amber-200/80 bg-amber-50/80 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-800">
-              <Sparkles size={11} aria-hidden /> Order right from your table
+              <Sparkles size={11} aria-hidden /> {isRoomTable(tableNo) ? 'Order right to your room' : 'Order right from your table'}
             </span>
           </motion.div>
         </div>

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createFakeSupabase } from '@/lib/testing/fake-supabase';
 import { availabilityFromRows, nightsOverlap } from './stay-availability.service';
-import { createStayBooking, StayBookingError, validateStayBooking } from './stay-booking.service';
+import { createStayBooking, readStayBookingInput, StayBookingError, validateStayBooking } from './stay-booking.service';
 import { selfCheckIn, SelfCheckInError } from './self-checkin.service';
 import { hasRoomSession, issueRoomSession, roomCookieName, roomSessionFromCookieHeader } from './room-session';
 import { diningMessage, diningWindow } from './room-dining-hours';
@@ -54,6 +54,27 @@ describe('advance booking', () => {
     await expect(createStayBooking(db, 'ffffffff-1111-4222-8333-444444444444', booking(), TODAY)).rejects.toMatchObject({ code: 'NOT_FOUND' });
   });
 
+  it('a signed-in guest reserves under their Vibers ID: the account fills the name and mobile and the booking is linked', async () => {
+    const account = { id: 'dddddddd-1111-4222-8333-444444444444', display_name: 'Asha Rao', phone: '9876543210' };
+    const body = { category_id: CAT, check_in: '2026-10-25', check_out: '2026-10-27', guests: 2 };
+    const input = readStayBookingInput(body, account);
+    expect(input).toMatchObject({ guestName: 'Asha Rao', guestPhone: '9876543210', guestAccountId: account.id });
+    // What they type still wins, and nobody is linked when nobody is signed in.
+    expect(readStayBookingInput({ ...body, guest_name: 'A. Rao', guest_phone: '9123456789' }, account)).toMatchObject({ guestName: 'A. Rao', guestPhone: '9123456789' });
+    expect(readStayBookingInput(body, null)).toMatchObject({ guestName: '', guestPhone: '', guestAccountId: null });
+    expect(validateStayBooking(readStayBookingInput(body, { ...account, phone: null }), TODAY)).toMatch(/10-digit/);
+
+    const db = createFakeSupabase({
+      room_categories: [{ id: CAT, business_id: BIZ, name: 'Mount View', price: 3500, occupancy: 2 }],
+      rooms: [{ id: R1, business_id: BIZ, category_id: CAT, status: 'VACANT' }],
+      stay_booking_requests: [],
+    });
+    const made = await createStayBooking(db, BIZ, input, TODAY);
+    expect(made.booking).toMatchObject({ guest_account_id: account.id, guest_name: 'Asha Rao', guest_phone: '9876543210' });
+    const anonymous = await createStayBooking(db, BIZ, booking({ checkIn: '2026-11-01', checkOut: '2026-11-02' }), TODAY);
+    expect(anonymous.booking.guest_account_id).toBeNull();
+  });
+
   it('codes are readable and normalise from what a guest types', () => {
     expect(newConfirmationCode()).toMatch(/^ST-[A-HJ-NP-Z2-9]{6}$/);
     expect(normalizeConfirmationCode(' st-abc234 ')).toBe('ST-ABC234');
@@ -80,6 +101,37 @@ describe('self check-in', () => {
     await expect(selfCheckIn(db, BIZ, { ...guest, idProofPath: null }, { today: TODAY })).rejects.toMatchObject({ code: 'INVALID' } satisfies Partial<SelfCheckInError>);
     await expect(selfCheckIn(db, BIZ, { ...guest, idProofPath: '../etc/passwd' }, { today: TODAY })).rejects.toMatchObject({ code: 'INVALID' });
     await expect(selfCheckIn(db, BIZ, guest, { today: TODAY })).rejects.toMatchObject({ code: 'NO_ROOM' });
+  });
+
+  it('enforces DPDP Act 2023 consent and Saraai Act Form C foreign national compliance', async () => {
+    const db = createFakeSupabase({ rooms: [vacant(R1, '101')], orders: [], room_stay_logs: [] });
+    // Rejects when DPDP consent is explicitly declined
+    await expect(selfCheckIn(db, BIZ, { ...guest, dpdpConsentAccepted: false }, { today: TODAY }))
+      .rejects.toMatchObject({ code: 'INVALID', message: expect.stringMatching(/DPDP/) });
+
+    // Rejects foreign national check-in without passport or country of origin
+    await expect(selfCheckIn(db, BIZ, { ...guest, isForeignNational: true, passportNumber: null }, { today: TODAY }))
+      .rejects.toMatchObject({ code: 'INVALID', message: expect.stringMatching(/Passport/) });
+    await expect(selfCheckIn(db, BIZ, { ...guest, isForeignNational: true, passportNumber: 'P1234567', countryOfOrigin: null }, { today: TODAY }))
+      .rejects.toMatchObject({ code: 'INVALID', message: expect.stringMatching(/Country of Origin/) });
+
+    // Accepts foreign national with full Form C details
+    const r = await selfCheckIn(db, BIZ, {
+      ...guest,
+      dpdpConsentAccepted: true,
+      isForeignNational: true,
+      passportNumber: 'Z9876543',
+      visaNumber: 'V112233',
+      countryOfOrigin: 'United Kingdom',
+      visaExpiryDate: '2027-01-01',
+    }, { today: TODAY });
+    expect(r.room).toMatchObject({
+      is_foreign_national: true,
+      passport_number: 'Z9876543',
+      visa_number: 'V112233',
+      country_of_origin: 'United Kingdom',
+      dpdp_consent_accepted: true,
+    });
   });
 
   it('turns a booking code into the stay', async () => {
@@ -114,9 +166,12 @@ describe('room session and verification', () => {
   });
 
   it('never shows the page the phone, the ID or the address', () => {
-    const view = publicRoom({ id: R1, room_number: '101', status: 'OCCUPIED', guest_name: 'Asha Rao', guest_phone: '9876543210', id_number: 'X1', guest_address: 'Somewhere', category: { name: 'Mount View', price: 3500 } });
-    expect(view).toMatchObject({ room_number: '101', guest_first_name: 'Asha' });
+    const room = { id: R1, room_number: '101', status: 'OCCUPIED', guest_name: 'Asha Rao', guest_phone: '9876543210', id_number: 'X1', guest_address: 'Somewhere', check_in_time: '2026-10-21T08:00:00Z', total_guests: 2, category: { name: 'Mount View', price: 3500 } };
+    const view = publicRoom(room, true);
+    expect(view).toMatchObject({ room_number: '101', guest_first_name: 'Asha', total_guests: 2 });
     expect(JSON.stringify(view)).not.toMatch(/9876543210|X1|Somewhere/);
+    // Before the last-4 check, a scanned card tells nothing about who is staying.
+    expect(publicRoom(room)).toMatchObject({ room_number: '101', guest_first_name: null, check_in_time: null, total_guests: 1 });
   });
 });
 
@@ -131,8 +186,10 @@ describe('in-room dining hours and labels', () => {
   });
 
   it('labels a room order so it never joins the stay folio', () => {
-    expect(roomDiningLabel('101')).toBe('RS 101');
-    expect(roomDiningLabel('Dorm-A')).toBe('RS Dorm-A');
+    expect(roomDiningLabel('101')).toBe('RS-101');
+    expect(roomDiningLabel('Dorm A')).toBe('RS-Dorm-A');
     expect(roomDiningLabel('101')).not.toBe('ROOM 101');
+    // The menu reads its table from the address as letters, digits and hyphens, so the label must be one of those.
+    expect(roomDiningLabel('Villa 3 / West')).toMatch(/^[A-Za-z0-9-]+$/);
   });
 });

@@ -7,8 +7,9 @@ import { noStay, notVerified, roomContext } from '@/lib/services/stay/room-route
 
 export const dynamic = 'force-dynamic';
 
-/** One-tap requests from the room. Each is a staff notification the host console already rings for. */
-export const ROOM_REQUESTS: Record<string, { type: CallType; message: string }> = {
+// One-tap requests from the room. Each is a staff notification the host console already rings for.
+// (Not exported: a route module may only export handlers, or the production build fails.)
+const ROOM_REQUESTS: Record<string, { type: CallType; message: string }> = {
   housekeeping: { type: 'SERVICE', message: 'Housekeeping, please' },
   water: { type: 'WAITER', message: 'Extra drinking water, please' },
   towels: { type: 'SERVICE', message: 'Extra towels, please' },

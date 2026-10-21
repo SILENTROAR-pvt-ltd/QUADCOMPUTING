@@ -52,6 +52,7 @@ export function BillingWorkspace({ onNavigate }: { onNavigate?: (tab: string) =>
     billRequestedTables,
     handleMarkTableVacant,
     handleSelectActiveTable,
+    handleSelectActiveRoom,
     handleGenerateBill,
     handleOrderSuccess,
     fetchOrderHistory,
@@ -192,6 +193,7 @@ export function BillingWorkspace({ onNavigate }: { onNavigate?: (tab: string) =>
                 selectedRoomId={cart.selectedRoomId}
                 setSelectedRoomId={cart.setSelectedRoomId}
                 onSelectActiveTable={handleSelectActiveTable}
+                onSelectActiveRoom={handleSelectActiveRoom}
                 onMarkVacant={handleMarkTableVacant}
               />
             </div>

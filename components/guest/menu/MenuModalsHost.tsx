@@ -32,13 +32,13 @@ export function MenuModalsHost({ state: s, cafeId, featuredIds, onExploreService
         orderCookingNotes={s.orderCookingNotes} onNotesChange={s.setOrderCookingNotes} cafeId={cafeId}
         isSendingToKitchen={s.isSendingToKitchen} onPlaceOrder={s.handlePlaceOrderToKitchen}
         onIncrement={s.incrementQuantity} onDecrement={s.decrementQuantity} onRemove={s.removeFromCart}
-        hasActiveOrder={s.hasActiveOrder} menuItems={s.diningItems} featuredIds={featuredIds} onQuickAdd={s.handleQuickAdd}
+        hasActiveOrder={s.hasActiveOrder} roomMode={Boolean(s.roomCode)} menuItems={s.diningItems} featuredIds={featuredIds} onQuickAdd={s.handleQuickAdd}
       />
       <VenueServiceModal service={s.selectedService} onClose={() => s.setSelectedService(null)}
         onRequest={s.handleConciergeServiceRequest} isSent={s.serviceNotificationSent} />
       <OrderSuccessModal
         isOpen={s.orderCelebration} tableNumber={s.tableNumber} businessName={s.businessName}
-        isAddon={s.isAddonOrderSuccess} onClose={() => s.setOrderCelebration(false)}
+        isAddon={s.isAddonOrderSuccess} roomCode={s.roomCode || undefined} onClose={() => s.setOrderCelebration(false)}
         onExploreServices={onExploreServices} onExploreLounge={onExploreLounge}
       />
     </>

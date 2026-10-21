@@ -3,9 +3,11 @@
 import { useState, useEffect } from 'react';
 import type { PhysicalRoom, RoomAddon } from '@/types';
 import { checkoutAfterNights, nowLocalInput } from './check-in-dates';
+import { bookingPrefill } from './booking-prefill';
+import type { StayBooking } from '../bookings/useStayBookings';
 
-/** The check-in form's fields, reset whenever a different room is opened. */
-export function useCheckInForm(room: PhysicalRoom | null) {
+/** The check-in form's fields, reset whenever a different room is opened; a reservation, when given, fills in the guest. */
+export function useCheckInForm(room: PhysicalRoom | null, booking: StayBooking | null = null) {
   const [roomNumber, setRoomNumber] = useState(room?.room_number || '');
   const [isEditingRoomNumber, setIsEditingRoomNumber] = useState(false);
   const [guestName, setGuestName] = useState('');
@@ -35,9 +37,14 @@ export function useCheckInForm(room: PhysicalRoom | null) {
     setAdultsCount(String(room.category?.occupancy || 2)); setChildrenCount('0');
     setPurposeOfVisit('Leisure & Tourism'); setIsCelebration(false); setCelebrationType('Birthday'); setCelebrationNote('');
     setChosenAddonIds([]); setCustomAddons([]);
-    // Only a different room resets the form; live refreshes of the same room keep what was typed.
+    if (booking) {
+      const p = bookingPrefill(booking, now);
+      setGuestName(p.guestName); setGuestPhone(p.guestPhone); setGuestEmail(p.guestEmail);
+      setAdultsCount(p.adults); setCheckOutTime(p.checkOutTime);
+    }
+    // Only a different room or booking resets the form; live refreshes of the same room keep what was typed.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [room?.id]);
+  }, [room?.id, booking?.id]);
 
   // Typing a number of nights moves the expected checkout, so the dates (which checkout bills by) agree.
   const setNights = (val: string) => {

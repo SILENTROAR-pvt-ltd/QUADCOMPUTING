@@ -9,15 +9,15 @@ import { useGuestCartHandlers } from './useGuestCartHandlers';
 import { useGuestContactInfo } from './useGuestContactInfo';
 import { apiRequest, jsonRequest } from '@/lib/utils/api-client';
 
-export function useGuestMenuState({ tableParam, cafeParam }: { tableParam: string; cafeParam: string }) {
+export function useGuestMenuState({ tableParam, cafeParam, roomParam = '' }: { tableParam: string; cafeParam: string; roomParam?: string }) {
   const cart = useCartStore();
   const ui = useGuestMenuUi();
   const contact = useGuestContactInfo();
   const cartHandlers = useGuestCartHandlers({ showToast: ui.showToast, handleOpenCustomization: ui.handleOpenCustomization });
-  const sessionData = useGuestMenuSession({ tableParam, cafeParam });
+  const sessionData = useGuestMenuSession({ tableParam, cafeParam, roomParam });
 
   const orderData = useGuestOrderActions({
-    tableNumber: sessionData.tableNumber, cafeParam, guestId: sessionData.guestId,
+    roomCode: roomParam, tableNumber: sessionData.tableNumber, cafeParam, guestId: sessionData.guestId,
     businessId: sessionData.businessId,
     activeSession: sessionData.activeSession, currentGuestName: contact.currentGuestName,
     cartItems: cart.items, clearCart: cart.clearCart, showToast: ui.showToast,
@@ -67,7 +67,7 @@ export function useGuestMenuState({ tableParam, cafeParam }: { tableParam: strin
   };
 
   return {
-    ...sessionData, ...orderData, ...ui, ...contact, ...cartHandlers,
+    roomCode: roomParam, ...sessionData, ...orderData, ...ui, ...contact, ...cartHandlers,
     cartItems: cart.items, addToCart: cart.addToCart, removeFromCart: cart.removeFromCart,
     incrementQuantity: cart.incrementQuantity, decrementQuantity: cart.decrementQuantity,
     totalCartCount: cart.getTotalCount(), cartSubtotal, gstAmount: 0, cartGrandTotal: cartSubtotal,

@@ -7,7 +7,7 @@ import { getScopedGuestUuid, getStoredGuestProfile } from './guest-storage.util'
 import { partitionMenuItems } from './menu-category.util';
 import { fetchMenuAndInitSession } from './guest-menu-fetch.util';
 
-export function useGuestMenuSession({ tableParam, cafeParam }: { tableParam: string; cafeParam: string }) {
+export function useGuestMenuSession({ tableParam, cafeParam, roomParam = '' }: { tableParam: string; cafeParam: string; roomParam?: string }) {
   const { session, setSession, setSessionSettled } = useGuestLobbyStore();
   const [guestId, setGuestId] = useState('');
   const [activeSession, setActiveSession] = useState<any>(null);
@@ -37,7 +37,7 @@ export function useGuestMenuSession({ tableParam, cafeParam }: { tableParam: str
     setGuestId(localId);
 
     fetchMenuAndInitSession({
-      tableParam, cafeParam, localId, customerId, guestName, avatar: session?.avatar || '☕',
+      tableParam, cafeParam, localId, customerId, guestName, avatar: session?.avatar || '☕', skipSession: Boolean(roomParam),
       onMenuReady: (readyData) => {
         setMenuItems(readyData.items); setTableNumber(readyData.tableNumber);
         if (readyData.businessName) setBusinessName(readyData.businessName);

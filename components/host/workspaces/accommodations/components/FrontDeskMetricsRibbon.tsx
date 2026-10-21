@@ -6,6 +6,8 @@ import { ROOM_STATUS_STYLE, inr } from '../room-status-style';
 interface FrontDeskMetricsRibbonProps {
   total: number;
   vacant: number;
+  /** Free rooms a booking is holding. */
+  reserved: number;
   occupied: number;
   cleaning: number;
   maintenance: number;
@@ -31,15 +33,16 @@ function Tile({ label, value, hint, dot }: { label: string; value: string; hint:
 export function FrontDeskMetricsRibbon(p: FrontDeskMetricsRibbonProps) {
   if (p.isLoading) {
     return (
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6" aria-busy="true">
-        {[1, 2, 3, 4, 5, 6].map((i) => <div key={i} className="h-[98px] animate-pulse rounded-2xl border border-neutral-200 bg-neutral-100/70" />)}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7" aria-busy="true">
+        {[1, 2, 3, 4, 5, 6, 7].map((i) => <div key={i} className="h-[98px] animate-pulse rounded-2xl border border-neutral-200 bg-neutral-100/70" />)}
       </div>
     );
   }
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
       <Tile label="Occupancy" value={`${p.occupancyRate}%`} hint={`${p.occupied} of ${p.total} rooms`} />
       <Tile label="Vacant" value={String(p.vacant)} hint="Ready to check in" dot={ROOM_STATUS_STYLE.VACANT.dot} />
+      <Tile label="Reserved" value={String(p.reserved)} hint="Held for arrivals" dot={ROOM_STATUS_STYLE.RESERVED.dot} />
       <Tile label="Occupied" value={String(p.occupied)} hint="Guests in house" dot={ROOM_STATUS_STYLE.OCCUPIED.dot} />
       <Tile label="Housekeeping" value={String(p.cleaning)} hint="Being turned around" dot={ROOM_STATUS_STYLE.CLEANING.dot} />
       <Tile label="On hold" value={String(p.maintenance)} hint="Maintenance" dot={ROOM_STATUS_STYLE.MAINTENANCE.dot} />

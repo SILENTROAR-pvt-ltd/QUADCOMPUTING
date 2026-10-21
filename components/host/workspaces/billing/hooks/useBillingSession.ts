@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/client';
 import type { InvoiceData } from '../InvoicePreviewModal';
 import { useBillingSettlement } from './useBillingSettlement';
 import { applyTableLines, fetchTableLines, handleTableSelection, tableLinesKey, type TableLines } from './handle-table-selection.util';
+import { useSelectActiveRoom } from './useSelectActiveRoom';
 import { billOwner, isSharedSignedInBill } from '@/lib/services/wallet/bill-owner.util';
 
 export { handleTableSelection };
@@ -146,6 +147,8 @@ export function useBillingSession({
     }
   }, [businessId, cart, showTable]);
 
+  const handleSelectActiveRoom = useSelectActiveRoom(cart, setSuccessMessage);
+
   const handleGenerateBill = () => {
     if (cart.selectedItems.length === 0 && !cart.customAmount) return;
 
@@ -209,6 +212,7 @@ export function useBillingSession({
     billRequestedTables,
     handleMarkTableVacant,
     handleSelectActiveTable,
+    handleSelectActiveRoom,
     handleGenerateBill,
     handleOrderSuccess,
     fetchOrderHistory,

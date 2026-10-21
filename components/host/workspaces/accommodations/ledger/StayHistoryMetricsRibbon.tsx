@@ -1,92 +1,31 @@
 'use client';
 
 import React from 'react';
+import { CheckCircle2, Clock, TrendingUp, Users } from 'lucide-react';
 import type { StayHistoryMetrics } from '@/types';
-import { CheckCircle2, TrendingUp, Clock, Users } from 'lucide-react';
+import { inr } from './stay-format';
 
-interface Props {
-  metrics: StayHistoryMetrics;
+function Tile({ icon: Icon, label, value, hint, tone = 'text-neutral-700 bg-neutral-100' }: { icon: typeof Clock; label: string; value: string; hint: string; tone?: string }) {
+  return (
+    <div className="rounded-2xl border border-neutral-200 bg-white p-4">
+      <p className="flex items-center justify-between gap-2 text-[10px] font-bold uppercase tracking-[0.12em] text-neutral-500">
+        <span className="truncate">{label}</span>
+        <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg ${tone}`}><Icon className="h-3.5 w-3.5" aria-hidden /></span>
+      </p>
+      <p className="mt-1.5 truncate font-serif text-2xl tabular-nums text-neutral-950">{value}</p>
+      <p className="mt-0.5 truncate text-[11px] text-neutral-500">{hint}</p>
+    </div>
+  );
 }
 
-export function StayHistoryMetricsRibbon({ metrics }: Props) {
+/** The stay history at a glance: stays completed, what they brought in, how long guests stay, how many came. */
+export function StayHistoryMetricsRibbon({ metrics: m }: { metrics: StayHistoryMetrics }) {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      {/* Metric 1: Total Completed Checkouts */}
-      <div className="rounded-2xl border border-neutral-200/90 bg-white p-5 shadow-2xs">
-        <div className="flex items-center justify-between text-neutral-500">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500">Completed Checkouts</span>
-          <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-neutral-100 text-neutral-700">
-            <CheckCircle2 className="h-4 w-4" />
-          </span>
-        </div>
-        <div className="mt-3 flex items-baseline gap-2">
-          <span className="font-serif text-3xl font-medium text-neutral-900">
-            {metrics.totalCheckouts}
-          </span>
-          <span className="text-xs font-medium text-neutral-500">stays</span>
-        </div>
-        <div className="mt-2 flex items-center gap-1.5 text-[11px] text-emerald-700 font-medium">
-          <span className="rounded-full bg-emerald-50 px-2 py-0.5 border border-emerald-200/60">
-            {metrics.checkoutsThisMonth} this month
-          </span>
-        </div>
-      </div>
-
-      {/* Metric 2: Total Revenue Generated */}
-      <div className="rounded-2xl border border-neutral-200/90 bg-white p-5 shadow-2xs">
-        <div className="flex items-center justify-between text-neutral-500">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500">Total Revenue</span>
-          <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
-            <TrendingUp className="h-4 w-4" />
-          </span>
-        </div>
-        <div className="mt-3 flex items-baseline gap-1">
-          <span className="font-mono text-2xl font-bold text-neutral-900">
-            ₹{metrics.totalRevenue.toLocaleString('en-IN')}
-          </span>
-        </div>
-        <div className="mt-2 text-[11px] text-neutral-500">
-          Settled via room tariffs, add-ons & F&B
-        </div>
-      </div>
-
-      {/* Metric 3: Average Length of Stay */}
-      <div className="rounded-2xl border border-neutral-200/90 bg-white p-5 shadow-2xs">
-        <div className="flex items-center justify-between text-neutral-500">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500">Avg Length of Stay</span>
-          <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-neutral-100 text-neutral-700">
-            <Clock className="h-4 w-4" />
-          </span>
-        </div>
-        <div className="mt-3 flex items-baseline gap-2">
-          <span className="font-serif text-3xl font-medium text-neutral-900">
-            {metrics.avgLengthOfStay || 1}
-          </span>
-          <span className="text-xs font-medium text-neutral-500">Nights / booking</span>
-        </div>
-        <div className="mt-2 text-[11px] text-neutral-500">
-          Based on completed checkout logs
-        </div>
-      </div>
-
-      {/* Metric 4: Total Guests Hosted */}
-      <div className="rounded-2xl border border-neutral-200/90 bg-white p-5 shadow-2xs">
-        <div className="flex items-center justify-between text-neutral-500">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500">Guests Hosted</span>
-          <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-neutral-100 text-neutral-700">
-            <Users className="h-4 w-4" />
-          </span>
-        </div>
-        <div className="mt-3 flex items-baseline gap-2">
-          <span className="font-serif text-3xl font-medium text-neutral-900">
-            {metrics.totalGuestsHosted || metrics.totalCheckouts}
-          </span>
-          <span className="text-xs font-medium text-neutral-500">patrons</span>
-        </div>
-        <div className="mt-2 text-[11px] text-neutral-500">
-          All-time checked-in guest roster
-        </div>
-      </div>
+    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <Tile icon={CheckCircle2} label="Checkouts" value={String(m.totalCheckouts)} hint={`${m.checkoutsThisMonth} this month`} tone="bg-emerald-50 text-emerald-700" />
+      <Tile icon={TrendingUp} label="Revenue" value={inr(m.totalRevenue)} hint={`${inr(m.revenueThisMonth)} this month`} tone="bg-emerald-50 text-emerald-700" />
+      <Tile icon={Clock} label="Average stay" value={`${m.avgLengthOfStay || 1} night${(m.avgLengthOfStay || 1) === 1 ? '' : 's'}`} hint="Per completed stay" />
+      <Tile icon={Users} label="Guests hosted" value={String(m.totalGuestsHosted || m.totalCheckouts)} hint="Across all stays" />
     </div>
   );
 }

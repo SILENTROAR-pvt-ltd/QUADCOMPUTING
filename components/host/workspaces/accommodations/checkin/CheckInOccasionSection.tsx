@@ -1,129 +1,61 @@
 'use client';
 
 import React from 'react';
-import { HeartHandshake, Gift } from 'lucide-react';
+import { ChevronDown, Gift, HeartHandshake } from 'lucide-react';
+import { CheckInSection } from './CheckInSection';
+import { CHEVRON, INPUT, LABEL, SELECT } from './field-styles';
 
 interface Props {
-  purposeOfVisit: string;
-  setPurposeOfVisit: (val: string) => void;
-  isCelebration: boolean;
-  setIsCelebration: (val: boolean) => void;
-  celebrationType: string;
-  setCelebrationType: (val: string) => void;
-  celebrationNote: string;
-  setCelebrationNote: (val: string) => void;
+  purposeOfVisit: string; setPurposeOfVisit: (val: string) => void;
+  isCelebration: boolean; setIsCelebration: (val: boolean) => void;
+  celebrationType: string; setCelebrationType: (val: string) => void;
+  celebrationNote: string; setCelebrationNote: (val: string) => void;
 }
 
-const inputClass = "w-full bg-neutral-50/80 border border-neutral-200 focus:border-neutral-900 text-neutral-900 rounded-xl px-4 py-3 text-xs sm:text-sm outline-none transition-all focus:bg-white";
-const labelClass = "mb-2 block text-[11px] font-bold uppercase tracking-wider text-neutral-500";
+const PURPOSES = [['Leisure & Tourism', 'Leisure'], ['Corporate / Business', 'Business'], ['Workation / Remote Work', 'Workation'], ['Wedding / Family Event', 'Wedding or family event'], ['Transit / Short Stay', 'Transit']];
+const OCCASIONS = ['Birthday', 'Anniversary', 'Honeymoon', 'Milestone / Festival', 'Other Celebration'];
 
-export function CheckInOccasionSection({
-  purposeOfVisit,
-  setPurposeOfVisit,
-  isCelebration,
-  setIsCelebration,
-  celebrationType,
-  setCelebrationType,
-  celebrationNote,
-  setCelebrationNote
-}: Props) {
+/** Why the guest is here, and whether there is something to celebrate: the room can be made ready for it. */
+export function CheckInOccasionSection(p: Props) {
   return (
-    <div className="rounded-2xl border border-zinc-200 bg-white p-5 space-y-4 shadow-xs">
-      <div className="flex items-center gap-2 border-b border-zinc-100 pb-3">
-        <HeartHandshake className="h-4 w-4 text-zinc-500" />
-        <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-900">
-          03. Purpose & Special Occasion Intelligence
-        </h3>
-      </div>
-
-      <div>
-        <label htmlFor="purposeOfVisit" className={labelClass}>
-          Primary Purpose of Visit
+    <CheckInSection icon={HeartHandshake} title="Visit" hint="Optional. Helps the team look after the guest."
+      aside={
+        <label className="flex cursor-pointer items-center gap-2 text-xs font-semibold text-neutral-800">
+          <Gift className="h-4 w-4 text-amber-700" aria-hidden /> Celebrating
+          <span className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${p.isCelebration ? 'bg-emerald-600' : 'bg-neutral-300'}`}>
+            <input type="checkbox" className="peer sr-only" checked={p.isCelebration} onChange={(e) => p.setIsCelebration(e.target.checked)} />
+            <span className={`h-5 w-5 rounded-full bg-white shadow transition-transform ${p.isCelebration ? 'translate-x-[22px]' : 'translate-x-0.5'}`} />
+          </span>
         </label>
-        <select
-          id="purposeOfVisit"
-          value={purposeOfVisit}
-          onChange={(e) => setPurposeOfVisit(e.target.value)}
-          className={`${inputClass} cursor-pointer`}
-        >
-          <option value="Leisure & Tourism">Leisure & Tourism</option>
-          <option value="Corporate / Business">Corporate / Business Travel</option>
-          <option value="Workation / Remote Work">Workation / Remote Work</option>
-          <option value="Wedding / Family Event">Wedding / Family Gathering</option>
-          <option value="Transit / Short Stay">Transit / Short Layover</option>
-        </select>
-      </div>
-
-      {/* Celebration Toggle */}
-      <div className="rounded-xl border border-zinc-100 bg-zinc-50/70 p-4 space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Gift className="h-4 w-4 text-neutral-700" />
-            <div>
-              <p className="text-xs font-bold text-zinc-900">Guest Celebrating Special Occasion?</p>
-              <p className="text-[11px] text-zinc-500">Enable to personalize room experience and amenities</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-1 rounded-xl bg-zinc-200/80 p-1">
-            <button
-              type="button"
-              onClick={() => setIsCelebration(false)}
-              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                !isCelebration ? 'bg-white text-zinc-950 shadow-xs' : 'text-zinc-600 hover:text-zinc-950'
-              }`}
-            >
-              No
-            </button>
-            <button
-              type="button"
-              onClick={() => setIsCelebration(true)}
-              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                isCelebration ? 'bg-neutral-100 text-neutral-900 shadow-xs border border-neutral-200' : 'text-zinc-600 hover:text-zinc-950'
-              }`}
-            >
-              Yes 🎉
-            </button>
+      }>
+      <div className="space-y-3">
+        <div>
+          <label htmlFor="purposeOfVisit" className={LABEL}>Purpose of visit</label>
+          <div className="relative">
+            <select id="purposeOfVisit" value={p.purposeOfVisit} onChange={(e) => p.setPurposeOfVisit(e.target.value)} className={SELECT}>
+              {PURPOSES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+            </select>
+            <ChevronDown className={CHEVRON} aria-hidden />
           </div>
         </div>
-
-        {/* Celebration Details (Rendered if Yes) */}
-        {isCelebration && (
-          <div className="pt-3 border-t border-zinc-200/60 grid grid-cols-1 sm:grid-cols-2 gap-3 animate-in fade-in slide-in-from-top-1 duration-200">
+        {p.isCelebration && (
+          <div className="grid grid-cols-1 gap-3 rounded-xl border border-amber-200 bg-amber-50/60 p-3 sm:grid-cols-2 animate-in fade-in duration-150">
             <div>
-              <label htmlFor="celebrationType" className={labelClass}>
-                Celebration Type
-              </label>
-              <select
-                id="celebrationType"
-                value={celebrationType}
-                onChange={(e) => setCelebrationType(e.target.value)}
-                className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-xs text-zinc-900 outline-none focus:border-zinc-950 cursor-pointer"
-              >
-                <option value="Birthday">Birthday 🎂</option>
-                <option value="Anniversary">Anniversary 💍</option>
-                <option value="Honeymoon">Honeymoon 🥂</option>
-                <option value="Milestone / Festival">Milestone / Festival ✨</option>
-                <option value="Other Celebration">Other Celebration 🎈</option>
-              </select>
+              <label htmlFor="celebrationType" className={LABEL}>Occasion</label>
+              <div className="relative">
+                <select id="celebrationType" value={p.celebrationType} onChange={(e) => p.setCelebrationType(e.target.value)} className={SELECT}>
+                  {OCCASIONS.map((o) => <option key={o} value={o}>{o}</option>)}
+                </select>
+                <ChevronDown className={CHEVRON} aria-hidden />
+              </div>
             </div>
-
             <div>
-              <label htmlFor="celebrationNote" className={labelClass}>
-                Honoree Name & Surprise Note
-              </label>
-              <input
-                id="celebrationNote"
-                type="text"
-                placeholder="e.g. Surprise chocolate cake, flower bouquet"
-                value={celebrationNote}
-                onChange={(e) => setCelebrationNote(e.target.value)}
-                className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-xs text-zinc-900 outline-none focus:border-zinc-950"
-              />
+              <label htmlFor="celebrationNote" className={LABEL}>For whom, and what to arrange</label>
+              <input id="celebrationNote" type="text" placeholder="e.g. Priya's birthday · cake at 8 pm" value={p.celebrationNote} onChange={(e) => p.setCelebrationNote(e.target.value)} className={INPUT} />
             </div>
           </div>
         )}
       </div>
-    </div>
+    </CheckInSection>
   );
 }

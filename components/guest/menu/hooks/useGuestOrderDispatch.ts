@@ -4,6 +4,7 @@ import { useState, useRef } from 'react';
 import { walletAuthHeaders } from '@/lib/utils/wallet-secret';
 
 export function useGuestOrderDispatch(p: {
+  roomCode?: string;
   tableNumber: string; cafeParam: string; guestId: string; activeSession: any;
   currentGuestName: string; cartItems: any[]; masterOrder: any; clearCart: () => void;
   showToast: (m: string) => void; setSentItems: (it: any[]) => void; setMasterOrder: (o: any) => void;
@@ -59,7 +60,14 @@ export function useGuestOrderDispatch(p: {
         const rand = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
         attemptRef.current = { sig, key: `go-${rand}` };
       }
-      const res = await fetch('/api/guest/order', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...payload, idempotency_key: attemptRef.current.key }) });
+      // In room mode the order goes to the room's own endpoint: it checks the guest's room session, the kitchen's hours and
+      // that every line is a dish, and puts the order on the room's bill. Prices are the menu's, never this payload's.
+      const res = p.roomCode
+        ? await fetch(`/api/guest/room/${encodeURIComponent(p.roomCode)}/order`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ items: payload.items.map((i) => ({ item_id: i.item_id, quantity: i.quantity, notes: i.notes })), note: payload.table_note || null, idempotency_key: attemptRef.current.key }),
+        })
+        : await fetch('/api/guest/order', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...payload, idempotency_key: attemptRef.current.key }) });
       const data = await res.json();
       if (data.success) {
         attemptRef.current = null;
@@ -74,7 +82,7 @@ export function useGuestOrderDispatch(p: {
         if (data.ticket?.ticket_number) p.setTicketNumber(data.ticket.ticket_number);
         p.setIsRecentAddon(Boolean(data.is_addon));
         cb(Boolean(data.is_addon));
-        p.showToast(data.is_addon ? 'Items appended to KOT — Chef notified' : 'Order dispatched to kitchen — Live tracker active');
+        p.showToast(p.roomCode ? 'Sent to the kitchen — it will be brought to your room' : data.is_addon ? 'Items appended to KOT — Chef notified' : 'Order dispatched to kitchen — Live tracker active');
       } else { p.showToast(data.error || 'Failed to dispatch order.'); }
     } catch { p.showToast('Network error dispatching order.'); } finally {
       setIsSendingToKitchen(false);

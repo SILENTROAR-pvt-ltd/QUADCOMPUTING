@@ -19,10 +19,24 @@ export function useBillingSettlement({
   return async (onHistoryRefresh?: () => void, paymentMethod?: 'UPI' | 'CASH' | 'CARD', saved?: SaveResult) => {
     if (isSettlingRef.current) return;
     isSettlingRef.current = true;
-    const { selectedTableId: tableId, selectedTableNumber: tableNumber, activeSessionId: sessionId } = cart;
+    const { selectedTableId: tableId, selectedTableNumber: tableNumber, activeSessionId: sessionId, selectedRoomId: roomId } = cart;
     const isTableOrder = Boolean(sessionId || tableId || (tableNumber && tableNumber !== 'Takeaway / Counter'));
 
     try {
+      // A room bill: the save request ran the room checkout (orders/create forwards it). The room list refreshes; there
+      // is no table to vacate.
+      if (roomId) {
+        if (!saved?.settled) throw new Error('The room was not checked out. Please retry.');
+        dispatchWalletRefreshEvents();
+        setInvoicePreview(null);
+        cart.resetCart();
+        try { window.dispatchEvent(new CustomEvent('quad:rooms-changed')); } catch {}
+        setSuccessMessage(`${tableNumber || 'Room'} checked out and settled.`);
+        window.setTimeout(() => setSuccessMessage(''), 3500);
+        clearOrderIdUrlParam();
+        onHistoryRefresh?.();
+        return;
+      }
       // The save request already settled a table bill (one trip to the server instead of two). Only a bill the
       // server did not settle there goes through the table route here.
       if (isTableOrder && !saved?.settled) {

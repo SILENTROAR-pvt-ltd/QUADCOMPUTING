@@ -5,6 +5,7 @@ import type { PhysicalRoom } from '@/types';
 import { localInputToIso } from './check-in-dates';
 import { useCheckInForm } from './useCheckInForm';
 import { useCheckInQuote } from './useCheckInQuote';
+import type { StayBooking } from '../bookings/useStayBookings';
 
 async function patchRoom(roomId: string, body: Record<string, unknown>): Promise<string | null> {
   try {
@@ -20,8 +21,8 @@ async function patchRoom(roomId: string, body: Record<string, unknown>): Promise
 }
 
 /** The vacant-room panel: check-in form, live quote, room renaming and housekeeping status. */
-export function useRoomCheckInState(room: PhysicalRoom | null, onClose: () => void, onRoomUpdated: () => void) {
-  const form = useCheckInForm(room);
+export function useRoomCheckInState(room: PhysicalRoom | null, onClose: () => void, onRoomUpdated: () => void, booking: StayBooking | null = null) {
+  const form = useCheckInForm(room, booking);
   const quote = useCheckInQuote({ room, ...form, customAddons: form.customAddons });
   const [isUpdating, setIsUpdating] = useState(false);
   const [isSavingRoomNumber, setIsSavingRoomNumber] = useState(false);
@@ -51,6 +52,7 @@ export function useRoomCheckInState(room: PhysicalRoom | null, onClose: () => vo
     const checkOut = localInputToIso(form.checkOutTime);
     await run({
       action: 'check-in',
+      booking_id: booking?.id,
       room_number: form.roomNumber.trim(),
       guest_name: form.guestName.trim(),
       guest_phone: form.guestPhone.trim(),

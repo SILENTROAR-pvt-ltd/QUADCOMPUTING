@@ -36,6 +36,16 @@ export function getPersistentWalletIdentifiers(): { primary: string; handle?: st
   }
 }
 
+// The order review and the bill read the wallet at the same moment: they share one request.
+const walletInflight = new Map<string, Promise<any>>();
+function readWallet(url: string): Promise<any> {
+  const pending = walletInflight.get(url);
+  if (pending) return pending;
+  const request = fetch(url, { headers: walletAuthHeaders() }).then((res) => res.json()).finally(() => { walletInflight.delete(url); });
+  walletInflight.set(url, request);
+  return request;
+}
+
 export function useGuestWallet(businessId: string = '') {
   const [wallet, setWallet] = useState<GuestWallet>({
     id: 'wlt-current', guest_id: 'gst-current', business_id: businessId, cafe_id: businessId,
@@ -52,8 +62,7 @@ export function useGuestWallet(businessId: string = '') {
       const q = new URLSearchParams({ guest_id: ids.primary, cafe_id: businessId, business_id: businessId });
       if (ids.handle) q.set('handle', ids.handle);
       if (ids.phone) q.set('phone', ids.phone);
-      const res = await fetch(`/api/guest/wallet?${q.toString()}`, { headers: walletAuthHeaders() });
-      const data = await res.json();
+      const data = await readWallet(`/api/guest/wallet?${q.toString()}`);
       if (data.success) {
         if (data.wallet) setWallet(data.wallet);
         if (data.transactions) setTransactions(data.transactions);

@@ -13,5 +13,8 @@ export function useMenuRoute() {
   const rawCafe = params.get('business_id') || params.get('cafe_id') || params.get('venue') || params.get('cafe') || '';
   const cafeParam = rawCafe.match(UUID)?.[0] ?? (rawCafe.trim() ? rawCafe.trim().split(/[\s,]+/)[0] : '');
 
-  return { tableParam, cafeParam, sectionParam: params.get('section'), tabParam: params.get('tab') };
+  // A guest ordering from their hotel room arrives with the room's code: the menu then runs in room mode.
+  const roomParam = /^[A-Za-z0-9_-]{6,80}$/.test(params.get('room') || '') ? (params.get('room') as string) : '';
+
+  return { tableParam, cafeParam, roomParam, sectionParam: params.get('section'), tabParam: params.get('tab') };
 }

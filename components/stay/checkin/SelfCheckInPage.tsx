@@ -3,65 +3,80 @@
 import React from 'react';
 import Link from 'next/link';
 import { useSelfCheckIn, type Step } from './useSelfCheckIn';
-import { StayShell, StayNotice, StaySpinner, stayButton } from '../StayShell';
+import { StayShell, StayNotice, StaySkeleton, stayButton } from '../StayShell';
+import { PassGate } from './PassGate';
+import { PaidSummary } from './PaidSummary';
 import { GuestDetailsFields } from './GuestDetailsFields';
 import { IdProofCapture } from './IdProofCapture';
-import { RoomTypePicker } from './RoomTypePicker';
+import { ConfirmStep } from './ConfirmStep';
 
-const STEPS: Array<{ id: Step; label: string }> = [{ id: 'guest', label: 'Guest' }, { id: 'id', label: 'ID photo' }, { id: 'room', label: 'Room' }];
+const STEPS: Array<{ id: Step; label: string }> = [{ id: 'guest', label: 'Guest' }, { id: 'id', label: 'ID photo' }, { id: 'confirm', label: 'Confirm' }];
+const serif = { fontFamily: "'Playfair Display', Georgia, serif" };
 
-/** /stay/[venue]/checkin: three short steps, then straight into the room's own page. */
+/** /stay/[venue]/checkin: for a guest whose room is paid. Three short steps, then straight into the room's own page. */
 export function SelfCheckInPage({ venueParam }: { venueParam: string }) {
   const c = useSelfCheckIn(venueParam);
   const back = `/stay/${encodeURIComponent(venueParam)}`;
+  const title = c.venue?.name;
 
-  if (c.loading) return <StayShell><StaySpinner label="Opening the venue" /></StayShell>;
-  if (c.loadError || !c.venue) {
-    return <StayShell><div className="py-16 text-center"><p className="text-sm text-neutral-400">{c.loadError}</p><button type="button" onClick={() => void c.reload()} className={`${stayButton.ghost} mt-6`}>Try again</button></div></StayShell>;
-  }
-  if (!c.venue.self_checkin_enabled) {
+  if (c.phase === 'loading') return <StayShell eyebrow="Check-in" title={title}><StaySkeleton rows={3} /></StayShell>;
+  if (c.phase === 'blocked') {
     return (
-      <StayShell eyebrow="Self check-in" title={c.venue.name}>
-        <StayNotice tone="warn">This venue checks guests in at the desk. Please ask for the front desk.</StayNotice>
-        <Link href={back} className={`${stayButton.ghost} mt-6`}>Back to rooms</Link>
+      <StayShell eyebrow="Check-in" title={title}>
+        <StayNotice tone="warn">{c.message}</StayNotice>
+        <div className="mt-6 flex gap-3"><Link href={back} className={stayButton.ghost}>Back to rooms</Link><button type="button" onClick={() => void c.reload()} className={stayButton.ghost}>Try again</button></div>
       </StayShell>
     );
   }
+  if (c.phase === 'gate' && c.venue) {
+    return (
+      <StayShell eyebrow="Check-in" title={title} right={<Link href={back} className="text-xs text-neutral-500 hover:text-neutral-950">Rooms</Link>}>
+        <div className="mx-auto max-w-lg"><PassGate venueId={c.venue.id} venueName={c.venue.name} onToken={c.acceptToken} /></div>
+      </StayShell>
+    );
+  }
+  if (c.phase === 'used' && c.pass) {
+    return (
+      <StayShell eyebrow="Check-in" title={title}>
+        <div className="mx-auto max-w-lg space-y-4">
+          <StayNotice tone="good">You are already checked in. Open your room page with the QR card in the room{c.roomCode ? ', or here:' : '.'}</StayNotice>
+          {c.roomCode && <Link href={`/room/${encodeURIComponent(c.roomCode)}`} className={`${stayButton.primary} w-full`}>Open my room</Link>}
+        </div>
+      </StayShell>
+    );
+  }
+  if (!c.pass) return null;
 
   const stepIndex = STEPS.findIndex((s) => s.id === c.step);
   return (
-    <StayShell eyebrow="Self check-in" title={c.venue.name} right={<Link href={back} className="text-xs text-neutral-400 hover:text-white">Rooms</Link>}>
-      <div className="mx-auto max-w-lg">
-        <ol className="mb-6 flex items-center gap-2">
+    <StayShell eyebrow="Check-in" title={title} right={<Link href={back} className="text-xs text-neutral-500 hover:text-neutral-950">Rooms</Link>}>
+      <div className="mx-auto max-w-lg space-y-6">
+        <PaidSummary pass={c.pass} venue={c.venue} />
+        <ol className="flex items-center gap-2">
           {STEPS.map((s, i) => (
             <li key={s.id} className="flex flex-1 items-center gap-2">
-              <span className={`grid h-7 w-7 place-items-center rounded-full text-xs font-semibold ${i <= stepIndex ? 'bg-white text-neutral-950' : 'border border-neutral-700 text-neutral-500'}`}>{i + 1}</span>
-              <span className={`text-xs ${i === stepIndex ? 'text-white' : 'text-neutral-500'}`}>{s.label}</span>
-              {i < STEPS.length - 1 && <span className="h-px flex-1 bg-neutral-800" />}
+              <span className={`grid h-7 w-7 place-items-center rounded-full text-xs font-semibold ${i <= stepIndex ? 'bg-neutral-950 text-white' : 'border border-neutral-300 text-neutral-500'}`}>{i + 1}</span>
+              <span className={`text-xs ${i === stepIndex ? 'text-neutral-950' : 'text-neutral-500'}`}>{s.label}</span>
+              {i < STEPS.length - 1 && <span className="h-px flex-1 bg-neutral-200" />}
             </li>
           ))}
         </ol>
-
-        <h2 className="font-serif text-3xl font-light text-white">
-          {c.step === 'guest' && 'Who is staying?'}
-          {c.step === 'id' && 'A photo of your ID'}
-          {c.step === 'room' && 'Choose your room'}
-          {c.step === 'done' && 'Welcome'}
-        </h2>
-        <p className="mb-6 mt-1 text-sm text-neutral-400">
-          {c.step === 'guest' && 'Nothing is paid now. Your bill is settled at checkout.'}
-          {c.step === 'id' && 'Required for every stay in India. Seen only by the front desk.'}
-          {c.step === 'room' && 'Rooms free right now, or the code from your reservation.'}
-          {c.step === 'done' && 'Taking you to your room…'}
-        </p>
-
-        {c.error && <StayNotice tone="warn">{c.error}</StayNotice>}
-        <div className={c.error ? 'mt-4' : ''}>
-          {c.step === 'guest' && <GuestDetailsFields form={c.form} update={c.update} idTypes={c.ID_TYPES} onNext={() => c.setStep('id')} />}
-          {c.step === 'id' && <IdProofCapture uploaded={Boolean(c.idProofPath)} uploading={c.uploading} onFile={c.uploadId} onBack={() => c.setStep('guest')} onNext={() => c.setStep('room')} />}
-          {c.step === 'room' && <RoomTypePicker types={c.types} form={c.form} update={c.update} busy={c.busy} onBack={() => c.setStep('id')} onSubmit={() => void c.submit()} />}
-          {c.step === 'done' && <StaySpinner label="Opening your room" />}
+        <div>
+          <h2 className="text-3xl font-medium text-neutral-950" style={serif}>
+            {c.step === 'guest' && `Welcome, ${c.pass.guest_first_name}`}
+            {c.step === 'id' && 'A photo of your ID'}
+            {c.step === 'confirm' && 'Ready to check in'}
+          </h2>
+          <p className="mt-1 text-sm text-neutral-500">
+            {c.step === 'guest' && 'Your room is paid. Tell us who is staying.'}
+            {c.step === 'id' && 'Required for every stay in India. Seen only by the front desk.'}
+            {c.step === 'confirm' && 'One last confirmation, and your room opens.'}
+          </p>
         </div>
+        {c.error && <StayNotice tone="warn">{c.error}</StayNotice>}
+        {c.step === 'guest' && <GuestDetailsFields form={c.form} update={c.update} onNext={() => c.setStep('id')} />}
+        {c.step === 'id' && <IdProofCapture uploaded={Boolean(c.idProofPath)} uploading={c.uploading} onFile={c.uploadId} onBack={() => c.setStep('guest')} onNext={() => c.setStep('confirm')} />}
+        {c.step === 'confirm' && <ConfirmStep pass={c.pass} form={c.form} update={c.update} busy={c.busy} onBack={() => c.setStep('id')} onSubmit={() => void c.submit()} />}
       </div>
     </StayShell>
   );

@@ -66,8 +66,16 @@ export async function openStayFolio(
     celebration_note: f.celebration_note,
     selected_addons: f.selected_addons,
     total_billed_amount: folio.total,
+    dpdp_consent_accepted: f.dpdp_consent_accepted,
+    consent_timestamp: f.consent_timestamp,
+    is_foreign_national: f.is_foreign_national,
+    passport_number: f.passport_number,
+    visa_number: f.visa_number,
+    country_of_origin: f.country_of_origin,
+    visa_expiry_date: f.visa_expiry_date,
     ...logExtra,
   });
   if (logErr) console.error('[check-in] stay log insert failed', logErr.message);
+
   return folio.total;
 }

@@ -22,21 +22,22 @@ export function RoomGate({ roomNumber, venueName, onVerify }: Props) {
   };
 
   return (
-    <div className="mx-auto max-w-sm py-10 text-center">
-      <span className="mx-auto grid h-14 w-14 place-items-center rounded-full border border-amber-200/30 bg-amber-200/10 text-amber-100"><KeyRound className="h-6 w-6" /></span>
-      <h2 className="mt-5 font-serif text-3xl font-light text-white">Room {roomNumber}</h2>
-      <p className="mt-2 text-sm text-neutral-400">{venueName}. To order to this room, enter the last four digits of the mobile number given at check-in.</p>
+    <div className="mx-auto max-w-sm rounded-[2rem] border border-[#e6d9b8] bg-white p-6 text-center shadow-[0_24px_60px_-36px_rgba(10,50,34,0.5)] sm:p-8">
+      <span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-neutral-950 text-white"><KeyRound className="h-6 w-6" aria-hidden /></span>
+      <p className="mt-5 text-[10px] font-semibold uppercase tracking-[0.3em] text-amber-700">{venueName}</p>
+      <h2 className="mt-1.5 text-3xl font-medium text-neutral-950" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>Room {roomNumber}</h2>
+      <p className="mt-2 text-sm leading-relaxed text-neutral-500">To open your room page, enter the last four digits of the mobile number given at check-in.</p>
       <form onSubmit={submit} className="mt-6 space-y-3">
         <input
           inputMode="numeric" pattern="[0-9]{4}" maxLength={4} value={digits} autoFocus
           onChange={(e) => setDigits(e.target.value.replace(/\D/g, '').slice(0, 4))}
           aria-label="Last four digits of your mobile number" placeholder="••••"
-          className="h-16 w-full rounded-2xl border border-neutral-700 bg-neutral-900 text-center font-mono text-3xl tracking-[0.6em] text-white outline-none focus:border-amber-200/60"
+          className="h-16 w-full rounded-2xl border border-neutral-300 bg-[#faf9f6] text-center font-mono text-3xl tracking-[0.6em] text-neutral-950 outline-none transition focus:border-neutral-900 focus:ring-4 focus:ring-neutral-900/5"
         />
-        {error && <p className="text-xs text-amber-200">{error}</p>}
+        {error && <p role="alert" className="text-xs text-amber-800">{error}</p>}
         <button type="submit" disabled={digits.length !== 4 || busy} className={`${stayButton.primary} w-full`}>{busy ? 'Checking…' : 'Open my room'}</button>
       </form>
-      <p className="mt-6 text-xs text-neutral-500">Not your room, or a new guest? Ask the front desk; they can check you in and this page will follow.</p>
+      <p className="mt-6 text-xs leading-relaxed text-neutral-500">Not your room, or a new guest? Ask the front desk; they can check you in and this page will follow.</p>
     </div>
   );
 }

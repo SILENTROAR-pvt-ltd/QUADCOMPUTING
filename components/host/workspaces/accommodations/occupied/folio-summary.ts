@@ -5,7 +5,13 @@ export interface BillingSummary {
   roomRate: number;
   roomTariffSubtotal: number;
   addonsSubtotal: number;
+  /** Early check-in and late check-out fees (already among the folio lines). */
+  extrasSubtotal?: number;
   ordersSubtotal: number;
+  /** Paid before check-in and credited against the bill. */
+  advancePaid?: number;
+  /** Paid in advance beyond what the stay came to: owed back to the guest. */
+  refundDue?: number;
   grandTotalPayable: number;
 }
 

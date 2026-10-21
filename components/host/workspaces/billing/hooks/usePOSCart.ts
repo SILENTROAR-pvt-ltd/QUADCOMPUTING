@@ -5,6 +5,7 @@ import type { CatalogItem } from '@/types';
 import type { CatalogItemPayload } from '../controls/POSCatalogGrid';
 import { FOOD_GST_RATE, SERVICE_GST_RATE, defaultGstRate, formatGstRates } from '@/lib/utils/gst-rates';
 import { useGstStatus } from './useGstStatus';
+import { mergeBillLines } from '@/lib/services/stay/stay-scope';
 
 export interface CartItem {
   id: string;
@@ -80,13 +81,15 @@ export function usePOSCart(activeItems: CatalogItem[] = []) {
   useEffect(() => {
     const populateCartWithRoomOrder = (data: any) => {
       if (!data || typeof data !== 'object') return;
+      // The same dish ordered twice arrives as two lines with one id; they become one line, so every row has its own identity
+      // (the bill's rows are keyed by id, and +/- act on a single row).
       const items = Array.isArray(data.items)
-        ? data.items.map((it: any) => ({
+        ? mergeBillLines(data.items.map((it: any) => ({
             id: it.id || `item-${Math.random().toString(36).substring(7)}`,
             name: it.name,
             price: Number(it.price) || 0,
-            qty: Number(it.qty) || 1,
-          }))
+            qty: Number(it.qty ?? it.quantity) || 1,
+          }))).map((l) => ({ id: String(l.id), name: String(l.name ?? ''), price: Number(l.price) || 0, qty: Number(l.qty) || 1 }))
         : [];
 
       if (items.length > 0) {

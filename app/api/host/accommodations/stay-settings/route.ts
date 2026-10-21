@@ -2,10 +2,14 @@ import { NextResponse } from 'next/server';
 import { requireHost } from '@/lib/auth/guards';
 import { withApiErrorBoundary, handleApiError } from '@/lib/middleware/error-handler';
 import { masterUnlockRequired } from '@/lib/services/security/master-unlock-guard';
+import { readPolicies, validatePolicies } from '@/lib/services/stay/stay-policy';
 
 export const dynamic = 'force-dynamic';
 
-const COLUMNS = 'self_checkin_enabled, in_room_dining_enabled, stay_tagline, checkin_time, checkout_time, slug';
+const COLUMNS = 'self_checkin_enabled, in_room_dining_enabled, stay_tagline, checkin_time, checkout_time, slug, stay_policies, upi_id, business_name';
+
+/** The settings as the screens use them: policies cleaned, and the venue's UPI handle (a payee address, shown on every bill's QR). */
+const present = (row: any) => (row ? { ...row, stay_policies: readPolicies(row.stay_policies) } : {});
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 /** GET: the venue's stay switches (self check-in, in-room dining) and the showcase tagline. */
@@ -16,7 +20,7 @@ export const GET = withApiErrorBoundary(async function GET(request: Request) {
     const { businessId, supabase } = auth;
     const { data, error } = await supabase.from('businesses').select(COLUMNS).eq('id', businessId).maybeSingle();
     if (error) throw error;
-    return NextResponse.json({ success: true, settings: data || {} }, { headers: { 'Cache-Control': 'no-store' } });
+    return NextResponse.json({ success: true, settings: present(data) }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     return handleApiError(error, request, 'HostStaySettingsGET');
   }
@@ -46,11 +50,22 @@ export const PATCH = withApiErrorBoundary(async function PATCH(request: Request)
         update[k] = body[k];
       }
     }
+    if (body.stay_policies !== undefined) {
+      const checked = validatePolicies(body.stay_policies);
+      if (!checked.ok) return NextResponse.json({ success: false, error: checked.error }, { status: 400 });
+      update.stay_policies = checked.policies;
+    } else if (body.front_desk !== undefined) {
+      // The desk's number lives with the policies; it is changed on its own without touching the fee options.
+      const { data: row } = await supabase.from('businesses').select('stay_policies').eq('id', businessId).maybeSingle();
+      const checked = validatePolicies({ ...readPolicies(row?.stay_policies), front_desk: body.front_desk });
+      if (!checked.ok) return NextResponse.json({ success: false, error: checked.error }, { status: 400 });
+      update.stay_policies = checked.policies;
+    }
     if (Object.keys(update).length === 0) return NextResponse.json({ success: false, error: 'Nothing to change.' }, { status: 400 });
 
     const { data, error } = await supabase.from('businesses').update(update).eq('id', businessId).select(COLUMNS).maybeSingle();
     if (error) throw error;
-    return NextResponse.json({ success: true, settings: data });
+    return NextResponse.json({ success: true, settings: present(data) });
   } catch (error) {
     return handleApiError(error, request, 'HostStaySettingsPATCH');
   }

@@ -9,6 +9,7 @@ import { ThankYouBlock } from './ThankYouBlock';
 import { VisitReviewBox } from './VisitReviewBox';
 import { useVisitReview } from './useVisitReview';
 import { press } from '../motion';
+import { tableLabel } from '@/lib/guest/room-mode';
 
 interface Props {
   tableNumber: string;
@@ -49,7 +50,7 @@ export function TrackerSettledView({ tableNumber, settledTotal, cafeName, venueI
   return (
     <motion.section role="status" aria-live="polite" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: 'easeOut' }}
       className="mb-6 w-full overflow-hidden rounded-[28px] border border-neutral-200/80 bg-[#fcfaf4] shadow-[0_24px_60px_-30px_rgba(10,50,34,0.45)]">
-      <ThankYouBlock eyebrow={`Table ${tableNumber} · Bill settled`} title={`Thank you for dining with ${venue}.`}
+      <ThankYouBlock eyebrow={`${tableLabel(tableNumber)} · Bill settled`} title={`Thank you for dining with ${venue}.`}
         body="It was a pleasure to host you. Your payment is complete and the table has been released. We hope to welcome you again very soon." />
 
       {signedIn && cashback > 0 && (

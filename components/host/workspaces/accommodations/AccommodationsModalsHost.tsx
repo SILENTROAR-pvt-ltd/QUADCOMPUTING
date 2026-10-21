@@ -7,10 +7,13 @@ import { OccupiedRoomModal } from './OccupiedRoomModal';
 import { EditCategoryModal } from './EditCategoryModal';
 import { EditRoomModal } from './EditRoomModal';
 import { AddUnitModal } from './AddUnitModal';
+import type { StayBooking } from './bookings/useStayBookings';
 
 interface AccommodationsModalsHostProps {
   selectedRoomForPanel: PhysicalRoom | null;
   onCloseRoomPanel: () => void;
+  checkInBooking: StayBooking | null;
+  onCheckInBookingChange: (b: StayBooking | null) => void;
   occupiedRoomForModal: PhysicalRoom | null;
   onCloseOccupiedModal: () => void;
   editingRoomForModal: PhysicalRoom | null;
@@ -29,6 +32,8 @@ interface AccommodationsModalsHostProps {
 export function AccommodationsModalsHost({
   selectedRoomForPanel,
   onCloseRoomPanel,
+  checkInBooking,
+  onCheckInBookingChange,
   occupiedRoomForModal,
   onCloseOccupiedModal,
   editingRoomForModal,
@@ -49,6 +54,8 @@ export function AccommodationsModalsHost({
         room={selectedRoomForPanel}
         onClose={onCloseRoomPanel}
         onRoomUpdated={onDataRefresh}
+        booking={checkInBooking}
+        onBookingChange={onCheckInBookingChange}
       />
 
       <OccupiedRoomModal

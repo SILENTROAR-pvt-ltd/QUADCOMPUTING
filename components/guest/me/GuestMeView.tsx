@@ -8,6 +8,7 @@ import { signOutGuest } from '@/lib/guest/guest-account-client';
 import { GuestAuthSheet } from '@/components/guest/account/GuestAuthSheet';
 import { GuestInvoices } from '@/components/guest/me/GuestInvoices';
 import { GuestWalletHistory } from '@/components/guest/me/GuestWalletHistory';
+import { GuestStays } from '@/components/guest/me/GuestStays';
 import { GuestProfileSheet } from '@/components/guest/account/GuestProfileSheet';
 import { IdentityCard } from './cards/IdentityCard';
 import { VisitCard, WalletCard } from './cards/VisitAndWalletCards';
@@ -29,7 +30,7 @@ export function GuestMeView({ cafeId, tableNumber, venueName = 'this venue', run
   const [showAuth, setShowAuth] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
-  const { account } = useGuestAccount(cafeId);
+  const { account, loading: accountLoading } = useGuestAccount(cafeId);
   const { wallet, transactions, loading } = useGuestWallet(cafeId);
 
   const handle = account?.handle ?? (wallet.guest_handle || null);
@@ -68,7 +69,8 @@ export function GuestMeView({ cafeId, tableNumber, venueName = 'this venue', run
       <VisitCard cafeId={cafeId} tableNumber={tableNumber} runningTotal={runningTotal} hasActiveOrder={hasActiveOrder} billSettled={billSettled}
         onOpenBill={onOpenBill} onOpenMenu={onOpenMenu} />
 
-      {/* Bills and history across every venue the guest has a wallet at (each renders nothing when signed out). */}
+      {/* Stays, bills and history across every venue the guest is connected to. */}
+      <GuestStays cafeId={cafeId} signedIn={Boolean(account)} checking={accountLoading} />
       <GuestInvoices handle={handle} currentVenueId={cafeId} />
       <GuestWalletHistory handle={handle} currentVenueId={cafeId} />
 

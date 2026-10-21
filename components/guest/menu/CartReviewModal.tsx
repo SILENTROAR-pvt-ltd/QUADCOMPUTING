@@ -42,6 +42,12 @@ interface CartReviewModalProps {
   menuItems?: MenuItem[];
   featuredIds?: string[];
   onQuickAdd?: (item: MenuItem) => void;
+  /**
+   * Room mode: the order is added to the room's bill and brought to the door. Cashback, offers and the Vibers ID sign-in
+   * work as at a table (the cashback is credited when the stay checks out); a wallet code cannot be redeemed against a
+   * room bill, and there is no delivery alternative.
+   */
+  roomMode?: boolean;
 }
 
 /** The order review: every dish with its note, suggestions, wallet and offers, the bill, and Place order. */
@@ -68,6 +74,7 @@ export const CartReviewModal: React.FC<CartReviewModalProps> = (p) => {
   }, [isOpen, authFor, onClose]);
 
   // Signed in: the order goes out under the verified account. Otherwise sign in (or continue without) first.
+  const room = Boolean(p.roomMode);
   const place = () => (account ? p.onPlaceOrder(account.display_name, undefined, account.handle) : setAuthFor('order'));
 
   return (
@@ -94,22 +101,23 @@ export const CartReviewModal: React.FC<CartReviewModalProps> = (p) => {
                 </AnimatePresence>
               </div>
               {p.onQuickAdd && menuItems.length > 0 && <CartSuggestions cartItems={cartItems} menuItems={menuItems} featuredIds={featuredIds} onAdd={p.onQuickAdd} />}
-              {account && (
+              {account && !room && (
                 <div className="pt-3">
                   <WalletRedeemPass balance={balance} guestId={account.handle} guestHandle={account.handle} walletCode={wallet.wallet_code} tableNumber={tableNumber} cafeId={cafeId} />
                 </div>
               )}
               <CartOffers venueId={cafeId} tableNumber={tableNumber} offers={offers} />
-              <CartBillSummary subtotal={cartSubtotal} cashback={cashback} signedIn={Boolean(account)} gstApplicable={gstApplicable} />
+              <CartBillSummary subtotal={cartSubtotal} cashback={cashback} signedIn={Boolean(account)} gstApplicable={room ? false : gstApplicable} />
+              {room && <p className="mt-3 rounded-xl bg-zinc-50 px-3.5 py-2.5 text-xs leading-relaxed text-zinc-600">Brought to your door and added to your room bill. Nothing to pay now; you settle it at checkout, and your cashback is credited then.</p>}
             </div>
 
-            {cafeId && !hasActiveOrder && (
+            {cafeId && !hasActiveOrder && !room && (
               <button type="button" onClick={() => setDeliveryOpen(true)} disabled={cartItems.length === 0 || p.isSendingToKitchen}
                 className="mb-3 h-10 w-full cursor-pointer rounded-2xl border border-zinc-200 text-xs font-semibold uppercase tracking-[0.12em] text-zinc-800 hover:bg-zinc-50 disabled:opacity-40">
                 Order for delivery instead
               </button>
             )}
-            <CartReviewFooter total={cartSubtotal} sending={p.isSendingToKitchen} disabled={cartItems.length === 0} hasActiveOrder={hasActiveOrder} onPlace={place} />
+            <CartReviewFooter total={cartSubtotal} sending={p.isSendingToKitchen} disabled={cartItems.length === 0} hasActiveOrder={hasActiveOrder} roomMode={room} onPlace={place} />
           </motion.div>
 
           <CartAuthGate reason={authFor} venueId={cafeId} tableNumber={tableNumber} onClose={() => setAuthFor(null)} onPlace={p.onPlaceOrder} onSignedIn={() => void refresh()} />

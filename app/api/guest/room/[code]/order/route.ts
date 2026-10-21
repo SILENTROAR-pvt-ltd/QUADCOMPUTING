@@ -7,6 +7,7 @@ import { isOccupied } from '@/lib/services/stay/room-access.service';
 import { diningMessage, loadDiningWindow } from '@/lib/services/stay/room-dining-hours';
 import { placeRoomOrder } from '@/lib/services/stay/room-order.service';
 import { noStay, notVerified, roomContext } from '@/lib/services/stay/room-route.util';
+import { applyRequestIdentity } from '@/lib/services/guest-auth/request-identity';
 
 export const dynamic = 'force-dynamic';
 
@@ -41,17 +42,24 @@ export const POST = withApiErrorBoundary(async function POST(request: Request, {
     const items = Array.isArray(body?.items) ? body.items : [];
     if (items.length === 0) return apiError('Add a dish first.', 'INVALID_PAYLOAD', 400);
 
+    // Who is ordering, from their sign-in session only: the dishes are theirs, as at a table, so their cashback and
+    // their invoices follow. The order itself still goes out under the room's registered guest.
+    const identity: Record<string, any> = {};
+    await applyRequestIdentity(db, request, stay.business.id, identity, { name: 'guest_name', phone: 'guest_phone' });
+
     const key = generateIdempotencyKey('room_order', `${stay.business.id}:${stay.room.id}`, { items, note: body?.note, idempotency_key: body?.idempotency_key });
     const { response, status } = await withIdempotency(key, async () => {
       const result = await placeRoomOrder(db, {
         business: stay.business, room: stay.room, items, note: body?.note,
         idempotencyKey: typeof body?.idempotency_key === 'string' ? body.idempotency_key : null,
+        guestHandle: identity.guest_handle || null,
       });
       return { response: result, status: 200 };
     });
     return NextResponse.json(response, { status });
   } catch (error: any) {
     const msg: string = error?.message || '';
+    if (error?.code === 'NOT_A_DISH') return apiError(msg, 'NOT_A_DISH', 400);
     if (error?.status === 409 || /table is closed|ORDER_NOT_FOUND/i.test(msg)) return apiError('The kitchen could not take this order. Please try again.', 'ORDER_REFUSED', 409);
     if (/Missing|No items|Invalid|not on this venue|no longer available/.test(msg)) return apiError(msg, 'INVALID_PAYLOAD', 400);
     if (error?.status === 503) return apiError(msg, 'MENU_UNAVAILABLE', 503);

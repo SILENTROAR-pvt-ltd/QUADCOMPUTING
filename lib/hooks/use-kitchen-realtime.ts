@@ -72,6 +72,13 @@ export function useKitchenRealtime({
       setError(null);
       const url = `/api/host/kitchen/tickets?business_id=${encodeURIComponent(businessId)}`;
       const res = await fetch(url);
+      // Not signed in, or signed in without this venue (a host still in onboarding, an expired session): that is a
+      // state to show, not a fault to report, so it does not reach the console or the error overlay.
+      if (res.status === 401 || res.status === 403) {
+        setTickets([]);
+        setError('Sign in to this venue to see its kitchen.');
+        return;
+      }
       if (!res.ok) {
         throw new Error(`Failed to fetch kitchen tickets: HTTP ${res.status}`);
       }

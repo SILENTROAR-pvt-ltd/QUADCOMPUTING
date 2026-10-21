@@ -1,11 +1,11 @@
 'use client';
 
 import React from 'react';
-import type { RoomCategory, RoomStatus } from '@/types';
+import type { RoomCategory } from '@/types';
 import { ChevronDown, Plus, RotateCw, Search } from 'lucide-react';
-import { ROOM_STATUS_STYLE } from '../room-status-style';
+import { ROOM_STATUS_STYLE, type DisplayStatus } from '../room-status-style';
 
-type Filter = 'ALL' | RoomStatus;
+type Filter = 'ALL' | DisplayStatus;
 
 interface Props {
   counts: Record<Filter, number>;
@@ -21,7 +21,7 @@ interface Props {
   onOpenAddUnit: () => void;
 }
 
-const FILTERS: Filter[] = ['ALL', 'VACANT', 'OCCUPIED', 'CLEANING', 'MAINTENANCE'];
+const FILTERS: Filter[] = ['ALL', 'VACANT', 'RESERVED', 'OCCUPIED', 'CLEANING', 'MAINTENANCE'];
 const control = 'h-10 rounded-xl border border-neutral-200 bg-white text-xs text-neutral-900 outline-none transition-colors focus:border-neutral-900';
 
 /** Status filters, category, search, refresh and add-room for the front desk grid. */

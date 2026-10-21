@@ -69,6 +69,16 @@ export interface PhysicalRoom {
   /** Object path of the ID photo in the private bucket; the host views it through a signed URL. */
   id_proof_path?: string | null;
   id_verified_at?: string | null;
+  /** Front desk only, never stored: the booking this free room is being held for (see reservation-overlay). */
+  reserved_for?: (import('@/lib/services/stay/reservation-overlay').ReservationLite & Record<string, any>) | null;
+  /** Paid before check-in and credited at checkout (migration 20261021000007). */
+  advance_paid?: number | null;
+  /** Early check-in and late check-out fee lines that belong on the final bill. */
+  stay_extras?: Array<{ id: string; name: string; price: number; qty: number; type: string }> | null;
+  /** The guest's late check-out request, waiting for (or declined by) the desk. */
+  late_checkout_request?: { status: 'pending' | 'declined'; option_id: string; label: string; time: string; fee: number; requested_at: string } | null;
+  /** The guest says they are ready to leave: the desk prepares the bill and checks them out, or dismisses it. */
+  checkout_request?: { status: 'pending'; requested_at: string; note: string | null } | null;
 }
 
 export interface RoomStayLog {
@@ -91,6 +101,8 @@ export interface RoomStayLog {
   celebration_note?: string | null;
   selected_addons?: RoomAddon[];
   total_billed_amount?: number | null;
+  /** Paid before checkout (the reservation's room bill, late check-out fees) and credited against the final bill. */
+  advance_paid?: number | null;
   created_at?: string;
 }
 

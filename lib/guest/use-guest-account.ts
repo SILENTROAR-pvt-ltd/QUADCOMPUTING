@@ -19,9 +19,12 @@ export function useGuestAccount(venueId: string) {
   const [needsProfile, setNeedsProfile] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (attempt = 0) => {
     const state = await fetchGuestAccountState(venueId);
     if (state.status === 'unknown') {
+      // The check did not answer (a slow or dropped connection). Asked again, twice, before the page settles for
+      // "not signed in": a signed-in guest was shown the sign-in card on a slow first load.
+      if (attempt < 2) { setTimeout(() => void refresh(attempt + 1), 1500 * (attempt + 1)); return; }
       setLoading(false);
       return;
     }

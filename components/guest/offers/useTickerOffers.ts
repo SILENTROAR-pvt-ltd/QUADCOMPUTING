@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import type { VenueLiveOffer } from '@/types/offers';
 import { createClient } from '@/lib/supabase/client';
 import { isOfferLive } from '@/lib/guest/offer-requests-client';
-import { apiRequest } from '@/lib/utils/api-client';
+import { sharedGet } from '@/lib/utils/shared-get';
 
 const REFRESH_MS = 30_000;
 
@@ -14,7 +14,7 @@ export function useTickerOffers(venueId: string): VenueLiveOffer[] {
 
   const load = useCallback(async () => {
     if (!venueId) return;
-    const result = await apiRequest<{ offers: VenueLiveOffer[] }>(`/api/venue/offers?venue_id=${encodeURIComponent(venueId)}&active_only=true`, { cache: 'no-store' });
+    const result = await sharedGet<{ offers: VenueLiveOffer[] }>(`/api/venue/offers?venue_id=${encodeURIComponent(venueId)}&active_only=true`);
     if (result.ok && result.data) setOffers(result.data.offers.filter((o) => isOfferLive(o)));
   }, [venueId]);
 

@@ -3,6 +3,10 @@ import { requireHost } from '@/lib/auth/guards';
 import { withApiErrorBoundary, handleApiError } from '@/lib/middleware/error-handler';
 import { CLEARED_GUEST_FIELDS, checkInError, checkInFields } from '@/lib/services/accommodation/room-guest-fields.util';
 import { openStayFolio } from '@/lib/services/accommodation/check-in.service';
+import { adminDb } from '@/lib/supabase/admin';
+import { linkBookingToStay, loadOpenBooking } from '@/lib/services/stay/booking-link.service';
+import { finishDeskPass, takePassForDeskCheckIn } from '@/lib/services/stay/pass-checkin.service';
+import { releasePass, StayPassError } from '@/lib/services/stay/stay-pass.service';
 
 export const dynamic = 'force-dynamic';
 
@@ -33,6 +37,8 @@ export const PATCH = withApiErrorBoundary(async function PATCH(request: Request,
 
     const current = String(room.status || '').toUpperCase();
     const update: Record<string, unknown> = {};
+    let booking: Awaited<ReturnType<typeof loadOpenBooking>> = null;
+    let deskPass: Awaited<ReturnType<typeof takePassForDeskCheckIn>> = null;
     const rename = typeof body.room_number === 'string' ? body.room_number.trim() : '';
     if (rename) update.room_number = rename;
 
@@ -42,6 +48,15 @@ export const PATCH = withApiErrorBoundary(async function PATCH(request: Request,
       const invalid = checkInError(body);
       if (invalid) return NextResponse.json({ success: false, error: invalid }, { status: 400 });
       Object.assign(update, checkInFields(body));
+      // Arriving with a reservation: the desk has seen the ID, so the room is not flagged "ID to verify".
+      if (typeof body.booking_id === 'string' && body.booking_id) {
+        booking = await loadOpenBooking(adminDb(), businessId, body.booking_id);
+        if (!booking) return conflict('That booking is no longer open. Refresh the bookings list.');
+        Object.assign(update, { checkin_source: 'booking', id_proof_path: null, id_verified_at: new Date().toISOString() });
+        // Already paid at the desk and billed: the room carries the advance, so checkout credits it instead of charging again.
+        deskPass = await takePassForDeskCheckIn(adminDb(), businessId, booking.id);
+        if (deskPass) Object.assign(update, deskPass.fields);
+      }
     } else if (target) {
       if (current === 'OCCUPIED') return conflict('Check the guest out first; checkout bills the stay and frees the room.');
       update.status = target;
@@ -58,15 +73,19 @@ export const PATCH = withApiErrorBoundary(async function PATCH(request: Request,
       .from('rooms').update(update)
       .eq('id', roomId).eq('business_id', businessId).eq('status', room.status)
       .select(ROOM_SELECT).maybeSingle();
-    if (updateErr) {
-      if (updateErr.code === '23505') return conflict(`Room number ${rename} is already in use.`);
-      throw updateErr;
+    if (updateErr || !updated) {
+      // The room was not taken, so a paid guest keeps their pass.
+      if (deskPass) await releasePass(adminDb(), deskPass.pass.id);
+      if (updateErr?.code === '23505') return conflict(`Room number ${rename} is already in use.`);
+      if (updateErr) throw updateErr;
+      return conflict('This room was changed by someone else. Refresh and try again.');
     }
-    if (!updated) return conflict('This room was changed by someone else. Refresh and try again.');
 
     if (isCheckIn) {
+      if (booking) await linkBookingToStay(adminDb(), booking.id, updated.id);
+      if (deskPass) await finishDeskPass(adminDb(), businessId, deskPass.pass, updated.id);
       try {
-        await openStayFolio(supabase, businessId, updated, checkInFields(body));
+        await openStayFolio(supabase, businessId, updated, checkInFields(body), booking ? { checkin_source: 'booking' } : {});
       } catch (folioErr) {
         // The guest is in the room; without a folio checkout would rebuild the bill from the room record.
         console.error('[room status] opening the stay folio failed', folioErr);
@@ -75,6 +94,7 @@ export const PATCH = withApiErrorBoundary(async function PATCH(request: Request,
     }
     return NextResponse.json({ success: true, room: updated });
   } catch (error) {
+    if (error instanceof StayPassError) return conflict(error.message);
     return handleApiError(error, request, 'AccommodationsRoomStatusPATCH');
   }
 }, 'AccommodationsRoomStatusPATCH');

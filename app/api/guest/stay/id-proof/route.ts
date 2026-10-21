@@ -5,6 +5,7 @@ import { withApiErrorBoundary, handleApiError } from '@/lib/middleware/error-han
 import { enforceRateLimit } from '@/lib/middleware/rate-limiter';
 import { checkIdProof, storeIdProof } from '@/lib/services/stay/id-proof.service';
 import { loadStayBusiness } from '@/lib/services/stay/room-route.util';
+import { assertPassUsable, loadPassByToken, StayPassError } from '@/lib/services/stay/stay-pass.service';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,6 +31,11 @@ export const POST = withApiErrorBoundary(async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'Self check-in is not open at this venue.', code: 'SELF_CHECKIN_OFF' }, { status: 403 });
     }
 
+    // Only a guest holding a live pass for this venue may upload: the page is not a place anyone can park files.
+    const pass = await loadPassByToken(db, form.get('pass_token'));
+    if (pass.business_id !== businessId) throw new StayPassError('NOT_FOUND', 'This check-in link is not valid.');
+    assertPassUsable(pass);
+
     const file = form.get('file');
     if (!(file instanceof Blob)) return NextResponse.json({ success: false, error: 'Take or choose a photo of the ID.' }, { status: 400 });
     const bytes = new Uint8Array(await file.arrayBuffer());
@@ -39,6 +45,7 @@ export const POST = withApiErrorBoundary(async function POST(request: Request) {
     const path = await storeIdProof(db, businessId, bytes, check.type, check.ext);
     return NextResponse.json({ success: true, id_proof_path: path }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
+    if (error instanceof StayPassError) return NextResponse.json({ success: false, error: error.message, code: error.code }, { status: error.code === 'FAILED' ? 500 : error.code === 'NOT_FOUND' ? 404 : 410 });
     return handleApiError(error, request, 'StayIdProofPOST');
   }
 }, 'StayIdProofPOST');

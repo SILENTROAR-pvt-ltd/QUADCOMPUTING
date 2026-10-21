@@ -54,7 +54,7 @@ export function AccommodationsWorkspaceHeader({ activeMainTab, setActiveMainTab,
       <div role="tablist" aria-label="Accommodations sections" className="grid w-full grid-cols-4 gap-1 rounded-xl bg-neutral-100 p-1 sm:inline-grid sm:w-auto">
         {TABS.map((t) => (
           <button key={t.id} type="button" role="tab" aria-selected={activeMainTab === t.id} onClick={() => setActiveMainTab(t.id)}
-            className={`h-10 rounded-lg px-4 text-sm font-semibold transition-colors cursor-pointer sm:px-6 ${activeMainTab === t.id ? 'bg-white text-neutral-950 shadow-xs' : 'text-neutral-500 hover:text-neutral-900'}`}>
+            className={`h-10 truncate rounded-lg px-2 text-xs font-semibold transition-colors cursor-pointer sm:px-6 sm:text-sm ${activeMainTab === t.id ? 'bg-white text-neutral-950 shadow-xs' : 'text-neutral-500 hover:text-neutral-900'}`}>
             {t.label}
           </button>
         ))}

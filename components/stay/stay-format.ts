@@ -24,6 +24,15 @@ export const istDateTime = (iso: string) =>
 
 export const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
+/** A stored moment that may be a date ("2026-10-22") or an instant: the date alone, or date and time in India time. */
+export const whenIst = (value: string | null | undefined) => {
+  if (!value) return '';
+  return /^\d{4}-\d{2}-\d{2}$/.test(value) ? shortDate(value) : istDateTime(value);
+};
+
+/** "harshit" → "Harshit", for a name typed in a hurry at the desk. */
+export const titleCase = (s: string) => s.split(/\s+/).map((w) => (w ? w[0].toUpperCase() + w.slice(1) : w)).join(' ');
+
 export interface StayType {
   id: string;
   name: string;
@@ -35,6 +44,7 @@ export interface StayType {
   rooms_total: number;
   vacant_now: number;
   available_for_dates: number | null;
+  early_options?: Array<{ id: string; label: string; time: string; fee: number }>;
 }
 
 export interface StayVenue {

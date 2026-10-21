@@ -3,6 +3,8 @@
  * status mapping can be tested without a screen.
  */
 
+import { tableLabel } from '@/lib/guest/room-mode';
+
 export type TrackerStage = 'received' | 'preparing' | 'ready' | 'served';
 
 const READY = ['READY'];
@@ -43,7 +45,7 @@ export interface StageCopy {
 }
 
 export function stageCopy(stage: TrackerStage, table: string): StageCopy {
-  const t = table && table !== 'Table' ? `Table ${table}` : 'your table';
+  const t = table && table !== 'Table' ? tableLabel(table) : 'your table';
   switch (stage) {
     case 'received':
       return {

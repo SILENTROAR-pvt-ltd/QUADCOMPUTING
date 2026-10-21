@@ -1,22 +1,26 @@
 'use client';
 
 import React from 'react';
-import type { PhysicalRoom, RoomCategory, RoomStatus } from '@/types';
+import type { PhysicalRoom, RoomCategory } from '@/types';
 import { BedDouble, Plus, SearchX } from 'lucide-react';
 import { RoomCard } from './RoomCard';
 import { FrontDeskMetricsRibbon } from './components/FrontDeskMetricsRibbon';
 import { FrontDeskToolbar } from './components/FrontDeskToolbar';
-import { inr } from './room-status-style';
+import { ArrivalsStrip } from './components/ArrivalsStrip';
+import { displayStatus, inr, type DisplayStatus } from './room-status-style';
+import type { Reservation } from './hooks/useAccommodationsData';
 
 interface Props {
   rooms: PhysicalRoom[];
   categories: RoomCategory[];
+  reservations: Reservation[];
   isLoading: boolean;
   isRefreshing?: boolean;
-  statusFilter: 'ALL' | RoomStatus;
+  statusFilter: 'ALL' | DisplayStatus;
   categoryFilter: string;
   searchQuery: string;
-  onStatusFilterChange: (status: 'ALL' | RoomStatus) => void;
+  onOpenBookings: () => void;
+  onStatusFilterChange: (status: 'ALL' | DisplayStatus) => void;
   onCategoryFilterChange: (catId: string) => void;
   onSearchQueryChange: (query: string) => void;
   onRefresh: () => void;
@@ -27,18 +31,18 @@ interface Props {
 }
 
 function matches(room: PhysicalRoom, p: Props): boolean {
-  if (p.statusFilter !== 'ALL' && room.status !== p.statusFilter) return false;
+  if (p.statusFilter !== 'ALL' && displayStatus(room) !== p.statusFilter) return false;
   if (p.categoryFilter !== 'ALL' && room.category_id !== p.categoryFilter) return false;
   const q = p.searchQuery.trim().toLowerCase();
   if (!q) return true;
-  return [room.room_number, room.guest_name, room.guest_phone, room.category?.name].some((v) => String(v || '').toLowerCase().includes(q));
+  return [room.room_number, room.guest_name, room.guest_phone, room.category?.name, room.reserved_for?.guest_name, room.reserved_for?.confirmation_code].some((v) => String(v || '').toLowerCase().includes(q));
 }
 
 /** The live front desk: summary, filters, and every room grouped by category. */
 export function FrontDeskGrid(p: Props) {
   const { rooms, categories } = p;
-  const count = (s: RoomStatus) => rooms.filter((r) => r.status === s).length;
-  const counts = { ALL: rooms.length, VACANT: count('VACANT'), OCCUPIED: count('OCCUPIED'), CLEANING: count('CLEANING'), MAINTENANCE: count('MAINTENANCE') };
+  const count = (s: DisplayStatus) => rooms.filter((r) => displayStatus(r) === s).length;
+  const counts = { ALL: rooms.length, VACANT: count('VACANT'), RESERVED: count('RESERVED'), OCCUPIED: count('OCCUPIED'), CLEANING: count('CLEANING'), MAINTENANCE: count('MAINTENANCE') };
   // Natural order, so room 99 comes before room 101.
   const filtered = rooms.filter((r) => matches(r, p))
     .sort((a, b) => a.room_number.localeCompare(b.room_number, undefined, { numeric: true }));
@@ -53,11 +57,13 @@ export function FrontDeskGrid(p: Props) {
     <div className="space-y-6">
       <FrontDeskMetricsRibbon
         isLoading={p.isLoading}
-        total={counts.ALL} vacant={counts.VACANT} occupied={counts.OCCUPIED} cleaning={counts.CLEANING} maintenance={counts.MAINTENANCE}
+        total={counts.ALL} vacant={counts.VACANT} reserved={counts.RESERVED} occupied={counts.OCCUPIED} cleaning={counts.CLEANING} maintenance={counts.MAINTENANCE}
         occupancyRate={counts.ALL ? Math.round((counts.OCCUPIED / counts.ALL) * 100) : 0}
         totalFolioBilling={rooms.reduce((a, r) => a + (r.activeOrdersTotal || 0), 0)}
         totalKOTs={rooms.reduce((a, r) => a + (r.activeOrdersCount || 0), 0)}
       />
+
+      {!p.isLoading && <ArrivalsStrip reservations={p.reservations} rooms={rooms} onOpenRoom={p.onSelectRoom} onOpenBookings={p.onOpenBookings} />}
 
       <FrontDeskToolbar
         counts={counts} statusFilter={p.statusFilter} onStatusFilterChange={p.onStatusFilterChange}

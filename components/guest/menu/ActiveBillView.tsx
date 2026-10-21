@@ -8,6 +8,7 @@ import { BillSettledCard } from './bill/BillSettledCard';
 import { BillLines } from './bill/BillLines';
 import { BillTotals } from './bill/BillTotals';
 import { BillActions } from './bill/BillActions';
+import { tableLabel } from '@/lib/guest/room-mode';
 
 interface ActiveBillViewProps {
   tableNumber: string;
@@ -63,7 +64,7 @@ export const ActiveBillView: React.FC<ActiveBillViewProps> = ({
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-neutral-100 text-neutral-700"><Receipt className="h-5 w-5" /></div>
             <div>
               <h2 className="font-editorial text-lg font-normal tracking-tight text-zinc-950 sm:text-xl">Your bill</h2>
-              <p className="mt-0.5 font-mono text-xs text-zinc-400">Table {tableNumber} &bull; {lines.length} {lines.length === 1 ? 'item' : 'items'}</p>
+              <p className="mt-0.5 font-mono text-xs text-zinc-400">{tableLabel(tableNumber)} &bull; {lines.length} {lines.length === 1 ? 'item' : 'items'}</p>
             </div>
           </div>
           <div className="text-right">

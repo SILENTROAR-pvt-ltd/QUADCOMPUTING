@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { requireHost } from '@/lib/auth/guards';
 import { withApiErrorBoundary } from '@/lib/middleware/error-handler';
 import { CLOSED_ORDER_STATUSES } from '@/lib/services/accommodation/stay-folio.util';
+import { belongsToStay, stayStartMs } from '@/lib/services/stay/stay-scope';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,15 +36,17 @@ export const GET = withApiErrorBoundary(async function GET(request: Request) {
     if (roomIds.length > 0) {
       const { data: orders } = await supabase
         .from('orders')
-        .select('id, room_id, grand_total, status')
+        .select('id, room_id, grand_total, status, created_at')
         .eq('business_id', businessId)
         .in('room_id', roomIds)
         .or('order_type.is.null,order_type.neq.room_stay')
         .not('status', 'in', CLOSED_ORDER_STATUSES);
 
       if (orders) {
+        const stayStart = new Map((rooms || []).map((r: any) => [r.id, stayStartMs(r)]));
         orders.forEach(ord => {
-          if (ord.room_id) {
+          // Only the guest in the room now: an earlier stay's leftovers are not counted on the room card.
+          if (ord.room_id && belongsToStay(ord, stayStart.get(ord.room_id) || 0)) {
             if (!activeOrdersByRoom[ord.room_id]) {
               activeOrdersByRoom[ord.room_id] = { count: 0, total: 0 };
             }

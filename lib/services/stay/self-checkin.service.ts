@@ -1,6 +1,8 @@
 import { checkInFields, type CheckInFields } from '@/lib/services/accommodation/room-guest-fields.util';
 import { openStayFolio } from '@/lib/services/accommodation/check-in.service';
 import { normalizeConfirmationCode } from './booking-code';
+import { linkBookingToStay } from './booking-link.service';
+import type { ExtraLine } from './stay-ledger';
 
 // A guest checking themselves in at the property: the same room record and stay folio the front desk writes
 // (room-guest-fields.util, check-in.service), opened by the guest with a vacant room of the type they chose.
@@ -22,6 +24,14 @@ export interface SelfCheckInInput {
   totalGuests: number;
   checkOut?: string | null;
   bookingCode?: string | null;
+  // DPDP Act 2023 & Saraai Act Form C compliance
+  dpdpConsentAccepted?: boolean;
+  consentTimestamp?: string | null;
+  isForeignNational?: boolean;
+  passportNumber?: string | null;
+  visaNumber?: string | null;
+  countryOfOrigin?: string | null;
+  visaExpiryDate?: string | null;
 }
 
 export const ROOM_SELECT = '*, category:room_categories(id, name, price, occupancy, photos, amenities, addons, available_addons)';
@@ -31,6 +41,7 @@ const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 export function readSelfCheckInInput(body: any): SelfCheckInInput {
   const text = (v: unknown, max: number) => (typeof v === 'string' ? v.replace(/\s+/g, ' ').trim().slice(0, max) : '');
+  const dpdpRaw = body?.dpdp_consent_accepted ?? body?.dpdpConsentAccepted;
   return {
     categoryId: text(body?.category_id, 40) || null,
     roomId: text(body?.room_id, 40) || null,
@@ -43,14 +54,26 @@ export function readSelfCheckInInput(body: any): SelfCheckInInput {
     totalGuests: Number(body?.total_guests) || 1,
     checkOut: text(body?.check_out, 10) || null,
     bookingCode: normalizeConfirmationCode(body?.booking_code),
+    dpdpConsentAccepted: dpdpRaw === undefined ? true : Boolean(dpdpRaw),
+    consentTimestamp: text(body?.consent_timestamp ?? body?.consentTimestamp, 40) || null,
+    isForeignNational: Boolean(body?.is_foreign_national ?? body?.isForeignNational),
+    passportNumber: text(body?.passport_number ?? body?.passportNumber, 40) || null,
+    visaNumber: text(body?.visa_number ?? body?.visaNumber, 40) || null,
+    countryOfOrigin: text(body?.country_of_origin ?? body?.countryOfOrigin, 60) || null,
+    visaExpiryDate: text(body?.visa_expiry_date ?? body?.visaExpiryDate, 20) || null,
   };
 }
 
 export function validateSelfCheckIn(i: SelfCheckInInput, today: string): string | null {
+  if (i.dpdpConsentAccepted === false) return 'You must accept the DPDP data privacy notice and consent terms to check in.';
   if (!i.guestName || i.guestName.length < 2) return 'Enter the guest name.';
   if (!PHONE.test(i.guestPhone)) return 'Enter a 10-digit mobile number.';
   if (!i.idProofPath && !i.idNumber) return 'A photo of a government ID is required to check in.';
   if (i.idProofPath && !/^[0-9a-f-]{36}\/[0-9a-f-]{36}\.(jpg|png|webp)$/.test(i.idProofPath)) return 'The ID photo upload is not valid.';
+  if (i.isForeignNational) {
+    if (!i.passportNumber) return 'Foreign nationals must provide a Passport number for Form C compliance.';
+    if (!i.countryOfOrigin) return 'Foreign nationals must specify their Country of Origin for Form C compliance.';
+  }
   if (!i.roomId && !i.categoryId && !i.bookingCode) return 'Choose a room type.';
   if (i.roomId && !UUID.test(i.roomId)) return 'Choose a room.';
   if (i.categoryId && !UUID.test(i.categoryId)) return 'Choose a room type.';
@@ -59,10 +82,13 @@ export function validateSelfCheckIn(i: SelfCheckInInput, today: string): string 
   return null;
 }
 
+
 /** Expected check-out at the venue's check-out hour (11:00 India time by default) on the given date. */
 export const checkOutIso = (date: string, checkoutTime = '11:00') => new Date(`${date}T${checkoutTime}:00+05:30`).toISOString();
 
-export async function selfCheckIn(db: any, businessId: string, input: SelfCheckInInput, opts: { today: string; checkoutTime?: string; now?: Date }) {
+export interface AdvancePayment { amount: number; extras: ExtraLine[] }
+
+export async function selfCheckIn(db: any, businessId: string, input: SelfCheckInInput, opts: { today: string; checkoutTime?: string; now?: Date; advance?: AdvancePayment }) {
   const invalid = validateSelfCheckIn(input, opts.today);
   if (invalid) throw new SelfCheckInError('INVALID', invalid);
   const nowIso = (opts.now || new Date()).toISOString();
@@ -91,26 +117,37 @@ export async function selfCheckIn(db: any, businessId: string, input: SelfCheckI
     id_type: input.idType || (input.idProofPath ? 'Photo ID' : undefined), id_number: input.idNumber || undefined,
     check_in_time: nowIso, check_out_time: checkOutDate ? checkOutIso(checkOutDate, opts.checkoutTime) : null,
     total_guests: input.totalGuests, purpose_of_visit: 'Leisure', selected_addons: [],
+    dpdp_consent_accepted: input.dpdpConsentAccepted,
+    consent_timestamp: input.consentTimestamp || nowIso,
+    is_foreign_national: input.isForeignNational,
+    passport_number: input.passportNumber || undefined,
+    visa_number: input.visaNumber || undefined,
+    country_of_origin: input.countryOfOrigin || undefined,
+    visa_expiry_date: input.visaExpiryDate || undefined,
   }, nowIso);
-  const update = { ...fields, checkin_source: booking ? 'booking' : 'self', id_proof_path: input.idProofPath || null, id_verified_at: null };
+
+  // What the guest paid before check-in, and the fee lines that belong on the final bill, travel with the room until checkout credits them.
+  const advance = opts.advance ? { advance_paid: opts.advance.amount, stay_extras: opts.advance.extras } : {};
+  const update = { ...fields, checkin_source: booking || opts.advance ? 'booking' : 'self', id_proof_path: input.idProofPath || null, id_verified_at: null, ...advance };
 
   // The first vacant room that is still vacant when written wins; another guest may have taken one meanwhile.
   for (const room of vacant) {
     const { data: updated, error } = await db.from('rooms').update(update)
       .eq('id', room.id).eq('business_id', businessId).eq('status', 'VACANT').select(ROOM_SELECT).maybeSingle();
-    if (error) throw new SelfCheckInError('FAILED', 'The check-in could not be saved. Please try again.');
+    if (error) {
+      console.error('[self check-in] room update failed', error.code, error.message);
+      throw new SelfCheckInError('FAILED', 'The check-in could not be saved. Please try again.');
+    }
     if (!updated) continue;
 
     let folioWarning: string | null = null;
     try {
-      await openStayFolio(db, businessId, updated, fields, { id_proof_path: input.idProofPath || null, checkin_source: update.checkin_source });
+      await openStayFolio(db, businessId, updated, fields, { id_proof_path: input.idProofPath || null, checkin_source: update.checkin_source, ...(opts.advance ? { advance_paid: opts.advance.amount } : {}) });
     } catch (err) {
       console.error('[self check-in] folio could not be opened', err);
       folioWarning = 'Checked in; the desk will confirm the tariff.';
     }
-    if (booking) {
-      await db.from('stay_booking_requests').update({ status: 'checked_in', room_id: updated.id, updated_at: nowIso }).eq('id', booking.id);
-    }
+    if (booking) await linkBookingToStay(db, booking.id, updated.id, nowIso);
     return { room: updated, booking, folioWarning };
   }
   throw new SelfCheckInError('NO_ROOM', 'That room was just taken. Please choose another.');

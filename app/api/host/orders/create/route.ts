@@ -7,6 +7,7 @@ import { withApiErrorBoundary, handleApiError } from '@/lib/middleware/error-han
 import { withIdempotency } from '@/lib/services/api-idempotency.util';
 import { afterResponse } from '@/lib/utils/after-response';
 import { isFeeBearingStatus } from '@/lib/services/orders/bill-status.util';
+import { settleRoomFromTill } from '@/lib/services/billing/room-till-settlement';
 
 const TENDERS = ['UPI', 'CASH', 'CARD'];
 
@@ -23,6 +24,9 @@ export const POST = withApiErrorBoundary(async function POST(request: Request) {
         { status: 403 }
       );
     }
+
+    // A room's bill settled from the till is the guest's checkout (room-till-settlement.ts), never a table settlement.
+    if (body.roomId && body.settlement) return settleRoomFromTill(request, String(body.roomId), body.paymentMethod);
 
     const order = await createHostOrder(supabase, businessId, body);
 

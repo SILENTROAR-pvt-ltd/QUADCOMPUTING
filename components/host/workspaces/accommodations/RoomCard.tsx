@@ -3,7 +3,9 @@
 import React from 'react';
 import type { PhysicalRoom } from '@/types';
 import { ChevronRight, Pencil, Users, Utensils, Sparkles, Wrench, BedDouble } from 'lucide-react';
-import { ROOM_STATUS_STYLE, checkedInLabel, departure, inr } from './room-status-style';
+import { ROOM_STATUS_STYLE, checkedInLabel, departure, displayStatus, inr } from './room-status-style';
+import { arrivalLabel } from '@/lib/services/stay/reservation-overlay';
+import { todayIst } from '@/components/stay/stay-format';
 
 interface Props {
   room: PhysicalRoom;
@@ -15,7 +17,9 @@ const TONE = { due: 'text-amber-700', late: 'text-rose-700 font-semibold', norma
 
 /** One room on the front desk: number, status, and what the desk needs to know about it now. */
 export function RoomCard({ room, onSelect, onEdit }: Props) {
-  const s = ROOM_STATUS_STYLE[room.status] || ROOM_STATUS_STYLE.MAINTENANCE;
+  const shown = displayStatus(room);
+  const s = ROOM_STATUS_STYLE[shown] || ROOM_STATUS_STYLE.MAINTENANCE;
+  const held = room.reserved_for;
   const out = departure(room);
   const kots = room.activeOrdersCount || 0;
   const addons = Array.isArray(room.selected_addons) ? room.selected_addons.length : 0;
@@ -64,6 +68,12 @@ export function RoomCard({ room, onSelect, onEdit }: Props) {
             {(room.checkin_source === 'self' || room.checkin_source === 'booking') && !room.id_verified_at && (
               <p className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800 ring-1 ring-inset ring-amber-200">Self check-in · ID to verify</p>
             )}
+            {room.checkout_request?.status === 'pending' && (
+              <p className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-800 ring-1 ring-inset ring-emerald-200">Ready to check out · prepare bill</p>
+            )}
+            {room.late_checkout_request?.status === 'pending' && (
+              <p className="inline-flex items-center gap-1 rounded-md bg-sky-50 px-1.5 py-0.5 text-[10px] font-semibold text-sky-800 ring-1 ring-inset ring-sky-200">Late check-out asked</p>
+            )}
             {kots > 0 && (
               <p className="flex items-center justify-between rounded-lg bg-neutral-50 px-2 py-1 text-[11px] text-neutral-700">
                 <span className="inline-flex items-center gap-1"><Utensils className="h-3 w-3" />{kots} room-service order{kots === 1 ? '' : 's'}</span>
@@ -72,7 +82,18 @@ export function RoomCard({ room, onSelect, onEdit }: Props) {
             )}
           </>
         )}
-        {room.status === 'VACANT' && (
+        {shown === 'RESERVED' && held && (
+          <>
+            <p className="truncate text-sm font-semibold text-neutral-950">{held.guest_name}</p>
+            <p className="flex flex-wrap items-center gap-x-2 text-[11px] text-neutral-500">
+              <span className="font-semibold text-violet-800">{arrivalLabel(held.check_in, todayIst())}</span>
+              <span>{held.guests} guest{held.guests === 1 ? '' : 's'}</span>
+              {held.confirmation_code && <span className="font-mono">{held.confirmation_code}</span>}
+            </p>
+            <p className={`text-[11px] font-semibold ${held.pass ? 'text-emerald-700' : 'text-amber-700'}`}>{held.pass ? `Paid ₹${Number(held.pass.amount).toLocaleString('en-IN')}` : 'Not paid yet'}</p>
+          </>
+        )}
+        {shown === 'VACANT' && (
           <p className="flex items-center justify-between text-neutral-600">
             <span className="inline-flex items-center gap-1.5"><BedDouble className="h-3.5 w-3.5 text-emerald-600" />Ready for a guest</span>
             {Number(room.category?.price) > 0 && <span className="font-mono font-semibold text-neutral-900">{inr(Number(room.category?.price))}</span>}

@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import type { VenueLiveOffer } from '@/types/offers';
 import { isOfferLive } from '@/lib/guest/offer-requests-client';
-import { apiRequest } from '@/lib/utils/api-client';
+import { sharedGet } from '@/lib/utils/shared-get';
 import { OfferActionSheet } from '@/components/guest/offers/OfferActionSheet';
 import { OfferTile } from '@/components/guest/offers/OfferTicker';
 
@@ -23,7 +23,8 @@ export function useOrderOffers(venueId: string): VenueLiveOffer[] {
   useEffect(() => {
     if (!venueId) return;
     let live = true;
-    apiRequest<{ offers: VenueLiveOffer[] }>(`/api/venue/offers?venue_id=${encodeURIComponent(venueId)}&active_only=true`, { cache: 'no-store' })
+    // The same read the offers ticker makes at the same moment: one request serves both.
+    sharedGet<{ offers: VenueLiveOffer[] }>(`/api/venue/offers?venue_id=${encodeURIComponent(venueId)}&active_only=true`)
       .then((result) => {
         if (!live || !result.ok || !result.data) return;
         setOffers(result.data.offers.filter((o) => isOfferLive(o) && ORDER_CATEGORIES.includes(o.category)));

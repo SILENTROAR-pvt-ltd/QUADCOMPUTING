@@ -11,11 +11,13 @@ interface CartReviewFooterProps {
   sending: boolean;
   disabled: boolean;
   hasActiveOrder: boolean;
+  /** Room mode: the words say the order goes to the room, not to a table. */
+  roomMode?: boolean;
   onPlace: () => void;
 }
 
 /** The grand total and the Place order button, always in reach below the scrolling review. */
-export function CartReviewFooter({ total, sending, disabled, hasActiveOrder, onPlace }: CartReviewFooterProps) {
+export function CartReviewFooter({ total, sending, disabled, hasActiveOrder, roomMode = false, onPlace }: CartReviewFooterProps) {
   return (
     <div className="shrink-0 space-y-3 border-t border-zinc-100 pt-3">
       <div className="flex items-center justify-between text-base font-bold text-zinc-950">
@@ -27,11 +29,11 @@ export function CartReviewFooter({ total, sending, disabled, hasActiveOrder, onP
         {sending ? (
           <>
             <span aria-hidden className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white" />
-            <span>{hasActiveOrder ? 'Adding to your bill…' : 'Sending to kitchen…'}</span>
+            <span>{roomMode ? 'Sending to the kitchen…' : hasActiveOrder ? 'Adding to your bill…' : 'Sending to kitchen…'}</span>
           </>
         ) : (
           <>
-            <span>{hasActiveOrder ? 'Add to existing bill' : 'Place order to kitchen'}</span>
+            <span>{roomMode ? 'Send to my room' : hasActiveOrder ? 'Add to existing bill' : 'Place order to kitchen'}</span>
             <ArrowRight className="h-4 w-4" />
           </>
         )}

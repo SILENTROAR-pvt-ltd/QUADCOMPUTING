@@ -3,6 +3,8 @@ import { NextResponse } from 'next/server';
 import { requireHost } from '@/lib/auth/guards';
 import { withApiErrorBoundary } from '@/lib/middleware/error-handler';
 import { buildStayFolio, CLOSED_ORDER_STATUSES, stayNights } from '@/lib/services/accommodation/stay-folio.util';
+import { extrasTotal, readExtras, settleLedger } from '@/lib/services/stay/stay-ledger';
+import { belongsToStay, stayStartMs } from '@/lib/services/stay/stay-scope';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,7 +46,8 @@ export const GET = withApiErrorBoundary(async function GET(
       .not('status', 'in', CLOSED_ORDER_STATUSES)
       .order('created_at', { ascending: false });
 
-    const roomServiceOrders = (allOrders || []).filter((o: any) => o.order_type !== 'room_stay');
+    // This guest's orders only: an earlier stay's leftovers are not part of today's bill.
+    const roomServiceOrders = (allOrders || []).filter((o: any) => o.order_type !== 'room_stay' && belongsToStay(o, stayStartMs(room)));
     const masterStayOrder = (allOrders || []).find((o: any) => o.order_type === 'room_stay' && o.status === 'active');
 
     // 3. Fetch Active Kitchen Tickets (KOT)
@@ -94,7 +97,10 @@ export const GET = withApiErrorBoundary(async function GET(
     const roomTariffSubtotal = folio.tariffTotal;
     const addonsSubtotal = folio.addonsTotal;
     const ordersSubtotal = roomServiceOrders.reduce((acc: number, o: any) => acc + (Number(o.grand_total || o.total_amount) || 0), 0);
-    const grandTotalPayable = roomTariffSubtotal + addonsSubtotal + ordersSubtotal;
+    // Early/late fees and the advance the guest paid: what is still owed is the stay's worth less what was paid.
+    const extras = readExtras(room.stay_extras);
+    const ledger = settleLedger({ folioTotal: roomTariffSubtotal + addonsSubtotal, extras, diningTotal: ordersSubtotal, advancePaid: Number(room.advance_paid) || 0 });
+    const grandTotalPayable = ledger.payable;
 
     return NextResponse.json({
       success: true,
@@ -103,14 +109,17 @@ export const GET = withApiErrorBoundary(async function GET(
       masterOrder: masterStayOrder || null,
       tickets: tickets || [],
       stayLogs,
-      folioLines: folio.lines,
+      folioLines: [...folio.lines, ...extras],
       billingSummary: {
         nights,
         bookedNights,
         roomRate,
         roomTariffSubtotal,
         addonsSubtotal,
+        extrasSubtotal: extrasTotal(extras),
         ordersSubtotal,
+        advancePaid: ledger.credit,
+        refundDue: ledger.refundDue,
         grandTotalPayable
       }
     });

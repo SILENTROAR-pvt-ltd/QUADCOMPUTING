@@ -239,8 +239,20 @@ export type AccountState =
   | { status: 'out'; notice?: string | null }
   | { status: 'unknown' };
 
-export async function fetchGuestAccountState(venueId: string): Promise<AccountState> {
-  if (!venueId) return { status: 'out' };
+// Several parts of one screen (the header, the order review, the bill) ask who is signed in at the same moment; they
+// share one request instead of each sending their own. Nothing is kept once it settles.
+const accountInflight = new Map<string, Promise<AccountState>>();
+
+export function fetchGuestAccountState(venueId: string): Promise<AccountState> {
+  if (!venueId) return Promise.resolve({ status: 'out' });
+  const pending = accountInflight.get(venueId);
+  if (pending) return pending;
+  const request = readGuestAccountState(venueId).finally(() => { accountInflight.delete(venueId); });
+  accountInflight.set(venueId, request);
+  return request;
+}
+
+async function readGuestAccountState(venueId: string): Promise<AccountState> {
   try {
     // A request that never answers (a dropped mobile connection) ends as "unknown" rather than leaving the menu waiting.
     const signal = typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function' ? AbortSignal.timeout(8000) : undefined;
@@ -291,7 +303,11 @@ export function clearGuestIdentity() {
 
 export async function signOutGuest(): Promise<void> {
   try {
-    await fetch('/api/guest/auth/logout', { method: 'POST', cache: 'no-store' });
+    // Logging out also leaves any room this phone was confirmed in: the next person holding it starts clean.
+    await Promise.all([
+      fetch('/api/guest/auth/logout', { method: 'POST', cache: 'no-store' }),
+      fetch('/api/guest/stay/leave', { method: 'POST', cache: 'no-store' }).catch(() => {}),
+    ]);
     // One account: signing out here also ends the Vibers account session on this browser, otherwise
     // the next visit would sign the guest straight back in. 'local' keeps their other devices signed in.
     await createClient().auth.signOut({ scope: 'local' }).catch(() => {});

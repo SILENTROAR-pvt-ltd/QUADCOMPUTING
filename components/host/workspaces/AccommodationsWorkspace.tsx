@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import type { RoomCategory, PhysicalRoom, RoomStatus } from '@/types';
+import type { RoomCategory, PhysicalRoom } from '@/types';
+import type { DisplayStatus } from './accommodations/room-status-style';
 import { FrontDeskGrid } from './accommodations/FrontDeskGrid';
 import { CategoryConfigurator } from './accommodations/CategoryConfigurator';
 import { ExistingCategoriesList } from './accommodations/ExistingCategoriesList';
@@ -12,21 +13,26 @@ import { DEFAULT_COMMON_AMENITIES } from './accommodations/configurator/room-cat
 import { useAccommodationsData } from './accommodations/hooks/useAccommodationsData';
 import { useCategoryActions } from './accommodations/hooks/useCategoryActions';
 import { StayBookingsPanel } from './accommodations/bookings/StayBookingsPanel';
+import type { StayBooking } from './accommodations/bookings/useStayBookings';
 import { StaySettingsCard } from './accommodations/bookings/StaySettingsCard';
 
 /** Front desk, room setup and stay history for a venue's rooms. */
 export function AccommodationsWorkspace({ onNavigate }: { onNavigate?: (tab: string, meta?: any) => void }) {
   const data = useAccommodationsData();
-  const { categories, rooms } = data;
+  const { categories, rooms, reservations } = data;
   const [activeMainTab, setActiveMainTab] = useState<Tab>('front-desk');
   const [successToast, setSuccessToast] = useState('');
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
+  // The reservation being checked in: picked on the Bookings tab or from a vacant room's panel. Undefined means "follow the
+  // room": a free room held by a booking opens with that booking; null means the desk chose to check in without one.
+  const [checkInBooking, setCheckInBooking] = useState<StayBooking | null | undefined>(undefined);
+  const [bookingsKey, setBookingsKey] = useState(0);
   const [editingRoomForModal, setEditingRoomForModal] = useState<PhysicalRoom | null>(null);
   const [editingCategory, setEditingCategory] = useState<RoomCategory | null>(null);
   const [isAddUnitModalOpen, setIsAddUnitModalOpen] = useState(false);
-  const [statusFilter, setStatusFilter] = useState<'ALL' | RoomStatus>('ALL');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | DisplayStatus>('ALL');
   const [categoryFilter, setCategoryFilter] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -37,13 +43,15 @@ export function AccommodationsWorkspace({ onNavigate }: { onNavigate?: (tab: str
   };
   useEffect(() => () => { if (toastTimer.current) clearTimeout(toastTimer.current); }, []);
 
-  const reload = () => data.loadData(true);
+  const reload = () => { setBookingsKey((k) => k + 1); return data.loadData(true); };
+  const closeRoomPanel = () => { setSelectedRoomId(null); setCheckInBooking(undefined); };
   const actions = useCategoryActions(reload, showToast, () => setActiveMainTab('front-desk'));
 
   // The open room follows live data, so a change made elsewhere (or just now) shows in its panel.
   const selectedRoom = rooms.find((r) => r.id === selectedRoomId) || null;
   const vacantPanelRoom = selectedRoom && selectedRoom.status !== 'OCCUPIED' ? selectedRoom : null;
   const occupiedRoom = selectedRoom && selectedRoom.status === 'OCCUPIED' ? selectedRoom : null;
+  const panelBooking = (checkInBooking === undefined ? (selectedRoom?.reserved_for as StayBooking | null | undefined) : checkInBooking) ?? null;
 
   return (
     <div className="flex h-full flex-col pb-20 animate-in fade-in duration-300">
@@ -66,6 +74,8 @@ export function AccommodationsWorkspace({ onNavigate }: { onNavigate?: (tab: str
         <FrontDeskGrid
           rooms={rooms}
           categories={categories}
+          reservations={reservations}
+          onOpenBookings={() => setActiveMainTab('bookings')}
           isLoading={data.isLoading}
           isRefreshing={data.isRefreshing}
           statusFilter={statusFilter}
@@ -82,7 +92,10 @@ export function AccommodationsWorkspace({ onNavigate }: { onNavigate?: (tab: str
         />
       )}
 
-      {activeMainTab === 'bookings' && <StayBookingsPanel categories={categories} onShowToast={showToast} />}
+      {activeMainTab === 'bookings' && (
+        <StayBookingsPanel categories={categories} rooms={rooms} onShowToast={showToast} refreshKey={bookingsKey} onChanged={() => void data.loadData(true)}
+          onCheckIn={(booking, room) => { setCheckInBooking(booking); setSelectedRoomId(room.id); }} />
+      )}
 
       {activeMainTab === 'configurator' && (
         <div className="space-y-12">
@@ -102,9 +115,11 @@ export function AccommodationsWorkspace({ onNavigate }: { onNavigate?: (tab: str
 
       <AccommodationsModalsHost
         selectedRoomForPanel={vacantPanelRoom}
-        onCloseRoomPanel={() => setSelectedRoomId(null)}
+        onCloseRoomPanel={closeRoomPanel}
+        checkInBooking={panelBooking}
+        onCheckInBookingChange={setCheckInBooking}
         occupiedRoomForModal={occupiedRoom}
-        onCloseOccupiedModal={() => setSelectedRoomId(null)}
+        onCloseOccupiedModal={closeRoomPanel}
         editingRoomForModal={editingRoomForModal}
         onCloseEditingRoomModal={() => setEditingRoomForModal(null)}
         editingCategory={editingCategory}

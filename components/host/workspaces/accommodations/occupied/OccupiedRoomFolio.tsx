@@ -44,13 +44,15 @@ export function OccupiedRoomFolio({ billingSummary: b, folioLines = [], ordersCo
           : <Row label={`Room (${b.nights} × ${money(b.roomRate)})`} value={b.roomTariffSubtotal} />}
         {folioLines.length === 0 && b.addonsSubtotal > 0 && <Row label="Add-ons" value={b.addonsSubtotal} />}
         <Row label={`Room service (${ordersCount} order${ordersCount === 1 ? '' : 's'})`} note={ordersCount ? undefined : 'Nothing charged to the room yet'} value={b.ordersSubtotal} />
+        {Number(b.advancePaid) > 0 && <Row label="Advance paid" note="Room payment taken before check-in" value={-Number(b.advancePaid)} />}
       </div>
 
       <div className="mt-2 flex items-baseline justify-between border-t border-neutral-900 pt-3">
-        <span className="text-sm font-semibold text-neutral-950">Total due</span>
+        <span className="text-sm font-semibold text-neutral-950">{Number(b.advancePaid) > 0 ? 'Balance due' : 'Total due'}</span>
         <span className="font-serif text-2xl tabular-nums text-neutral-950">{money(b.grandTotalPayable)}</span>
       </div>
       {booked && <p className="mt-1 text-[11px] text-neutral-500">{booked}</p>}
+      {Number(b.refundDue) > 0 && <p role="status" className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-900">Paid {money(Number(b.refundDue))} more than the stay comes to so far; return it to the guest at checkout.</p>}
       <p className="mt-1 text-[11px] text-neutral-500">Taxes and the tender are applied in billing after checkout.</p>
 
       <div className="mt-5 flex flex-col gap-2.5 sm:flex-row">

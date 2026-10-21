@@ -10,6 +10,8 @@ interface MenuJourneyStepsProps {
   cartCount: number;
   /** Dishes already sent to the kitchen. */
   sentCount: number;
+  /** Room mode: the last step is following the order to the door; there is nothing to pay now. */
+  roomMode?: boolean;
 }
 
 const STEPS = [
@@ -17,18 +19,20 @@ const STEPS = [
   { title: 'Send to kitchen', hint: 'Review your tray, then send' },
   { title: 'Track & pay', hint: 'Follow your order, pay at the end' },
 ];
+const ROOM_STEPS = [STEPS[0], STEPS[1], { title: 'At your door', hint: 'Follow your order; it goes on your room bill' }];
 
 /**
  * Where the guest is in their visit, so the next thing to do is always obvious. Each step has its own little chef: the
  * current one bobs gently, finished ones carry a tick, and the ones still to come are softened.
  */
-export function MenuJourneySteps({ cartCount, sentCount }: MenuJourneyStepsProps) {
+export function MenuJourneySteps({ cartCount, sentCount, roomMode = false }: MenuJourneyStepsProps) {
+  const steps = roomMode ? ROOM_STEPS : STEPS;
   const current = sentCount > 0 && cartCount === 0 ? 2 : cartCount > 0 ? 1 : 0;
   const calm = useReducedMotion();
 
   return (
     <ol aria-label="How ordering works" className="grid w-full max-w-xl grid-cols-3 gap-2">
-      {STEPS.map((step, i) => {
+      {steps.map((step, i) => {
         const done = i < current;
         const active = i === current;
         return (

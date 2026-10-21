@@ -7,6 +7,7 @@ import { readMenuInfo } from '@/lib/services/menu-info/menu-info';
 import { availabilityFromRows, OPEN_BOOKING_STATUSES } from '@/lib/services/stay/stay-availability.service';
 import { validateStayBooking, nightsBetween } from '@/lib/services/stay/stay-booking.service';
 import { todayIst } from '@/lib/services/reservations/venue-hours.service';
+import { policyFee, readPolicies } from '@/lib/services/stay/stay-policy';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,27 +24,30 @@ export const GET = withApiErrorBoundary(async function GET(request: Request) {
     const resolved = await resolveBusinessId(searchParams.get('venue') || searchParams.get('cafe_id'));
     if (!resolved.success) return resolved.error;
     const business = resolved.business;
-    const limited = await enforceRateLimit(request, 'stay_showcase', 120, 60_000, business.id);
-    if (limited) return limited;
 
     const checkIn = searchParams.get('check_in') || '';
     const checkOut = searchParams.get('check_out') || '';
     const hasRange = DATE.test(checkIn) && DATE.test(checkOut) && nightsBetween(checkIn, checkOut) >= 1;
 
+    // The limit check (a call to the shared limiter) and the three reads run together; if the caller is over the
+    // limit the reads are simply discarded. Read-only and cheap, so this costs nothing and saves a round trip.
     const db = adminDb();
-    const [{ data: categories, error: catErr }, { data: rooms, error: roomsErr }, bookingsRes] = await Promise.all([
+    const limitCheck = enforceRateLimit(request, 'stay_showcase', 120, 60_000, business.id);
+    const [limited, [{ data: categories, error: catErr }, { data: rooms, error: roomsErr }, bookingsRes]] = await Promise.all([limitCheck, Promise.all([
       db.from('room_categories').select('id, name, price, occupancy, total_units, photos, amenities, available_addons').eq('business_id', business.id).order('price', { ascending: true }),
       db.from('rooms').select('id, category_id, status, check_out_date, check_out_time').eq('business_id', business.id),
       hasRange
         ? db.from('stay_booking_requests').select('category_id, check_in, check_out').eq('business_id', business.id).in('status', OPEN_BOOKING_STATUSES)
         : Promise.resolve({ data: [], error: null }),
-    ]);
+    ])]);
+    if (limited) return limited;
     if (catErr) throw catErr;
     if (roomsErr) throw roomsErr;
     if (bookingsRes.error) throw bookingsRes.error;
 
     const today = todayIst();
     const range = hasRange ? { checkIn, checkOut } : { checkIn: today, checkOut: today };
+    const policies = readPolicies(business.stay_policies);
     const types = (categories || []).map((c: any) => {
       const own = (rooms || []).filter((r: any) => r.category_id === c.id);
       const bookings = (bookingsRes.data || []).filter((b: any) => b.category_id === c.id);
@@ -53,6 +57,8 @@ export const GET = withApiErrorBoundary(async function GET(request: Request) {
         photos: Array.isArray(c.photos) ? c.photos.slice(0, 8) : [], amenities: Array.isArray(c.amenities) ? c.amenities : [],
         addons: Array.isArray(c.available_addons) ? c.available_addons.map((x: any) => ({ name: x.name, price: Number(x.price) || 0 })) : [],
         rooms_total: a.total, vacant_now: a.vacantNow, available_for_dates: hasRange ? a.available : null,
+        // Early check-in options priced for this type; the fee is taken at the desk with the room, never online.
+        early_options: policies.early_checkin.map((o) => ({ id: o.id, label: o.label, time: o.time, fee: policyFee(o, Number(c.price) || 0) })),
       };
     });
 

@@ -1,4 +1,5 @@
 import { getKnownOrder } from './guest-storage.util';
+import { readMenuSeed } from '@/lib/guest/menu-seed';
 
 export interface FetchMenuParams {
   tableParam: string;
@@ -8,30 +9,37 @@ export interface FetchMenuParams {
   guestName: string;
   avatar: string;
   onMenuReady?: (data: { items: any[]; tableNumber: string; businessName: string; businessId?: string; tableId?: string }) => void;
+  /** Room mode: the room is not a table, so no dine-in session is opened for it. */
+  skipSession?: boolean;
 }
 
 export async function fetchMenuAndInitSession(p: FetchMenuParams) {
   const q = new URLSearchParams({ table: p.tableParam });
   if (p.cafeParam) q.set('cafe_id', p.cafeParam);
+  const menuUrl = `/api/guest/menu?${q.toString()}`;
+  const ready = (menuData: any) => p.onMenuReady?.({
+    items: menuData.items || [],
+    tableNumber: menuData.table?.table_number || p.tableParam,
+    businessName: menuData.business?.name || '',
+    businessId: menuData.business?.id,
+    tableId: menuData.table?.id,
+  });
+
+  // A menu read moments ago by the page that sent the guest here (the room page) is shown at once; the fresh read
+  // below replaces it as soon as it lands.
+  const seed = readMenuSeed(menuUrl);
+  if (seed) ready(seed);
 
   // Parallel fetch: menu and guest session concurrently
-  const menuPromise = fetch(`/api/guest/menu?${q.toString()}`)
+  const menuPromise = fetch(menuUrl)
     .then((r) => r.json())
     .then((menuData) => {
       if (!menuData?.success) throw new Error(menuData?.error || 'Venue unavailable');
-      if (p.onMenuReady) {
-        p.onMenuReady({
-          items: menuData.items || [],
-          tableNumber: menuData.table?.table_number || p.tableParam,
-          businessName: menuData.business?.name || '',
-          businessId: menuData.business?.id,
-          tableId: menuData.table?.id,
-        });
-      }
+      ready(menuData);
       return menuData;
     });
 
-  const sessPromise = fetch('/api/guest/session', {
+  const sessPromise: Promise<any> = p.skipSession ? Promise.resolve({}) : fetch('/api/guest/session', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({

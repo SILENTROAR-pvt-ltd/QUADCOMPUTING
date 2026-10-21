@@ -21,6 +21,20 @@ export const CLEARED_GUEST_FIELDS = {
   id_proof_path: null,
   id_verified_at: null,
   checkin_source: 'desk',
+  // What the previous guest paid in advance, their early/late fee lines and any late check-out request (migration 20261021000007).
+  advance_paid: 0,
+  stay_extras: [],
+  late_checkout_request: null,
+  // The guest's "ready to check out" request (migration 20261021000009): answered by this very checkout.
+  checkout_request: null,
+  // DPDP Act 2023 & Saraai Act compliance fields
+  dpdp_consent_accepted: false,
+  consent_timestamp: null,
+  is_foreign_national: false,
+  passport_number: null,
+  visa_number: null,
+  country_of_origin: null,
+  visa_expiry_date: null,
 } as const;
 
 export interface CheckInBody {
@@ -29,6 +43,14 @@ export interface CheckInBody {
   check_in_time?: string; check_out_time?: string | null; total_guests?: number | string;
   purpose_of_visit?: string; is_celebration?: boolean; celebration_type?: string; celebration_note?: string;
   selected_addons?: unknown[];
+  // Compliance attributes
+  dpdp_consent_accepted?: boolean;
+  consent_timestamp?: string;
+  is_foreign_national?: boolean;
+  passport_number?: string;
+  visa_number?: string;
+  country_of_origin?: string;
+  visa_expiry_date?: string;
 }
 
 /** Why a check-in request cannot be accepted, or null. */
@@ -37,6 +59,10 @@ export function checkInError(body: CheckInBody): string | null {
   const inAt = Date.parse(String(body.check_in_time || ''));
   const outAt = Date.parse(String(body.check_out_time || ''));
   if (!Number.isNaN(inAt) && !Number.isNaN(outAt) && outAt <= inAt) return 'Expected check-out must be after check-in.';
+  if (body.is_foreign_national) {
+    if (!text(body.passport_number)) return 'Passport number is required for foreign national registration (Form C).';
+    if (!text(body.country_of_origin)) return 'Country of origin is required for foreign national registration (Form C).';
+  }
   return null;
 }
 
@@ -46,6 +72,10 @@ export function checkInFields(body: CheckInBody, nowIso = new Date().toISOString
   const idNumber = text(body.id_number);
   const checkIn = text(body.check_in_time) || nowIso;
   const checkOut = text(body.check_out_time);
+  const dpdpAccepted = Boolean(body.dpdp_consent_accepted ?? true);
+  const consentTime = dpdpAccepted ? (text(body.consent_timestamp) || nowIso) : null;
+  const isForeign = Boolean(body.is_foreign_national);
+
   return {
     status: 'OCCUPIED' as const,
     guest_name: text(body.guest_name) || 'Guest',
@@ -66,7 +96,15 @@ export function checkInFields(body: CheckInBody, nowIso = new Date().toISOString
     celebration_type: body.is_celebration ? text(body.celebration_type) : null,
     celebration_note: body.is_celebration ? text(body.celebration_note) : null,
     selected_addons: Array.isArray(body.selected_addons) ? body.selected_addons : [],
+    dpdp_consent_accepted: dpdpAccepted,
+    consent_timestamp: consentTime,
+    is_foreign_national: isForeign,
+    passport_number: isForeign ? text(body.passport_number) : null,
+    visa_number: isForeign ? text(body.visa_number) : null,
+    country_of_origin: isForeign ? text(body.country_of_origin) : null,
+    visa_expiry_date: isForeign ? text(body.visa_expiry_date) : null,
   };
 }
 
 export type CheckInFields = ReturnType<typeof checkInFields>;
+

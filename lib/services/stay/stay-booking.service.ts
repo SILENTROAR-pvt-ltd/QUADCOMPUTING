@@ -19,7 +19,14 @@ export interface StayBookingInput {
   checkOut: string;
   guests: number;
   note?: string | null;
+  /** 'standard', 'late', or 'early:<option id>'; the route checks it against the owner's options. */
+  expectedArrival?: string | null;
+  /** The Vibers ID the guest was signed in with, when they were. */
+  guestAccountId?: string | null;
 }
+
+/** What a signed-in guest's account supplies to a reservation: who they are, and the mobile the browser never sees. */
+export interface BookingAccount { id: string; display_name: string; phone: string | null }
 
 export const MAX_NIGHTS = 30;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -47,22 +54,27 @@ export function validateStayBooking(i: StayBookingInput, today = todayIst()): st
   return null;
 }
 
-/** Reads a request body into a booking input, trimming text and coercing numbers; validation is separate. */
-export function readStayBookingInput(body: any): StayBookingInput {
+/**
+ * Reads a request body into a booking input, trimming text and coercing numbers; validation is separate. A signed-in
+ * guest's account fills in whatever they left blank: their name, and the mobile number the browser only ever sees masked.
+ */
+export function readStayBookingInput(body: any, account: BookingAccount | null = null): StayBookingInput {
   const text = (v: unknown, max: number) => (typeof v === 'string' ? v.replace(/\s+/g, ' ').trim().slice(0, max) : '');
   return {
     categoryId: text(body?.category_id, 40),
-    guestName: text(body?.guest_name, 60),
-    guestPhone: String(body?.guest_phone ?? '').replace(/\D/g, '').slice(-10),
+    guestName: text(body?.guest_name, 60) || text(account?.display_name, 60),
+    guestPhone: String(body?.guest_phone ?? '').replace(/\D/g, '').slice(-10) || String(account?.phone ?? '').replace(/\D/g, '').slice(-10),
     guestEmail: text(body?.guest_email, 120) || null,
     checkIn: text(body?.check_in, 10),
     checkOut: text(body?.check_out, 10),
     guests: Number(body?.guests),
     note: text(body?.note, 300) || null,
+    expectedArrival: text(body?.expected_arrival, 40) || null,
+    guestAccountId: account?.id || null,
   };
 }
 
-export async function createStayBooking(db: any, businessId: string, input: StayBookingInput, today = todayIst()) {
+export async function createStayBooking(db: any, businessId: string, input: StayBookingInput, today = todayIst(), source: 'web' | 'desk' = 'web') {
   const invalid = validateStayBooking(input, today);
   if (invalid) throw new StayBookingError('INVALID', invalid);
 
@@ -79,7 +91,8 @@ export async function createStayBooking(db: any, businessId: string, input: Stay
   const row = {
     business_id: businessId, category_id: category.id, check_in: input.checkIn, check_out: input.checkOut,
     guests: input.guests, guest_name: input.guestName.trim(), guest_phone: input.guestPhone, guest_email: input.guestEmail,
-    note: input.note, status: 'confirmed', source: 'web',
+    note: input.note, status: 'confirmed', source, expected_arrival: input.expectedArrival || 'standard',
+    guest_account_id: input.guestAccountId || null,
   };
   // The code is unique; on the rare collision a new one is drawn.
   for (let attempt = 0; attempt < 3; attempt++) {

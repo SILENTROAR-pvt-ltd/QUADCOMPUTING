@@ -14,10 +14,13 @@ interface MenuTopProps {
   tagline?: string;
   onOpenBill: () => void;
   requestBill: () => void;
+  /** Room mode: shown under the header, above the account bar; the table's service buttons give way to the room page. */
+  roomBar?: React.ReactNode;
 }
 
 /** The top of the page: the header, then (on the menu tab) the journey steps, the account bar and the service buttons. */
-export function MenuTop({ state, venueId, guestName, tagline, onOpenBill, requestBill }: MenuTopProps) {
+export function MenuTop({ state, venueId, guestName, tagline, onOpenBill, requestBill, roomBar }: MenuTopProps) {
+  const onMenu = state.activeTab === 'menu';
   return (
     <>
       <MenuHeader
@@ -25,7 +28,15 @@ export function MenuTop({ state, venueId, guestName, tagline, onOpenBill, reques
         tagline={tagline} activeOrdersCount={state.sentItems.length} onOpenBill={onOpenBill}
         billRequestedBanner={state.billRequestedBanner}
       />
-      {state.activeTab === 'menu' ? (
+      {roomBar ? (
+        // The same menu as at a table, with the room on top: the Vibers ID account bar and the journey stay, so cashback,
+        // the wallet and the lounge are all there; the waiter and bill buttons are not, a room asks for those on its own page.
+        <div className="mx-auto max-w-5xl space-y-2.5 pb-2.5 pt-1">
+          {roomBar}
+          {onMenu && <div className="flex w-full justify-center px-4 sm:px-6"><MenuJourneySteps cartCount={state.totalCartCount} sentCount={state.sentItems.length} roomMode /></div>}
+          <GuestAccountStrip venueId={venueId} tableNumber={state.tableNumber} />
+        </div>
+      ) : onMenu ? (
         <div className="mx-auto max-w-5xl space-y-2.5 px-4 pb-2.5 pt-2 sm:px-6">
           <div className="flex w-full justify-center">
             <MenuJourneySteps cartCount={state.totalCartCount} sentCount={state.sentItems.length} />

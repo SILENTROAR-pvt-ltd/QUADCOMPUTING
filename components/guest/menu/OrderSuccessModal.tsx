@@ -2,15 +2,19 @@
 
 import React, { useEffect } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { Camera, Check, Compass, X } from 'lucide-react';
+import { BedDouble, Camera, Check, Compass, X } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { SuccessAction } from './success/SuccessAction';
 import { press, SPRING } from './motion';
+import { tableLabel } from '@/lib/guest/room-mode';
 
 interface OrderSuccessModalProps {
   isOpen: boolean;
   tableNumber: string;
   businessName: string;
   isAddon?: boolean;
+  /** Room mode: the card sends the guest back to their room instead of to the venue's services and lounge. */
+  roomCode?: string;
   /** Dismiss and stay on the menu. */
   onClose: () => void;
   /** Look at the venue's services while the food is being prepared. */
@@ -26,8 +30,9 @@ const SERIF = { fontFamily: "'Playfair Display', Georgia, serif" } as const;
  * wait. It is not a page. The menu stays visible behind it, and a tap outside or Escape closes it. It only moves the guest
  * between screens; it sends nothing.
  */
-export const OrderSuccessModal: React.FC<OrderSuccessModalProps> = ({ isOpen, tableNumber, businessName, isAddon = false, onClose, onExploreServices, onExploreLounge }) => {
+export const OrderSuccessModal: React.FC<OrderSuccessModalProps> = ({ isOpen, tableNumber, businessName, isAddon = false, roomCode, onClose, onExploreServices, onExploreLounge }) => {
   const calm = useReducedMotion();
+  const router = useRouter();
 
   useEffect(() => {
     if (!isOpen) return;
@@ -55,18 +60,30 @@ export const OrderSuccessModal: React.FC<OrderSuccessModalProps> = ({ isOpen, ta
             </motion.span>
 
             <p className="mt-4 text-[10px] font-medium uppercase tracking-[0.24em] text-zinc-400">
-              {tableNumber ? `Table ${tableNumber}` : 'Your table'} · {isAddon ? 'Added to your order' : 'Order received'}
+              {tableNumber ? tableLabel(tableNumber) : 'Your table'} · {isAddon ? 'Added to your order' : 'Order received'}
             </p>
             <h2 id="order-success-title" className="mt-2 text-[24px] leading-[1.15] text-zinc-950 [text-wrap:balance]" style={SERIF}>
               Thank you. {isAddon ? 'Your additions have been sent to the kitchen.' : 'Your order has been sent to the kitchen.'}
             </h2>
             <p className="mx-auto mt-2.5 max-w-[300px] text-[13px] leading-relaxed text-zinc-500 [text-wrap:balance]">
-              While your food is being prepared, you are welcome to explore what {businessName || 'the venue'} has to offer.
+              {roomCode
+                ? 'It will be brought to your room, and it is added to your room bill. Nothing to pay now.'
+                : `While your food is being prepared, you are welcome to explore what ${businessName || 'the venue'} has to offer.`}
             </p>
 
             <div className="mt-5 space-y-2.5">
-              <SuccessAction primary icon={<Compass className="h-4 w-4" aria-hidden />} title="Explore venue services" hint="Experiences, stays and more" onClick={onExploreServices} />
-              <SuccessAction icon={<Camera className="h-4 w-4" aria-hidden />} title="Explore the lounge" hint="Share your moment with other guests" onClick={onExploreLounge} />
+              {roomCode ? (
+                <>
+                  <SuccessAction primary icon={<BedDouble className="h-4 w-4" aria-hidden />} title="Back to my room" hint="See your bill and order status" onClick={() => router.push(`/room/${encodeURIComponent(roomCode)}`)} />
+                  <SuccessAction icon={<Camera className="h-4 w-4" aria-hidden />} title="Explore the lounge" hint="Share your moment with other guests" onClick={onExploreLounge} />
+                  <SuccessAction icon={<Compass className="h-4 w-4" aria-hidden />} title="Keep browsing the menu" hint="Add something else to the same order" onClick={onClose} />
+                </>
+              ) : (
+                <>
+                  <SuccessAction primary icon={<Compass className="h-4 w-4" aria-hidden />} title="Explore venue services" hint="Experiences, stays and more" onClick={onExploreServices} />
+                  <SuccessAction icon={<Camera className="h-4 w-4" aria-hidden />} title="Explore the lounge" hint="Share your moment with other guests" onClick={onExploreLounge} />
+                </>
+              )}
             </div>
           </motion.div>
         </motion.div>

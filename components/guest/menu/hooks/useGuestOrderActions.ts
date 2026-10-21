@@ -14,6 +14,8 @@ export function useGuestOrderActions(props: {
   initialItems?: ActiveOrderItem[]; initialBillRequested?: boolean; initialKotStatus?: string | null; initialTicketNumber?: string | null;
   initialBillSettled?: boolean; initialSettledTotal?: number; initialCashbackCredited?: number;
   businessId?: string;
+  /** Room mode: orders go to the room's own endpoint and onto the room's bill. */
+  roomCode?: string;
 }) {
   const [masterOrder, setMasterOrder] = useState<any>(props.initialOrder || null);
   const [sentItems, setSentItems] = useState<ActiveOrderItem[]>(props.initialItems || []);
@@ -83,14 +85,14 @@ export function useGuestOrderActions(props: {
   });
 
   const { pollActiveOrder } = useGuestOrderPolling({
-    tableNumber: props.tableNumber, cafeParam: props.cafeParam, guestId: props.guestId, activeSessionId: props.activeSession?.id, pushUp,
+    tableNumber: props.tableNumber, cafeParam: props.cafeParam, guestId: props.guestId, activeSessionId: props.activeSession?.id, pushUp, roomMode: Boolean(props.roomCode),
     hasActiveOrder, sentItemsCount: sentItems.length, billRequestedBanner, markBillSettled, setSentItems, setMasterOrder, setKotStatus, setTicketNumber, setBillRequestedBanner,
   });
 
   readOrderRef.current = () => { void pollActiveOrder(); };
 
   const dispatch = useGuestOrderDispatch({
-    tableNumber: props.tableNumber, cafeParam: props.cafeParam, guestId: props.guestId, activeSession: props.activeSession,
+    roomCode: props.roomCode, tableNumber: props.tableNumber, cafeParam: props.cafeParam, guestId: props.guestId, activeSession: props.activeSession,
     currentGuestName: props.currentGuestName, cartItems: props.cartItems, masterOrder, clearCart: props.clearCart,
     showToast: props.showToast, setSentItems, setMasterOrder, setKotStatus, setTicketNumber, setIsRecentAddon, setBillRequestedBanner, resetSettledState,
   });

@@ -4,6 +4,7 @@ import { validateGuestAccess } from '@/lib/auth/guest-validate';
 import { withApiErrorBoundary } from '@/lib/middleware/error-handler';
 import { enforceRateLimit } from '@/lib/middleware/rate-limiter';
 import { loadVenueMenuWithSource } from '@/lib/services/guest-menu/venue-menu-cache';
+import { isRoomTable } from '@/lib/guest/room-mode';
 
 // Edge: the menu is the first thing a guest loads after a QR scan, and a Node cold start added most of its latency.
 export const runtime = 'edge';
@@ -66,7 +67,12 @@ export const GET = withApiErrorBoundary(async function GET(request: Request) {
       'Venue';
 
     const venueTables = menu!.tables;
-    const validTableData = findMatchingTable(venueTables, tableParam, businessId);
+    // A hotel room orders from this same menu with its label ("RS-101") in the table's place. The menu is the same public
+    // list for every table, so a room label needs no table of its own; the order itself is checked against the room's
+    // session when it is placed. Any other name must still be one of the venue's real tables.
+    const validTableData = isRoomTable(tableParam)
+      ? { id: null, table_number: tableParam, seating_capacity: 1 }
+      : findMatchingTable(venueTables, tableParam, businessId);
 
     if (!validTableData) {
       return NextResponse.json(

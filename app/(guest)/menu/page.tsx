@@ -16,6 +16,9 @@ import { GuestMeView } from '@/components/guest/me/GuestMeView';
 import { ReservationStrip } from '@/components/guest/reservations/ReservationStrip';
 import { DeliveryTrackerCard } from '@/components/guest/delivery/DeliveryTrackerCard';
 import { DeliveryEntry } from '@/components/guest/delivery/DeliveryEntry';
+import { StayEntry } from '@/components/guest/stay/StayEntry';
+import { RoomModeBar } from '@/components/guest/menu/RoomModeBar';
+import { useRoomMode } from '@/components/guest/room/useRoomMode';
 import { guestHref } from '@/components/guest/shell/GuestTabBar';
 import { useMenuInfo } from '@/components/guest/menu/MenuInfoPanel';
 import { useTableService } from '@/components/guest/menu/useTableService';
@@ -30,8 +33,10 @@ import { useGuestAddressHandle, useGuestDocumentTitle } from '@/lib/guest/use-gu
 
 function GuestMenuContent() {
   const router = useRouter();
-  const { tableParam, cafeParam, sectionParam, tabParam } = useMenuRoute();
-  const state = useGuestMenuState({ tableParam, cafeParam });
+  const { tableParam, cafeParam, roomParam, sectionParam, tabParam } = useMenuRoute();
+  const state = useGuestMenuState({ tableParam, cafeParam, roomParam });
+  // Room mode: the same menu, ordered from a hotel room. The room's stay is checked first; the bar replaces the table's controls.
+  const room = useRoomMode(roomParam);
   const venueId = cafeParam || state.activeSession?.business_id || '';
   // Hearts and the favourites rail appear once the venue's database has dish likes.
   const dishLikes = useDishLikes(venueId, state.showToast);
@@ -48,7 +53,10 @@ function GuestMenuContent() {
   useGuestDocumentTitle(state.activeTab === 'live_order' ? 'Bill' : state.activeTab === 'me' ? 'Me' : 'Menu', account?.handle ?? null);
   useGuestAddressHandle(account?.handle ?? null, !accountLoading);
 
-  const lounge = () => router.push(guestHref('/guest/lobby', state.tableNumber, venueId));
+  const lounge = () => router.push(guestHref('/guest/lobby', state.tableNumber, venueId, undefined, roomParam || undefined));
+  const roomPage = () => router.push(`/room/${encodeURIComponent(roomParam)}`);
+  // A room's bill lives on the room page (with the stay, the invoice and what is still to pay), so the Bill tab goes there.
+  const pickTab = (tab: 'menu' | 'bill' | 'me') => (roomParam && tab === 'bill' ? roomPage() : selectTab(tab));
   const toServices = () => {
     state.setShowBeyondDining(true);
     setTimeout(() => document.getElementById('services-section')?.scrollIntoView({ behavior: 'smooth' }), 150);
@@ -61,7 +69,8 @@ function GuestMenuContent() {
   const trackerProps = {
     tableNumber: state.tableNumber, kotStatus: state.kotStatus, orderStatus: state.masterOrder?.status,
     ticketNumber: state.ticketNumber, items: state.sentItems, runningTotal: state.runningTotal, isAddon: state.isRecentAddon,
-    onViewBill: () => goTab('live_order'), onRequestBill: bill.requestBill, isRequestingBill: state.isRequestingBill,
+    // A room has no table bill to request: its bill is on the room page, which also shows what is still to pay.
+    onViewBill: () => (roomParam ? roomPage() : goTab('live_order')), onRequestBill: roomParam ? undefined : bill.requestBill, isRequestingBill: state.isRequestingBill,
     billRequested: state.billRequestedBanner, billSettled: settled, settledTotal: state.settledTotal,
     cashbackCredited: state.cashbackCredited, venueId, orderId: state.masterOrder?.id, signedIn: Boolean(account),
     cafeName: state.businessName, onExploreLounge: lounge, onRefresh: state.handleManualTrackerRefresh,
@@ -78,7 +87,8 @@ function GuestMenuContent() {
     },
   });
 
-  if (state.isLoadingMenu) return <MenuSkeleton />;
+  if (room.error) return <MenuUnavailable message={room.error} />;
+  if (state.isLoadingMenu || (room.roomMode && !room.info)) return <MenuSkeleton />;
   if (state.menuError) return <MenuUnavailable message={state.menuError} />;
 
   // overflow-x-clip, not hidden: hidden would make the root a scroll box and break the sticky filter bar.
@@ -86,17 +96,19 @@ function GuestMenuContent() {
     <div className="min-h-[100dvh] w-full max-w-full overflow-x-clip bg-[#faf9f6] pb-36 font-sans text-neutral-900 selection:bg-neutral-900 selection:text-white sm:pb-40">
       <LuxuryToast message={state.toastMessage} />
       <MenuTop state={state} venueId={venueId} guestName={account?.display_name} tagline={menuInfo.tagline}
-        onOpenBill={() => goTab('live_order')} requestBill={bill.requestBill} />
+        onOpenBill={() => (roomParam ? roomPage() : goTab('live_order'))} requestBill={bill.requestBill}
+        roomBar={room.info ? <RoomModeBar info={room.info} roomCode={roomParam} /> : undefined} />
 
-      {state.activeTab === 'menu' && venueId && (
+      {state.activeTab === 'menu' && venueId && !room.roomMode && (
         <div className="mx-auto mt-4 grid w-full max-w-3xl grid-cols-2 gap-3 px-4">
           <DeliveryEntry cafeId={venueId} />
           <ReservationStrip venueId={venueId} venueName={state.businessName || 'Venue'} initialName={state.guestNameInput} initialPhone={state.guestPhoneInput} />
+          <StayEntry cafeId={venueId} />
         </div>
       )}
-      {state.activeTab === 'menu' && venueId && <DeliveryTrackerCard venueId={venueId} />}
+      {state.activeTab === 'menu' && venueId && !room.roomMode && <DeliveryTrackerCard venueId={venueId} />}
       <MenuBody state={state} venueId={venueId} info={menuInfo} likes={likes} orderPlaced={orderPlaced} trackerProps={trackerProps}
-        settled={settled} requestBill={bill.requestBill} goTab={goTab} selectTab={selectTab} />
+        settled={settled} requestBill={bill.requestBill} goTab={goTab} selectTab={pickTab} />
 
       {tableService.sheet}
       {bill.finalizeOpen && (
@@ -104,7 +116,7 @@ function GuestMenuContent() {
           onConfirm={state.handleRequestBill} onClose={bill.closeFinalize} />
       )}
 
-      <MenuDock state={state} venueId={venueId} dialActions={dialActions} showDial={orderPlaced && state.activeTab === 'menu'} goTab={goTab} selectTab={selectTab} />
+      <MenuDock state={state} venueId={venueId} dialActions={dialActions} showDial={orderPlaced && state.activeTab === 'menu'} goTab={goTab} selectTab={pickTab} roomCode={roomParam || undefined} />
 
       <MenuModalsHost
         state={state} cafeId={cafeParam} featuredIds={menuInfo.featured}

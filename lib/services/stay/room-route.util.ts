@@ -27,7 +27,7 @@ export const noStay = () =>
 
 /** The columns the stay pages need from the venue, with the switches the owner controls. */
 export const STAY_BUSINESS_SELECT =
-  'id, business_name, name, slug, categories, menu_info, stay_tagline, checkin_time, checkout_time, self_checkin_enabled, in_room_dining_enabled, reservations_enabled';
+  'id, business_name, name, slug, categories, menu_info, stay_tagline, checkin_time, checkout_time, self_checkin_enabled, in_room_dining_enabled, reservations_enabled, stay_policies, upi_id, gst_number';
 
 export async function loadStayBusiness(db: any, businessId: string) {
   const { data, error } = await db.from('businesses').select(STAY_BUSINESS_SELECT).eq('id', businessId).maybeSingle();

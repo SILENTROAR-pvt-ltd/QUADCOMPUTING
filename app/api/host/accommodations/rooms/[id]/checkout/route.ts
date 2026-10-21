@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server';
 import { requireHost } from '@/lib/auth/guards';
 import { withApiErrorBoundary } from '@/lib/middleware/error-handler';
 import { buildStayFolio, CLOSED_ORDER_STATUSES, stayNights } from '@/lib/services/accommodation/stay-folio.util';
+import { creditLine, readExtras, settleLedger } from '@/lib/services/stay/stay-ledger';
+import { belongsToStay, mergeBillLines, stayStartMs } from '@/lib/services/stay/stay-scope';
+import { creditRoomDiningCashback, stampBillOwner } from '@/lib/services/stay/room-cashback.service';
+import { adminDb } from '@/lib/auth/guards';
 
 export const dynamic = 'force-dynamic';
 
@@ -132,7 +136,9 @@ export const POST = withApiErrorBoundary(async function POST(
     const stayStart = Date.parse(room.check_in_time || room.check_in_date || '') || 0;
     const masterStayOrder = (activeOrders || []).find((o: any) =>
       o.order_type === 'room_stay' && (o.status === 'active' || (Date.parse(o.created_at) || 0) >= stayStart - 60_000));
-    const fAndBOrders = (activeOrders || []).filter((o: any) => o.order_type !== 'room_stay');
+    // Only this guest's orders. Something left open on the room by an earlier stay (a bill that never settled) is not theirs:
+    // folding it in once billed a room's tariff twice.
+    const fAndBOrders = (activeOrders || []).filter((o: any) => o.order_type !== 'room_stay' && belongsToStay(o, stayStartMs(room)));
     const ordersTotal = fAndBOrders.reduce((acc: number, o: any) => acc + (Number(o.grand_total) || 0), 0);
 
     // 3. Tariff and add-ons for the nights actually stayed, by the same rules as the check-in quote.
@@ -148,11 +154,15 @@ export const POST = withApiErrorBoundary(async function POST(
     });
     const roomTariffTotal = folio.tariffTotal;
     const addonsTotal = folio.addonsTotal;
-    const finalBilledAmount = roomTariffTotal + addonsTotal + ordersTotal;
+    // Early check-in and late check-out fees, and what the guest paid before check-in: the advance is credited once,
+    // so the invoice is the balance. A guest who paid for more nights than they stayed is owed the difference back.
+    const extras = readExtras(room.stay_extras);
+    const ledger = settleLedger({ folioTotal: roomTariffTotal + addonsTotal, extras, diningTotal: ordersTotal, advancePaid: Number(room.advance_paid) || 0 });
+    const finalBilledAmount = ledger.payable;
 
     // 4. Build consolidated folio items
-    const fAndBItems = fAndBOrders.flatMap((o: any) => (Array.isArray(o.items) ? o.items : []));
-    const consolidatedItems = [...folio.lines, ...fAndBItems];
+    const fAndBItems = mergeBillLines(fAndBOrders.flatMap((o: any) => (Array.isArray(o.items) ? o.items : [])));
+    const consolidatedItems = [...folio.lines, ...extras, ...fAndBItems, ...(ledger.credit > 0 ? [creditLine(ledger.credit)] : [])];
 
     // 5. Write the invoice FIRST, as 'ready_for_settlement'. Nothing about the guest or the room
     // is touched until this is stored, so any failure up to here leaves a fully retryable state.
@@ -235,7 +245,8 @@ export const POST = withApiErrorBoundary(async function POST(
           .from('room_stay_logs')
           .update({
             check_out_time: nowIso,
-            total_billed_amount: finalBilledAmount
+            total_billed_amount: ledger.gross,
+            advance_paid: Number(room.advance_paid) || 0,
           })
           .eq('id', openLog.id);
       } else if (room.guest_name) {
@@ -257,7 +268,8 @@ export const POST = withApiErrorBoundary(async function POST(
           celebration_type: room.celebration_type || null,
           celebration_note: room.celebration_note || null,
           selected_addons: room.selected_addons || [],
-          total_billed_amount: finalBilledAmount
+          total_billed_amount: ledger.gross,
+          advance_paid: Number(room.advance_paid) || 0,
         });
       }
     } catch (logErr) {
@@ -289,6 +301,11 @@ export const POST = withApiErrorBoundary(async function POST(
         id_proof_path: null,
         id_verified_at: null,
         checkin_source: 'desk',
+        advance_paid: 0,
+        stay_extras: [],
+        late_checkout_request: null,
+        // This checkout is the answer to the guest's "ready to leave" request.
+        checkout_request: null,
       })
       .eq('id', roomId)
       .eq('business_id', businessId)
@@ -323,7 +340,9 @@ export const POST = withApiErrorBoundary(async function POST(
     // 8. The guest is gone, so from here we report problems rather than fail: the invoice and
     // room are already consistent and a retry would be rejected as "not occupied".
     const warnings: string[] = [];
+    if (ledger.refundDue > 0) warnings.push(`Refund ₹${ledger.refundDue.toLocaleString('en-IN')} to the guest: they paid in advance for more than the stay came to.`);
 
+    let cashbackCredited = 0;
     if (fAndBOrders.length > 0) {
       const { error: settleErr } = await supabase
         .from('orders')
@@ -334,6 +353,28 @@ export const POST = withApiErrorBoundary(async function POST(
         console.error('[API Checkout] marking room orders SETTLED failed', settleErr);
         warnings.push('Room-service orders could not be marked settled.');
       }
+      // The food is settled with the stay: the guest who ordered it with their Vibers ID gets their cashback now, against
+      // the stay's invoice, and that invoice is marked theirs. Wallet tables are server-only, so this runs with the service role.
+      try {
+        const cashback = await creditRoomDiningCashback(adminDb(), { businessId, roomNumber: room.room_number, invoiceOrderId: masterOrderId as string, orders: fAndBOrders });
+        cashbackCredited = cashback.total;
+        if (cashback.handle && masterOrderId) await stampBillOwner(adminDb(), businessId, [masterOrderId], cashback.handle);
+      } catch (cbErr) {
+        console.error('[API Checkout] cashback on room-service orders failed', cbErr);
+        warnings.push("The guest's cashback on room-service orders could not be credited.");
+      }
+    }
+
+    // The reservation this stay came from is over (status checked_out, migration 20261021000010), so the guest's stays
+    // read "Stayed" and it holds no room for any date. Not by moving its check-out date: a same-day stay has no earlier
+    // day to move it to. Best effort; the stay log above is the record. Bookings are a server-only table (no host
+    // grants), so this runs with the service role: through the host's client it changed nothing, quietly.
+    try {
+      const { error: bookingErr } = await adminDb().from('stay_booking_requests')
+        .update({ status: 'checked_out', updated_at: nowIso }).eq('room_id', roomId).eq('business_id', businessId).eq('status', 'checked_in');
+      if (bookingErr) console.error('[API Checkout] could not close the booking', bookingErr.message);
+    } catch (bookingErr) {
+      console.error('[API Checkout] could not close the booking', bookingErr);
     }
 
     if (hasTender) {
@@ -384,9 +425,13 @@ export const POST = withApiErrorBoundary(async function POST(
       ...(warnings.length > 0 ? { warnings } : {}),
       checkoutSummary: {
         finalBilledAmount,
+        grossAmount: ledger.gross,
+        advanceCredited: ledger.credit,
+        refundDue: ledger.refundDue,
         roomTariffTotal,
         addonsTotal,
         ordersTotal,
+        cashbackCredited,
         nights,
         checkoutTime: nowIso
       }

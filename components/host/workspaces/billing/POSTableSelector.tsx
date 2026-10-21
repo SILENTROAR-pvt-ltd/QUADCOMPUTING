@@ -16,6 +16,8 @@ interface Props {
   selectedRoomId?: string | null;
   setSelectedRoomId?: (id: string | null) => void;
   onSelectActiveTable?: (table: RestaurantTable) => void;
+  /** Loads the room's running folio into the POS, as picking a table loads its bill. */
+  onSelectActiveRoom?: (room: RoomOption) => void;
   onMarkVacant?: (table: RestaurantTable) => void;
 }
 
@@ -28,18 +30,25 @@ export function POSTableSelector({
   selectedRoomId,
   setSelectedRoomId,
   onSelectActiveTable,
+  onSelectActiveRoom,
   onMarkVacant,
 }: Props) {
   const [activeTab, setActiveTab] = useState<'tables' | 'rooms'>('tables');
   const [rooms, setRooms] = useState<RoomOption[]>([]);
 
   useEffect(() => {
-    fetch('/api/host/accommodations/rooms')
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.rooms) setRooms(data.rooms);
-      })
-      .catch(() => {});
+    const load = () => {
+      fetch('/api/host/accommodations/rooms', { cache: 'no-store' })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.rooms) setRooms(data.rooms);
+        })
+        .catch(() => {});
+    };
+    load();
+    // A room checked out from the till turns vacant here at once.
+    window.addEventListener('quad:rooms-changed', load);
+    return () => window.removeEventListener('quad:rooms-changed', load);
   }, []);
 
   useEffect(() => {
@@ -71,6 +80,8 @@ export function POSTableSelector({
     if (setSelectedRoomId) {
       if (selectedRoomId === room.id) {
         handleSelectTakeaway();
+      } else if (onSelectActiveRoom) {
+        onSelectActiveRoom(room);
       } else {
         setSelectedTableId(null);
         setSelectedRoomId(room.id);
