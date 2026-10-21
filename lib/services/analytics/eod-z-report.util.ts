@@ -10,7 +10,7 @@ const CANCELLED = new Set<string>(CANCELLED_STATUSES);
 /** What the bill charged: the stored total, or net + tax for rows written without one. */
 export const billTotal = (o: any) => num(o.grand_total) || num(o.subtotal) - num(o.discount_amount) + num(o.tax_amount);
 
-function tenderOf(method: unknown): keyof ZTenders {
+function tenderOf(method: unknown): 'cash' | 'upi' | 'card' | 'other' {
   const m = String(method || '').toLowerCase();
   return m === 'cash' || m === 'upi' || m === 'card' ? m : 'other';
 }
@@ -35,14 +35,21 @@ export function buildZFigures(rows: any[], walletRedeemed: number, categoryOf: (
   const voided = all.filter((o) => CANCELLED.has(o.status));
 
   let gross = 0, discounts = 0, tax = 0, charged = 0;
-  const tenders: ZTenders = { cash: 0, upi: 0, card: 0, other: 0 };
+  const tenders: ZTenders = { cash: 0, upi: 0, card: 0, other: 0, cash_received: 0, change_given: 0 };
   const guests = new Set<string>();
   for (const o of settled) {
     gross += num(o.subtotal);
     discounts += num(o.discount_amount);
     tax += num(o.tax_amount);
     charged += billTotal(o);
-    tenders[tenderOf(o.payment_method)] += billTotal(o);
+    const tender = tenderOf(o.payment_method);
+    tenders[tender] += billTotal(o);
+    // The drawer's side of a cash bill: the notes handed over and the change returned (exact cash when not recorded).
+    if (tender === 'cash') {
+      const change = num(o.cash_change);
+      tenders.cash_received += o.cash_tendered !== null && o.cash_tendered !== undefined ? num(o.cash_tendered) : billTotal(o);
+      tenders.change_given += change;
+    }
     const key = guestKey(o);
     if (key) guests.add(key);
   }
@@ -59,7 +66,7 @@ export function buildZFigures(rows: any[], walletRedeemed: number, categoryOf: (
       net_sales: net, cgst, sgst: round2(totalTax - cgst), total_tax: totalTax,
       round_off: round2(charged - (net + totalTax)), grand_total: round2(charged),
     },
-    tenders: { cash: round2(tenders.cash), upi: round2(tenders.upi), card: round2(tenders.card), other: round2(tenders.other) },
+    tenders: { cash: round2(tenders.cash), upi: round2(tenders.upi), card: round2(tenders.card), other: round2(tenders.other), cash_received: round2(tenders.cash_received), change_given: round2(tenders.change_given) },
     operations: {
       settled_bills: settled.length,
       avg_bill: settled.length ? round2(charged / settled.length) : 0,

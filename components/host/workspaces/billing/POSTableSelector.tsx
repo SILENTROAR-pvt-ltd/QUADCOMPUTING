@@ -19,6 +19,8 @@ interface Props {
   /** Loads the room's running folio into the POS, as picking a table loads its bill. */
   onSelectActiveRoom?: (room: RoomOption) => void;
   onMarkVacant?: (table: RestaurantTable) => void;
+  /** Back to the counter: clears the table's session or the room's stay from the bill as well as the selection. */
+  onSelectTakeaway?: () => void;
 }
 
 export function POSTableSelector({
@@ -32,6 +34,7 @@ export function POSTableSelector({
   onSelectActiveTable,
   onSelectActiveRoom,
   onMarkVacant,
+  onSelectTakeaway,
 }: Props) {
   const [activeTab, setActiveTab] = useState<'tables' | 'rooms'>('tables');
   const [rooms, setRooms] = useState<RoomOption[]>([]);
@@ -59,6 +62,7 @@ export function POSTableSelector({
     setSelectedTableId(null);
     if (setSelectedRoomId) setSelectedRoomId(null);
     setSelectedTableNumber('Takeaway / Counter');
+    onSelectTakeaway?.();
   };
 
   const handleSelectTable = (table: RestaurantTable) => {

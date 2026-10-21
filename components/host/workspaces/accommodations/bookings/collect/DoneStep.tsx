@@ -20,6 +20,12 @@ export function DoneStep({ receipt, businessName, upiId, onCopy, onClose }: Prop
   return (
     <div className="space-y-4">
       <p role="status" className="inline-flex items-center gap-2 text-sm font-semibold text-emerald-800"><CheckCircle2 className="h-4 w-4" /> Payment recorded{receipt.billId ? ` · invoice ${receipt.billId.split('-')[0].toUpperCase()}` : ''}</p>
+      {Number(receipt.change) > 0 && (
+        <p role="alert" className="flex items-baseline justify-between rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-amber-950">
+          <span className="text-sm font-semibold">Return change to the guest</span>
+          <span className="font-mono text-2xl font-bold">₹{Math.round(Number(receipt.change)).toLocaleString('en-IN')}</span>
+        </p>
+      )}
 
       {link && (
         <div className="rounded-2xl border border-neutral-200 bg-white p-5">

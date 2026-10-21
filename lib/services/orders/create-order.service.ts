@@ -4,6 +4,7 @@ import { findActiveRoomStayOrder } from './room-stay-order.util';
 import { executeOrderMutation } from './order-mutation.service';
 import { deductRecipeInventoryForOrder } from './recipe-deduction.service';
 import { loadGstStatus, stripTax } from '@/lib/services/billing/gst-policy';
+import { readCashTender } from '@/lib/services/billing/cash-tender';
 import { afterResponse } from '@/lib/utils/after-response';
 
 export async function createHostOrder(supabase: any, businessId: string, body: any): Promise<any> {
@@ -29,6 +30,8 @@ export async function createHostOrder(supabase: any, businessId: string, body: a
   // settlement that is refused leaves the table's order open instead of marked settled with the table still running.
   // That holds for a bill saved for the first time too: it is inserted open, and only the settlement marks it settled.
   const settlesNow = Boolean(body.settlement);
+  // Cash given and change returned (cash-tender.ts): the route checked it against the bill before coming here.
+  const cash = readCashTender(paymentMethod, grandTotal, body.cashTendered).tender;
 
   const orderPayload = {
     business_id: businessId,
@@ -41,6 +44,8 @@ export async function createHostOrder(supabase: any, businessId: string, body: a
     grand_total: grandTotal,
     total_amount: grandTotal,
     payment_method: paymentMethod,
+    // Written only when cash was given: a database without migration 20261022000001 still saves every other bill.
+    ...(cash ? { cash_tendered: cash.cash_tendered, cash_change: cash.cash_change } : {}),
     table_id: tableId,
     table_number: tableNumber,
     order_source: body.orderSource || 'POS',

@@ -29,7 +29,8 @@ describe('End-of-day Z-report figures', () => {
   });
 
   it('splits tenders and keeps open bills and voids out of sales', () => {
-    expect(z.tenders).toEqual({ cash: 195, upi: 210, card: 0, other: 210 });
+    // Cash bills without a recorded tender count as exact cash: received equals the sales, nothing returned.
+    expect(z.tenders).toEqual({ cash: 195, upi: 210, card: 0, other: 210, cash_received: 195, change_given: 0 });
     expect(z.operations).toMatchObject({ settled_bills: 3, open_bills: 1, open_value: 420, voids: 1, void_value: 99, guests: 2 });
   });
 

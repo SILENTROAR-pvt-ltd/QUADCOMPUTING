@@ -48,8 +48,8 @@ describe('buildReports: when, where and what', () => {
     expect(r.by_weekday[5]).toMatchObject({ label: 'Sat', bills: 1, sales: 250 });
   });
 
-  it('splits dine-in, delivery and counter, and the parts add up to collected', () => {
-    expect(r.channels.map((c) => [c.id, c.bills, c.sales])).toEqual([['dine_in', 1, 378], ['delivery', 1, 130], ['counter', 1, 250]]);
+  it('splits dine-in, rooms, delivery and counter, and the parts add up to collected', () => {
+    expect(r.channels.map((c) => [c.id, c.bills, c.sales])).toEqual([['dine_in', 1, 378], ['rooms', 0, 0], ['delivery', 1, 130], ['counter', 1, 250]]);
     expect(r.channels.reduce((a, c) => a + c.sales, 0)).toBe(r.summary.collected);
   });
 
@@ -76,10 +76,55 @@ describe('buildReports: when, where and what', () => {
   });
 });
 
+describe('buildReports: rooms and stays', () => {
+  // A stay paid in advance (two nights at 3,500), then its final invoice at checkout with a thali and the advance credited.
+  const stayOrders = [
+    { id: 'adv', status: 'SETTLED', order_type: 'room_advance', subtotal: 7000, discount_amount: 0, tax_amount: 0, grand_total: 7000, table_number: 'ADV ST-1', created_at: '2026-10-16T07:00:00Z',
+      items: [{ id: 'tariff-r1', name: 'Room 204 · Mount View', price: 3500, qty: 2, type: 'room_tariff' }] },
+    // 7,000 + 500 + 500 + 650 − 7,000 credited = 1,650 to pay at checkout.
+    { id: 'inv', status: 'SETTLED', order_type: 'room_stay', subtotal: 1650, discount_amount: 0, tax_amount: 0, grand_total: 1650, table_number: 'ROOM 204', created_at: '2026-10-18T05:00:00Z',
+      items: [
+        { id: 'tariff-r1', name: 'Room 204 · Mount View', price: 3500, qty: 2, type: 'room_tariff' },
+        { id: 'addon-0', name: 'Breakfast', price: 250, qty: 2, type: 'addon' },
+        { id: 'late_checkout-20261018', name: 'Late check-out until 14:00', price: 500, qty: 1, type: 'late_checkout' },
+        { id: 'thali', name: 'Thali', price: 650, qty: 1 },
+        { id: 'advance-paid', name: 'Advance paid', price: -7000, qty: 1, type: 'advance' },
+      ] },
+    { status: 'settled', subtotal: 200, discount_amount: 0, tax_amount: 10, grand_total: 210, table_number: 'T-01', created_at: '2026-10-16T08:00:00Z', items: [line('Chai', 100, 2, 'Drinks')] },
+  ];
+  const r = buildReports(stayOrders, (name) => (name.toLowerCase() === 'thali' ? 'Meals' : null));
+
+  it('files room nights, add-ons and check-out fees under their own categories, never "Uncategorised"', () => {
+    const by = Object.fromEntries(r.categories.map((c) => [c.name, c.net_sales]));
+    expect(by).toEqual({ 'Rooms & stays': 7000, 'Room add-ons': 500, 'Early check-in & late check-out': 500, Meals: 650, Drinks: 200 });
+    expect(r.categories.map((c) => c.name)).not.toContain('Uncategorised');
+    // The advance credit is not a dish sold.
+    expect(r.items.map((i) => i.name)).not.toContain('Advance paid');
+  });
+
+  it('splits net sales between the kitchen and the rooms, and the parts add up', () => {
+    expect(r.segments).toEqual({ food: 850, rooms: 7000, room_addons: 500, room_extras: 500 });
+    expect(r.segments.food + r.segments.rooms + r.segments.room_addons + r.segments.room_extras).toBe(r.summary.net_sales);
+  });
+
+  it('puts stay bills in their own channel, apart from dine-in', () => {
+    expect(r.channels.find((c) => c.id === 'rooms')).toMatchObject({ bills: 2, sales: 8650 });
+    expect(r.channels.find((c) => c.id === 'dine_in')).toMatchObject({ bills: 1, sales: 210 });
+    expect(channelOf({ table_number: 'ROOM 204' })).toBe('rooms');
+    expect(channelOf({ table_number: 'ADV ST-1' })).toBe('rooms');
+    expect(channelOf({ table_number: 'RS-204' })).toBe('rooms');
+    expect(channelOf({ table_number: 'T-04', order_type: 'room_advance' })).toBe('rooms');
+  });
+
+  it('reports the stays: bills, check-outs, nights, the night rate and the stay value', () => {
+    expect(r.stays).toMatchObject({ stay_bills: 2, checkouts: 1, nights: 2, rooms_net: 7000, addons_net: 500, extras_net: 500, room_service_net: 650, avg_night_rate: 3500, avg_stay_value: 8650 });
+  });
+});
+
 describe('helpers', () => {
   it('classifies channels', () => {
     expect(channelOf({ table_number: 'T-01' })).toBe('dine_in');
-    expect(channelOf({ table_number: 'Room 4' })).toBe('dine_in');
+    expect(channelOf({ table_number: 'Room 4' })).toBe('rooms');
     expect(channelOf({ table_number: 'DLV-1' })).toBe('delivery');
     expect(channelOf({ table_number: null })).toBe('counter');
     expect(channelOf({ table_number: 'Takeaway' })).toBe('counter');

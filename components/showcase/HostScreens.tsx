@@ -25,7 +25,7 @@ import { DEMO_VENUE } from '@/lib/showcase/demo-orders';
 import { TableZonesScreen } from './TableScreens';
 
 const CARD = 'rounded-2xl border border-neutral-200 bg-white p-5 sm:p-6';
-const CHANNEL_COLOR = { dine_in: '#2a78d6', delivery: '#eb6834', counter: '#1baf7a' } as const;
+const CHANNEL_COLOR = { dine_in: '#2a78d6', rooms: '#1baf7a', delivery: '#eb6834', counter: '#8a6d2b' } as const;
 const noop = () => undefined;
 const hours = reports.by_hour.slice(9, 23).map((h) => ({ key: String(h.hour), label: h.label, value: h.sales }));
 

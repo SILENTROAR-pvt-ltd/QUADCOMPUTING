@@ -36,13 +36,16 @@ export function NavWorkspaceItem({
       className={`group relative w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs transition-all cursor-pointer ${
         isActive
           ? 'bg-neutral-900 text-white font-semibold shadow-xs'
-          : 'text-neutral-600 hover:bg-neutral-100/80 hover:text-neutral-900 font-medium'
+          : alertCount > 0
+            // A guest is waiting here: the whole row glows, not only a dot.
+            ? 'bg-emerald-50 text-emerald-950 font-semibold ring-1 ring-emerald-300 shadow-[0_0_0_4px_rgba(16,185,129,0.12)] hover:bg-emerald-100'
+            : 'text-neutral-600 hover:bg-neutral-100/80 hover:text-neutral-900 font-medium'
       }`}
     >
       <div className="flex items-center gap-3 min-w-0">
         {/* Icon wrapper with relative positioning so glow dot can sit on top-right corner */}
         <div className="relative shrink-0">
-          <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-neutral-400'}`} />
+          <Icon className={`w-4 h-4 ${isActive ? 'text-white' : alertCount > 0 ? 'text-emerald-700' : 'text-neutral-400'}`} />
           {/* 🔴 Glow dot: NEW ORDER notification */}
           {(glowDot || alertCount > 0) && (
             <span

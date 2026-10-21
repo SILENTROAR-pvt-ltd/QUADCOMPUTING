@@ -20,7 +20,10 @@ export function useBillingSettlement({
     if (isSettlingRef.current) return;
     isSettlingRef.current = true;
     const { selectedTableId: tableId, selectedTableNumber: tableNumber, activeSessionId: sessionId, selectedRoomId: roomId } = cart;
-    const isTableOrder = Boolean(sessionId || tableId || (tableNumber && tableNumber !== 'Takeaway / Counter'));
+    // A counter bill is a counter bill even if a table's session id lingers from earlier in the shift.
+    const isTableOrder = Boolean(tableId || (tableNumber && tableNumber !== 'Takeaway / Counter'));
+    // Change to hand back comes first in every message: it is the one thing the cashier must do now.
+    const change = saved?.change && saved.change > 0 ? `Return ₹${Math.round(saved.change).toLocaleString('en-IN')} change. ` : '';
 
     try {
       // A room bill: the save request adjusted a payment in the stay, or ran the room checkout (orders/create decides
@@ -32,10 +35,10 @@ export function useBillingSettlement({
         cart.resetCart();
         try { window.dispatchEvent(new CustomEvent('quad:rooms-changed')); } catch {}
         const p = saved.payment;
-        setSuccessMessage(p
+        setSuccessMessage(change + (p
           ? `₹${Math.round(p.amount).toLocaleString('en-IN')} adjusted in the stay of ${tableNumber || 'the room'} · ${p.balance > 0 ? `₹${Math.round(p.balance).toLocaleString('en-IN')} still on the room bill` : 'nothing left to pay'} · guest stays checked in.`
-          : `${tableNumber || 'Room'} checked out and settled.`);
-        window.setTimeout(() => setSuccessMessage(''), p ? 6000 : 3500);
+          : `${tableNumber || 'Room'} checked out and settled.`));
+        window.setTimeout(() => setSuccessMessage(''), p || change ? 7000 : 3500);
         clearOrderIdUrlParam();
         onHistoryRefresh?.();
         return;
@@ -75,8 +78,8 @@ export function useBillingSettlement({
       } else {
         void fetchTables();
       }
-      setSuccessMessage(sessionId ? 'Bill settled. Table is now vacant.' : 'Bill saved and finalized successfully');
-      window.setTimeout(() => setSuccessMessage(''), 3500);
+      setSuccessMessage(change + (sessionId ? 'Bill settled. Table is now vacant.' : 'Bill saved and finalized successfully'));
+      window.setTimeout(() => setSuccessMessage(''), change ? 7000 : 3500);
       clearOrderIdUrlParam();
       onHistoryRefresh?.();
     } catch (error) {

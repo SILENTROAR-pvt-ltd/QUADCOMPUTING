@@ -39,6 +39,8 @@ export function usePOSCart(activeItems: CatalogItem[] = []) {
   const [verifiedRedemption, setVerifiedRedemption] = useState<any | null>(null);
   const [cashbackEnabled, setCashbackEnabled] = useState(true);
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
+  // What a room's bill does when saved: adjusted in the stay (the default), or the guest's checkout (chosen at the desk).
+  const [roomSettleIntent, setRoomSettleIntent] = useState<'payment' | 'checkout'>('payment');
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
   const [selectedTableNumber, setSelectedTableNumber] = useState<string>('Takeaway / Counter');
 
@@ -239,6 +241,23 @@ export function usePOSCart(activeItems: CatalogItem[] = []) {
     });
   }, []);
 
+  /**
+   * Back to the counter: the dishes stay, but nothing of a table's session or a room's stay comes with them. A counter
+   * bill saved with a stale session id used to be sent as that table's settlement and failed on the server.
+   */
+  const clearDestination = useCallback(() => {
+    setActiveSessionId(null);
+    setActiveSessionStatus(null);
+    setLinkedOrderId(null);
+    setLinkedGuestName(null);
+    setLinkedGuestPhone(null);
+    setLinkedGuestHandle(null);
+    setSelectedTableId(null);
+    setSelectedRoomId(null);
+    setRoomSettleIntent('payment');
+    setSelectedTableNumber('Takeaway / Counter');
+  }, []);
+
   const resetCart = useCallback(() => {
     setSelectedItems([]);
     setCustomAmount('');
@@ -253,6 +272,7 @@ export function usePOSCart(activeItems: CatalogItem[] = []) {
     setLinkedGuestHandle(null);
     setSelectedTableId(null);
     setSelectedRoomId(null);
+    setRoomSettleIntent('payment');
     setSelectedTableNumber('Takeaway / Counter');
   }, []);
 
@@ -299,6 +319,8 @@ export function usePOSCart(activeItems: CatalogItem[] = []) {
     setLinkedGuestPhone,
     selectedRoomId,
     setSelectedRoomId,
+    roomSettleIntent,
+    setRoomSettleIntent,
     selectedTableId,
     setSelectedTableId,
     selectedTableNumber,
@@ -309,6 +331,7 @@ export function usePOSCart(activeItems: CatalogItem[] = []) {
     removeItem,
     incrementItem,
     decrementItem,
+    clearDestination,
     resetCart,
   };
 }

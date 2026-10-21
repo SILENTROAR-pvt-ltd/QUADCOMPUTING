@@ -6,6 +6,8 @@ import { creditLine, readExtras, settleLedger } from '@/lib/services/stay/stay-l
 import { belongsToStay, mergeBillLines, stayStartMs } from '@/lib/services/stay/stay-scope';
 import { creditRoomDiningCashback, stampBillOwner } from '@/lib/services/stay/room-cashback.service';
 import { adminDb } from '@/lib/auth/guards';
+import { feeReferenceFor } from '@/lib/services/wallet/invoice-history.util';
+import { recordStayVisit } from '@/lib/services/live-events/stay-visit';
 
 export const dynamic = 'force-dynamic';
 
@@ -93,6 +95,8 @@ export const POST = withApiErrorBoundary(async function POST(
       if (!settledRows || settledRows.length === 0) return notOccupied('This invoice was already settled.');
 
       const grandTotal = Number(pendingInvoice.grand_total) || 0;
+      // Settled now: the stay is a visit for the guest in My Guests, with what the invoice came to.
+      recordStayVisit(businessId, pendingInvoice.id, { handle: pendingInvoice.guest_handle, phone: pendingInvoice.customer_phone, name: pendingInvoice.customer_name }, grandTotal, new Date().toISOString());
       return NextResponse.json({
         success: true,
         order_id: pendingInvoice.id,
@@ -344,6 +348,7 @@ export const POST = withApiErrorBoundary(async function POST(
     if (ledger.refundDue > 0) warnings.push(`Refund ₹${ledger.refundDue.toLocaleString('en-IN')} to the guest: they paid in advance for more than the stay came to.`);
 
     let cashbackCredited = 0;
+    let ownerHandle: string | null = null;
     if (fAndBOrders.length > 0) {
       const { error: settleErr } = await supabase
         .from('orders')
@@ -359,6 +364,7 @@ export const POST = withApiErrorBoundary(async function POST(
       try {
         const cashback = await creditRoomDiningCashback(adminDb(), { businessId, roomNumber: room.room_number, invoiceOrderId: masterOrderId as string, orders: fAndBOrders });
         cashbackCredited = cashback.total;
+        ownerHandle = cashback.handle || null;
         if (cashback.handle && masterOrderId) await stampBillOwner(adminDb(), businessId, [masterOrderId], cashback.handle);
       } catch (cbErr) {
         console.error('[API Checkout] cashback on room-service orders failed', cbErr);
@@ -387,14 +393,18 @@ export const POST = withApiErrorBoundary(async function POST(
       if (finalizeErr) {
         console.error('[API Checkout] marking invoice SETTLED failed', finalizeErr);
         warnings.push('The invoice could not be marked settled; it is saved as ready for settlement.');
+      } else {
+        // The stay is a visit for the guest in My Guests, with what the invoice came to (the advance was its own visit).
+        recordStayVisit(businessId, masterOrderId, { handle: ownerHandle, phone: room.guest_phone, email: room.guest_email, name: room.guest_name }, finalBilledAmount, nowIso);
       }
     }
 
-    // 9. Fee Guard
+    // 9. The stay invoice is a bill like any other: the platform fee (₹3 on pay as you go) is charged once, when the
+    // invoice is written, under SETTLE_<invoice id>, the reference the Dues page, the invoice history and the P&L read.
+    // Settling it later with a tender does not charge again (the guard is keyed by that reference).
     try {
-      const { invoiceRefFromId, generateInvoiceRef, evaluateFeeGuard } = await import('@/lib/services/wallet/fee-guard.service');
-      const feeRef = masterOrderId ? invoiceRefFromId(masterOrderId) : generateInvoiceRef();
-      await evaluateFeeGuard(businessId, 'room_accommodation', feeRef, supabase);
+      const { evaluateFeeGuard } = await import('@/lib/services/wallet/fee-guard.service');
+      if (masterOrderId) await evaluateFeeGuard(businessId, 'bill_generate', feeReferenceFor(masterOrderId), supabase);
     } catch (feeErr) {
       console.error('[API Checkout FeeGuard Error]', feeErr);
     }

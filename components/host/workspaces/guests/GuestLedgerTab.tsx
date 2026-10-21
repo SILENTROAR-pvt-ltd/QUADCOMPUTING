@@ -22,11 +22,11 @@ export function GuestLedgerTab() {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-3 gap-3">
-        {[['Unique guests', m?.totalGuests], ['Repeat visitors', m?.repeatVisitors], ['Event leads', m?.totalEventLeads]].map(([label, value]) => (
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {[['Unique guests', m?.totalGuests], ['Repeat visitors', m?.repeatVisitors], ['Stayed in a room', m?.stayGuests, m?.nights ? `${m.nights} nights in all` : undefined], ['Event leads', m?.totalEventLeads]].map(([label, value, hint]) => (
           <div key={String(label)} className="rounded-2xl border border-neutral-200 bg-white p-4">
             <p className="text-2xl font-semibold tabular-nums text-neutral-950">{value ?? '–'}</p>
-            <p className="mt-0.5 text-[11px] font-medium text-neutral-500">{label}</p>
+            <p className="mt-0.5 text-[11px] font-medium text-neutral-500">{label}{hint ? <span className="text-neutral-400"> · {hint}</span> : null}</p>
           </div>
         ))}
       </div>
@@ -61,7 +61,11 @@ export function GuestLedgerTab() {
                     : <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[11px] font-medium text-neutral-600">Walk-in</span>}
                 </div>
                 <p className="truncate text-xs text-neutral-600">{[g.phone, g.email].filter(Boolean).join(' · ') || 'No contact yet'}</p>
-                <p className="text-xs text-neutral-600"><span className="font-semibold tabular-nums text-neutral-900">{g.visits}</span> {g.visits === 1 ? 'visit' : 'visits'}</p>
+                <p className="text-xs text-neutral-600">
+                  <span className="font-semibold tabular-nums text-neutral-900">{g.visits}</span> {g.visits === 1 ? 'visit' : 'visits'}
+                  {/* Stays are visits too; this says how many of them were a room, and for how long. */}
+                  {Number(g.stays) > 0 && <span className="ml-1.5 rounded-full bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-800">{g.stays} stay{g.stays === 1 ? '' : 's'} · {g.nights} night{g.nights === 1 ? '' : 's'}</span>}
+                </p>
                 <p className="text-xs text-neutral-600">{when(g.last_visit_at)}</p>
                 <p className="text-sm font-semibold tabular-nums text-neutral-950">{money(Number(g.total_spend))}</p>
               </li>

@@ -3,6 +3,7 @@
 import React from 'react';
 import { Banknote, CreditCard, Smartphone } from 'lucide-react';
 import { DynamicUpiQr } from '@/components/host/billing/DynamicUpiQr';
+import { CashTenderField } from '@/components/shared/receipt/CashTenderField';
 import type { Quote, Tender } from './useCollect';
 
 const TENDERS: Array<{ id: Tender; label: string; Icon: typeof Banknote }> = [
@@ -12,6 +13,7 @@ const money = (n: number) => `₹${(Number(n) || 0).toLocaleString('en-IN')}`;
 
 interface Props {
   quote: Quote; tender: Tender; reference: string; received: boolean; busy: boolean; error: string | null; upiId: string | null; businessName: string; code: string;
+  cashGiven?: number | null; onCashGiven?: (n: number | null) => void;
   onTender: (t: Tender) => void; onReference: (v: string) => void; onReceived: (v: boolean) => void; onBack: () => void; onConfirm: () => void;
 }
 
@@ -20,9 +22,10 @@ interface Props {
  * cash, or card. Nothing is recorded until the desk confirms the money has arrived, and a UPI or card payment must
  * carry its bank reference so it can be matched to a statement later.
  */
-export function PayStep({ quote, tender, reference, received, busy, error, upiId, businessName, code, onTender, onReference, onReceived, onBack, onConfirm }: Props) {
+export function PayStep({ quote, tender, reference, received, busy, error, upiId, businessName, code, cashGiven = null, onCashGiven, onTender, onReference, onReceived, onBack, onConfirm }: Props) {
   const needsRef = tender !== 'CASH';
-  const ok = received && (!needsRef || reference.trim().length >= 4);
+  const cashShort = tender === 'CASH' && cashGiven !== null && cashGiven + 0.005 < quote.amount;
+  const ok = received && (!needsRef || reference.trim().length >= 4) && !cashShort;
   return (
     <div className="space-y-4">
       <div className="flex items-baseline justify-between rounded-2xl bg-neutral-950 px-5 py-4 text-white">
@@ -49,6 +52,8 @@ export function PayStep({ quote, tender, reference, received, busy, error, upiId
           <p className="mt-3 text-center text-[11px] text-neutral-500">The money goes straight to {businessName}. Check it in your UPI app before confirming.</p>
         </div>
       )}
+
+      {tender === 'CASH' && onCashGiven && <CashTenderField due={quote.amount} tendered={cashGiven} disabled={busy} onChange={onCashGiven} />}
 
       {needsRef && (
         <div>

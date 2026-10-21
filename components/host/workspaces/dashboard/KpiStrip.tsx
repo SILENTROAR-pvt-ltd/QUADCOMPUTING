@@ -35,12 +35,23 @@ function Card({ label, value, children }: { label: string; value: string; childr
 export function KpiStrip({ data, formatCurrency }: KpiStripProps) {
   const k = kpisOf(data);
   const profit = Number(data.sales_overview?.gross_profit) || 0;
+  const seg = data.reports?.segments;
+  const stays = data.reports?.stays;
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
       {/* The bill totals (GST and delivery fees included), compared like for like with the period before. */}
       <Card label="Total sales" value={formatCurrency(k.net_sales)}>
         <Delta pct={k.growth_pct} />
         <span>vs previous period {k.previous_net_sales > 0 ? `(${formatCurrency(k.previous_net_sales)})` : ''}</span>
+        {/* A venue with rooms: the two businesses side by side, net of discounts. */}
+        {seg && seg.rooms + seg.room_addons + seg.room_extras > 0 && (
+          <span className="basis-full">
+            Food <strong className="font-semibold text-neutral-800">{formatCurrency(seg.food)}</strong>
+            <span className="mx-1.5 text-neutral-300">·</span>
+            Rooms <strong className="font-semibold text-emerald-800">{formatCurrency(seg.rooms + seg.room_addons + seg.room_extras)}</strong>
+            {stays && stays.nights > 0 && <span className="ml-1 text-neutral-400">({stays.nights} nights)</span>}
+          </span>
+        )}
       </Card>
       <Card label="Settled bills" value={String(k.settled_bills)}>
         <span>Avg bill <strong className="font-semibold text-neutral-800">{formatCurrency(k.avg_bill)}</strong></span>

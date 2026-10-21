@@ -173,13 +173,16 @@ export function useBillingSession({
       invoice.id = cart.linkedOrderId;
     }
     if (cart.linkedGuestHandle) invoice.guest_handle = cart.linkedGuestHandle;
-    // A table or room bill is saved and settled by one request; the receipt only has to carry what the POS knows.
-    const isTableOrder = Boolean(cart.activeSessionId || cart.selectedTableId || (cart.selectedTableNumber && cart.selectedTableNumber !== 'Takeaway / Counter'));
+    // A table or room bill is saved and settled by one request; the receipt only has to carry what the POS knows. A
+    // counter bill is never a settlement, whatever session id may linger from a table looked at earlier.
+    const isTableOrder = Boolean(cart.selectedRoomId || cart.selectedTableId || (cart.selectedTableNumber && cart.selectedTableNumber !== 'Takeaway / Counter'));
     if (isTableOrder) {
       invoice.settlement = {
         session_id: cart.activeSessionId || null,
         redemption_code: cart.redemptionCode || null,
         credit_cashback: cart.cashbackEnabled !== false,
+        // A room handed over by the desk's "check out & bill" opens its receipt with checkout chosen.
+        ...(cart.selectedRoomId ? { mode: cart.roomSettleIntent === 'checkout' ? 'checkout' as const : 'payment' as const } : {}),
       };
     }
     if (Number(cart.customAmount) > 0) {

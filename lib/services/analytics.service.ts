@@ -41,6 +41,7 @@ export async function computeEodReport(requestUrl: string, supabase: any, busine
   const s = reports.summary;
   const pnl = buildProfitAndLoss({
     net_sales: s.net_sales, delivery_fees: s.delivery_fees, other_charges: s.other_charges, gst: s.gst,
+    rooms: reports.segments,
     logs: stockLogs, expenses: spend.expenses, salaries: spend.salaries, advances: spend.advances,
     platform_fees: spend.platform_fees, missing: [...spend.missing, ...(stockLogsFailed ? ['stock movements'] : [])],
   });

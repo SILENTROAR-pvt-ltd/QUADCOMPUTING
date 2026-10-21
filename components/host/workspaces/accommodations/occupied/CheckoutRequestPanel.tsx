@@ -37,7 +37,7 @@ export function CheckoutRequestPanel({ room, balance, onSettle, settling, onTake
           <div className="mt-3 flex flex-wrap gap-2">
             {paying
               ? <button type="button" disabled={busy} onClick={onTakePayment} className="h-9 cursor-pointer rounded-lg bg-neutral-950 px-4 text-xs font-semibold text-white hover:bg-neutral-800 disabled:opacity-50">Take payment</button>
-              : <button type="button" disabled={settling || busy} onClick={onSettle} className="h-9 cursor-pointer rounded-lg bg-neutral-950 px-4 text-xs font-semibold text-white hover:bg-neutral-800 disabled:opacity-50">{settling ? 'Opening…' : 'Settle & check out'}</button>}
+              : <button type="button" disabled={settling || busy} onClick={onSettle} className="h-9 cursor-pointer rounded-lg bg-neutral-950 px-4 text-xs font-semibold text-white hover:bg-neutral-800 disabled:opacity-50">{settling ? 'Opening…' : 'Bill & check out at the till'}</button>}
             <button type="button" disabled={busy || settling} onClick={() => void dismiss()} className="h-9 cursor-pointer rounded-lg border border-neutral-200 bg-white px-4 text-xs font-semibold text-neutral-800 hover:bg-neutral-50 disabled:opacity-50">Dismiss</button>
           </div>
           {message && <p role="alert" className="mt-2 text-xs text-rose-700">{message}</p>}

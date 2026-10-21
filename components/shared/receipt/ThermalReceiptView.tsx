@@ -22,6 +22,9 @@ export interface DigitalReceiptProps {
   venue?: { name: string; gstin: string | null; address: string | null };
   /** Pay-by-UPI QR block. Off for settled bills, where scanning would pay twice. */
   showPayQr?: boolean;
+  /** Cash being taken right now on the till (not yet saved): the notes given, against what is due. */
+  cashTendered?: number | null;
+  amountDue?: number;
 }
 
 export function ThermalReceiptView({
@@ -32,7 +35,13 @@ export function ThermalReceiptView({
   businessDisplayName,
   venue,
   showPayQr = true,
+  cashTendered = null,
+  amountDue,
 }: DigitalReceiptProps) {
+  // Cash given and change: from the saved bill, or from the till while the bill is being taken.
+  const tendered = invoice.cash_tendered ?? cashTendered;
+  const due = amountDue ?? invoice.grandTotal;
+  const change = invoice.cash_change ?? (tendered !== null && tendered !== undefined && tendered >= due ? Math.round((tendered - due) * 100) / 100 : null);
   const propertyBranches = useHostWorkspace((state) => state.propertyBranches);
   const profile = useHostWorkspace((state) => state.profile);
   const primaryBranch = venue ? undefined : propertyBranches[0];
@@ -261,6 +270,13 @@ export function ThermalReceiptView({
         <span>GRAND TOTAL</span>
         <span>₹{invoice.grandTotal.toFixed(2)}</span>
       </div>
+
+      {tendered !== null && tendered !== undefined && change !== null && (
+        <div className="border-b border-dashed border-neutral-300 py-2 text-[10px] text-neutral-700">
+          <div className="flex justify-between"><span>Cash tendered</span><span>₹{Number(tendered).toFixed(2)}</span></div>
+          <div className="flex justify-between font-bold"><span>Change returned</span><span>₹{Number(change).toFixed(2)}</span></div>
+        </div>
+      )}
 
       {Number(invoice.wallet_cashback) > 0 && (
         <div className="flex justify-between border-b border-dashed border-neutral-300 py-2 text-[10px] text-neutral-700">

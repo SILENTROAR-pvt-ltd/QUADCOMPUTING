@@ -3,7 +3,8 @@
  * no longer exists) or the connection dropped while it loaded. Retrying in place cannot work: the failed load is remembered.
  * Only a full reload fetches the new files.
  */
-const CHUNK_ERROR = /ChunkLoadError|Loading chunk [\w./-]+ failed|Loading CSS chunk|Failed to fetch dynamically imported module|error loading dynamically imported module|Importing a module script failed/i;
+// Webpack ("Loading chunk … failed"), Turbopack ("Failed to load chunk …") and the browsers' own module-load errors.
+const CHUNK_ERROR = /ChunkLoadError|Loading chunk [\w./-]+ failed|Failed to load chunk|Loading CSS chunk|Failed to fetch dynamically imported module|error loading dynamically imported module|Importing a module script failed/i;
 
 export function isChunkLoadError(error: unknown): boolean {
   if (!error) return false;

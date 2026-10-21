@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireHost, adminDb } from '@/lib/auth/guards';
 import { withApiErrorBoundary, handleApiError } from '@/lib/middleware/error-handler';
+import { attachGuestStays } from '@/lib/services/guests/guest-stays';
 
 export const dynamic = 'force-dynamic';
 const NO_STORE = { 'Cache-Control': 'no-store' };
@@ -27,12 +28,15 @@ export const GET = withApiErrorBoundary(async function GET(request: Request) {
       const missing = error.code === '42P01' || error.code === 'PGRST205' || /venue_guest_ledger/.test(String(error.message));
       return NextResponse.json({ success: false, error: missing ? 'My Guests needs one database update first (migration 20261016000007_live_events_and_guest_ledger.sql).' : 'Could not load guests.' }, { status: missing ? 409 : 500, headers: NO_STORE });
     }
-    const all = data || [];
+    // Each guest's stays (from the stay log, by the phone given at check-in) sit beside their visits and spend.
+    const all = await attachGuestStays(db, auth.businessId, data || []);
     const since = Date.now() - RECENT_DAYS * 86_400_000;
     const metrics = {
       totalGuests: all.length,
       repeatVisitors: all.filter((g: any) => g.visits >= 2).length,
       totalEventLeads: all.reduce((s: number, g: any) => s + (g.event_leads || 0), 0),
+      stayGuests: all.filter((g) => g.stays > 0).length,
+      nights: all.reduce((s, g) => s + g.nights, 0),
     };
 
     let rows = all;

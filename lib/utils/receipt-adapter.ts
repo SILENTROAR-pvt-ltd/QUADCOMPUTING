@@ -30,6 +30,9 @@ export interface InvoiceData {
   /** Cashback the bill earned into the guest's wallet. */
   wallet_cashback?: number;
   payment_method?: string;
+  /** A cash bill: the notes handed over and the change returned (cash-tender.ts). */
+  cash_tendered?: number | null;
+  cash_change?: number | null;
   items: InvoiceItem[];
   subtotal: number;
   discountType?: 'percentage' | 'flat';

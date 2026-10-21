@@ -10,12 +10,13 @@ import { DonutChart } from './DonutChart';
 import { GuestsCard } from './GuestsCard';
 import { SalesSummaryCard } from './SalesSummaryCard';
 import { ProfitLossCard } from './ProfitLossCard';
+import { StaysCard } from './StaysCard';
 import type { ProfitAndLoss } from '@/lib/services/analytics/pnl.util';
 import { downloadCsv, reportCsv } from './report-csv';
 
 const CARD = 'rounded-2xl border border-neutral-200 bg-white p-5 sm:p-6';
 // Categorical slots 1–3 (validated; light slots carry visible labels). Channel colours follow the channel, not its rank.
-const CHANNEL_COLOR = { dine_in: '#2a78d6', delivery: '#eb6834', counter: '#1baf7a' } as const;
+const CHANNEL_COLOR = { dine_in: '#2a78d6', rooms: '#1baf7a', delivery: '#eb6834', counter: '#8a6d2b' } as const;
 
 interface Props { r: AnalyticsReports; pnl?: ProfitAndLoss; format: (n: number) => string; periodLabel: string; multiDay: boolean; truncated?: boolean }
 
@@ -57,11 +58,29 @@ export function ReportsSection({ r, pnl, format, periodLabel, multiDay, truncate
           <h3 className="font-serif text-lg text-neutral-950">Where sales came from</h3>
           <p className="mb-4 text-[11px] text-neutral-500">Total collected by channel</p>
           <DonutChart format={format} centerLabel="collected"
-            slices={r.channels.map((c) => ({ id: c.id, label: c.label, value: c.sales, color: CHANNEL_COLOR[c.id], detail: `${c.bills} ${c.bills === 1 ? 'bill' : 'bills'}` }))} />
+            slices={r.channels.filter((c) => c.sales > 0 || c.id !== 'rooms').map((c) => ({ id: c.id, label: c.label, value: c.sales, color: CHANNEL_COLOR[c.id], detail: `${c.bills} ${c.bills === 1 ? 'bill' : 'bills'}` }))} />
         </div>
         <CategoryBars categories={r.categories} format={format} />
         <GuestsCard g={r.guests} format={format} />
       </div>
+
+      {/* A venue with rooms: the accommodation side, apart from the kitchen. */}
+      {r.stays && (r.stays.stay_bills > 0 || r.segments?.rooms > 0) && (
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <StaysCard s={r.stays} format={format} />
+          <div className={`${CARD} lg:col-span-2`}>
+            <h3 className="font-serif text-lg text-neutral-950">Kitchen and rooms</h3>
+            <p className="mb-4 text-[11px] text-neutral-500">Net sales by business, after discounts, before GST</p>
+            <DonutChart format={format} centerLabel="net sales"
+              slices={[
+                { id: 'food', label: 'Food & drinks', value: r.segments.food, color: '#2a78d6' },
+                { id: 'rooms', label: 'Rooms & stays', value: r.segments.rooms, color: '#1baf7a', detail: `${r.stays.nights} nights` },
+                { id: 'addons', label: 'Room add-ons', value: r.segments.room_addons, color: '#eb6834' },
+                { id: 'extras', label: 'Check-out fees', value: r.segments.room_extras, color: '#8a6d2b' },
+              ].filter((x) => x.value > 0)} />
+          </div>
+        </div>
+      )}
 
       {multiDay && (
         <div className={CARD}>

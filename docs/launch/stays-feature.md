@@ -106,9 +106,16 @@ The room page's Services tab has a **Checking out** group: "Ready to check out?"
 desk) and, while the room is free after the guest, the late check-out options. The request is written to
 `rooms.checkout_request` (`POST /api/guest/room/<code>/checkout-request`, `{action: 'request' | 'cancel'}`), rings the
 host console as a BILL call for `ROOM <n>`, shows on the room's front-desk card ("Ready to check out · prepare bill")
-and at the top of the occupied-room box with the balance and **Settle & check out** / **Dismiss**. The guest's page shows
-it as pending (with "See my bill" and "Not leaving yet") and hides the late check-out offer. Checking the room out, or
-releasing it, clears the request; the desk's Dismiss clears it without checking out.
+and at the top of the occupied-room box with the balance and **Bill & check out at the till** / **Dismiss**. The guest's
+page shows it as pending (with "See my bill" and "Not leaving yet") and hides the late check-out offer. Checking the
+room out clears the request; the desk's Dismiss clears it without checking out.
+
+**The room is never released before its bill is settled.** "Bill & check out" hands the room to the till
+(`requestSettleRoom` in `lib/host/open-room-request.ts`): the POS loads the folio, opens the receipt with "Check out &
+settle" chosen, and only saving that receipt runs the checkout. The guest's page keeps saying "checked in" until then.
+A room that an older build released with its invoice waiting (`ready_for_settlement`) is settled by the till whichever
+choice the receipt carries. The Accommodations tab glows while any room holds a pending request, from the rooms table
+itself (`useRoomRequests`), even after the bell's call was cleared.
 
 ## What a stay is billed for
 
@@ -145,6 +152,15 @@ Money is taken at the desk, but it can be taken at any point of the stay, not on
 - A payment is `POST /api/host/accommodations/rooms/[id]/payment` (`preview` / `record`): a settled `room_advance`
   bill plus `rooms.advance_paid` raised by it, so the guest's bill, the desk's folio and the checkout all show it as
   paid and bill only the balance (`room-payment.service.ts`, idempotent per sheet).
+
+## Cash and change
+
+A cash bill keeps what the guest handed over and what went back (`orders.cash_tendered`, `orders.cash_change`,
+migration `20261022000001_cash_tender.sql`; `lib/services/billing/cash-tender.ts`). On the till's receipt and on the
+desk's payment sheet, choosing Cash shows **Cash given** with quick note amounts and the change to return; an amount
+short of the bill cannot be saved. The receipt prints "Cash tendered / Change returned", the till's message starts
+with "Return ₹X change", and the Z-report's cash drawer section shows cash received, change returned and the cash
+sales kept (their difference), so the expected drawer still equals the opening float plus cash sales.
 
 ## Live orders in the room
 

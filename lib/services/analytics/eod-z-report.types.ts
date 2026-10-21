@@ -14,7 +14,16 @@ export interface ZSummary {
   grand_total: number;
 }
 
-export interface ZTenders { cash: number; upi: number; card: number; other: number }
+export interface ZTenders {
+  /** Cash sales: the bills paid in cash (what the drawer keeps). */
+  cash: number;
+  upi: number;
+  card: number;
+  other: number;
+  /** Notes handed over for those bills, and the change that went back; cash = cash_received − change_given. */
+  cash_received: number;
+  change_given: number;
+}
 
 export interface ZOperations {
   settled_bills: number;

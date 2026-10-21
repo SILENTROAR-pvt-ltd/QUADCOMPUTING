@@ -58,9 +58,9 @@ const PAGE = 1000;
 /** A safety stop for one period: 100,000 bills. Beyond it the report says it was cut short. */
 const MAX_ROWS = 100_000;
 
-const ORDER_COLUMNS = 'id, items, status, subtotal, grand_total, discount_amount, tax_amount, payment_method, customer_name, customer_phone, created_at, table_number, is_delivery, delivery_fee';
+const ORDER_COLUMNS = 'id, items, status, order_type, subtotal, grand_total, discount_amount, tax_amount, payment_method, customer_name, customer_phone, created_at, table_number, is_delivery, delivery_fee';
 // Before the delivery migration the two delivery columns do not exist; the period is then read without them.
-const ORDER_COLUMNS_BASIC = 'id, items, status, subtotal, grand_total, discount_amount, tax_amount, payment_method, customer_name, customer_phone, created_at, table_number';
+const ORDER_COLUMNS_BASIC = 'id, items, status, order_type, subtotal, grand_total, discount_amount, tax_amount, payment_method, customer_name, customer_phone, created_at, table_number';
 
 /**
  * Every row of a query, page by page. A single read stops at the database's row limit (1,000), which used to cut a

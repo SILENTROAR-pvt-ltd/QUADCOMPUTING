@@ -4,6 +4,7 @@ import React from 'react';
 import { Printer, Loader2, Send, Check } from 'lucide-react';
 import type { InvoiceData } from '@/lib/utils/receipt-adapter';
 import { RoomSettleChoice } from './RoomSettleChoice';
+import { CashTenderField } from './CashTenderField';
 import type { RoomMode } from './useDigitalReceiptActions';
 
 type Tender = 'UPI' | 'CASH' | 'CARD';
@@ -19,6 +20,10 @@ interface Props {
   roomAmount?: number;
   onSetRoomMode?: (m: RoomMode) => void;
   onSetRoomAmount?: (n: number) => void;
+  /** Cash: what the guest handed over (null = exact), against what the bill takes now (`due`). */
+  cashTendered?: number | null;
+  due?: number;
+  onSetCashTendered?: (n: number | null) => void;
   onSetPaymentMethod: (pm: Tender) => void;
   onSetUpiConfirmed: (c: boolean) => void;
   onPrint: () => void;
@@ -55,10 +60,11 @@ export function deliveryNote(invoice: InvoiceData): { title: string; hint: strin
 /** Pay-and-save controls under the receipt: how it was paid, one clear primary action, and where the bill goes. */
 export function ReceiptModalActions({
   invoice, paymentMethod, upiConfirmed, isSaving, saveError, roomMode = 'payment', roomAmount = invoice.grandTotal,
-  onSetRoomMode, onSetRoomAmount, onSetPaymentMethod, onSetUpiConfirmed, onPrint, onSaveOrder, onClose,
+  onSetRoomMode, onSetRoomAmount, cashTendered = null, due = invoice.grandTotal, onSetCashTendered, onSetPaymentMethod, onSetUpiConfirmed, onPrint, onSaveOrder, onClose,
 }: Props) {
   const delivery = deliveryNote(invoice);
   const waitingForUpi = paymentMethod === 'UPI' && !upiConfirmed;
+  const cashShort = paymentMethod === 'CASH' && cashTendered !== null && cashTendered + 0.005 < due;
   const roomChoice = Boolean(invoice.room_id && invoice.settlement && !invoice.isReadOnly && onSetRoomMode && onSetRoomAmount);
 
   if (invoice.isReadOnly) {
@@ -93,6 +99,10 @@ export function ReceiptModalActions({
           </button>
         ))}
       </div>
+
+      {paymentMethod === 'CASH' && onSetCashTendered && (
+        <CashTenderField due={due} tendered={cashTendered} disabled={isSaving} onChange={onSetCashTendered} />
+      )}
 
       {paymentMethod === 'UPI' && (
         <label className="flex min-h-[48px] cursor-pointer items-center gap-3 rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-2.5 active:bg-neutral-100">
@@ -131,14 +141,16 @@ export function ReceiptModalActions({
         <button
           type="button"
           onClick={onSaveOrder}
-          disabled={isSaving || waitingForUpi}
+          disabled={isSaving || waitingForUpi || cashShort}
           className="inline-flex h-14 min-w-0 flex-1 items-center justify-center gap-2 rounded-2xl bg-neutral-900 px-4 text-[15px] font-semibold text-white shadow-[0_14px_24px_-14px_rgba(0,0,0,0.6)] transition-all active:scale-[0.99] disabled:bg-neutral-300 disabled:text-neutral-500 disabled:shadow-none cursor-pointer"
         >
           {isSaving
             ? <><Loader2 className="h-4 w-4 animate-spin" aria-hidden /> Saving…</>
             : waitingForUpi
               ? 'Confirm UPI to continue'
-              : <><Send className="h-4 w-4" aria-hidden /> <span className="truncate">{saveLabel(invoice, roomMode, roomAmount, Boolean(delivery))}</span></>}
+              : cashShort
+                ? 'Cash given is short'
+                : <><Send className="h-4 w-4" aria-hidden /> <span className="truncate">{saveLabel(invoice, roomMode, roomAmount, Boolean(delivery))}</span></>}
         </button>
       </div>
     </div>

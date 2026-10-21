@@ -1,5 +1,6 @@
 import { readTender, StayPassError } from './stay-pass.service';
 import { roomFolio } from './room-folio.service';
+import { readCashTender } from '@/lib/services/billing/cash-tender';
 
 // A payment taken during the stay: the room at check-in ("pay now"), or the running bill when the guest asks to settle
 // before leaving. Recorded like any room payment (a settled room_advance bill with its tender) and carried on the room
@@ -26,6 +27,8 @@ export interface RoomPaymentInput {
   amount?: unknown; paymentMethod?: unknown; paymentReference?: unknown; purpose?: unknown;
   /** 'till': the POS receipt, where UPI is confirmed with a tick and carries no reference. */
   source?: 'desk' | 'till';
+  /** Cash handed over, when more than the amount: the change is recorded with the bill. */
+  cashTendered?: unknown;
 }
 
 /**
@@ -40,11 +43,15 @@ export async function recordRoomPayment(db: any, businessId: string, roomId: str
   if (amount <= 0) throw new StayPassError('INVALID', 'There is nothing to collect right now.');
   if (amount > q.amount + 0.01) throw new StayPassError('INVALID', `The guest owes ₹${q.amount.toLocaleString('en-IN')} right now; a larger amount cannot be taken.`);
 
+  const cash = readCashTender(tender, amount, input.cashTendered);
+  if (cash.error) throw new StayPassError('INVALID', cash.error);
+
   const purpose = input.purpose === 'stay' ? 'stay' : 'balance';
   const line = { id: `payment-${now.getTime()}`, name: purpose === 'stay' ? `Room payment · Room ${q.room.room_number}` : `Payment on account · Room ${q.room.room_number}`, price: amount, qty: 1, notes: `Taken during the stay${input.source === 'till' ? ' at the till' : ''}, ${now.toISOString().slice(0, 10)}`, type: 'advance' };
   const { data: bill, error: billErr } = await db.from('orders').insert({
     business_id: businessId, room_id: roomId, order_type: 'room_advance', order_source: 'POS', status: 'SETTLED', table_number: `ADV R${q.room.room_number}`.slice(0, 12),
     customer_name: q.room.guest_name || 'Guest', customer_phone: q.room.guest_phone || '', items: [line], subtotal: amount, grand_total: amount, total_amount: amount, payment_method: tender,
+    ...(cash.tender ? { cash_tendered: cash.tender.cash_tendered, cash_change: cash.tender.cash_change } : {}),
   }).select('id').maybeSingle();
   if (billErr || !bill) throw new StayPassError('FAILED', 'The bill could not be saved. Nothing was recorded; please try again.');
 
@@ -56,5 +63,9 @@ export async function recordRoomPayment(db: any, businessId: string, roomId: str
     await db.from('orders').delete().eq('id', bill.id).eq('business_id', businessId);
     throw new StayPassError('FAILED', 'The room could not be updated. Nothing was charged; please try again.');
   }
-  return { billId: bill.id as string, amount, tender, reference: reference || null, paidSoFar: Number(updated.advance_paid) || 0, balance: Math.max(0, q.amount - amount), roomNumber: q.room.room_number as string, guestName: (q.room.guest_name as string) || null };
+  return {
+    billId: bill.id as string, amount, tender, reference: reference || null, change: cash.tender?.cash_change ?? null,
+    paidSoFar: Number(updated.advance_paid) || 0, balance: Math.max(0, q.amount - amount), roomNumber: q.room.room_number as string,
+    guestName: (q.room.guest_name as string) || null, guestPhone: (q.room.guest_phone as string) || null, paidAt: now.toISOString(),
+  };
 }

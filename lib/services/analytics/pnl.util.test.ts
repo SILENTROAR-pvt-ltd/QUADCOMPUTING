@@ -59,6 +59,14 @@ describe('buildProfitAndLoss', () => {
     expect(p.revenue_total - p.cogs_total - p.opex_total).toBe(p.net_profit);
   });
 
+  it('shows the kitchen and the rooms apart when the venue has stays, and the revenue still adds up', () => {
+    const p2 = buildProfitAndLoss({ ...base, rooms: { rooms: 7000, room_addons: 500, room_extras: 0 } });
+    expect(p2.revenue.map((l) => [l.label, l.amount])).toEqual([['Food & drinks', 2500], ['Rooms & stays', 7000], ['Room add-ons', 500], ['Delivery fees', 300]]);
+    expect(p2.revenue_total).toBe(10300);
+    // No rooms sold: one net sales line, as before.
+    expect(buildProfitAndLoss({ ...base, rooms: { rooms: 0, room_addons: 0, room_extras: 0 } }).revenue[0].label).toBe('Net sales');
+  });
+
   it('reports a loss honestly and no margin when there is no revenue', () => {
     const empty = buildProfitAndLoss({ ...base, net_sales: 0, delivery_fees: 0, logs: [], salaries: [], advances: [], platform_fees: 0, expenses: [{ category: 'Rent', amount: 1000 }] });
     expect(empty.net_profit).toBe(-1000);

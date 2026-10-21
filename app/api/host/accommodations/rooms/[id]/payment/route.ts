@@ -5,6 +5,8 @@ import { withApiErrorBoundary, handleApiError } from '@/lib/middleware/error-han
 import { generateIdempotencyKey, withIdempotency } from '@/lib/services/api-idempotency.util';
 import { quoteRoomPayment, recordRoomPayment } from '@/lib/services/stay/room-payment.service';
 import { StayPassError } from '@/lib/services/stay/stay-pass.service';
+import { chargeBillFee } from '@/lib/services/wallet/bill-fee';
+import { recordStayVisit } from '@/lib/services/live-events/stay-visit';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,7 +21,7 @@ export const POST = withApiErrorBoundary(async function POST(request: Request, {
   try {
     const auth = await requireHost(request);
     if (auth.error) return auth.error;
-    const { businessId } = auth;
+    const { businessId, supabase } = auth;
     const { id: roomId } = await params;
     const body = await request.json().catch(() => ({}));
     const db = adminDb();
@@ -33,7 +35,11 @@ export const POST = withApiErrorBoundary(async function POST(request: Request, {
     // One key per sheet: a double tap records one payment.
     const key = generateIdempotencyKey('room_payment', `${businessId}:${roomId}`, { idempotency_key: body.idempotency_key || `${body.amount}:${body.payment_method}:${body.payment_reference || ''}` });
     const { response, status } = await withIdempotency(key, async () => {
-      const out = await recordRoomPayment(db, businessId, roomId, { amount: body.amount, paymentMethod: body.payment_method, paymentReference: body.payment_reference, purpose: body.purpose });
+      const out = await recordRoomPayment(db, businessId, roomId, { amount: body.amount, paymentMethod: body.payment_method, paymentReference: body.payment_reference, purpose: body.purpose, cashTendered: body.cash_tendered });
+      // A payment during the stay is a settled bill: it carries the platform fee like every other, and counts as a visit
+      // for the guest in My Guests.
+      chargeBillFee(businessId, out.billId, supabase);
+      recordStayVisit(businessId, out.billId, { phone: out.guestPhone, name: out.guestName }, out.amount, out.paidAt);
       return { response: { success: true, ...out }, status: 200 };
     });
     return NextResponse.json(response, { status });

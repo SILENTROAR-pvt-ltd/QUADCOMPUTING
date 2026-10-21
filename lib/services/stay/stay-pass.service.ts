@@ -5,6 +5,7 @@ import { hashPassToken, looksLikePassToken, passToken } from './pass-token';
 import { earlyOptionOf, findOption, policyFee, type PolicyOption, type StayPolicies } from './stay-policy';
 import { MAX_NIGHTS, nightsBetween } from './stay-booking.service';
 import { stampAdvanceBillOwner } from './advance-bill-owner';
+import { readCashTender } from '@/lib/services/billing/cash-tender';
 
 // Paid self check-in. The desk bills the room (direct UPI, cash or card, taken and confirmed the way a table bill is),
 // and that payment issues a pass: the quote that was billed plus a link only that guest holds. Self check-in works only
@@ -116,7 +117,7 @@ export interface PassRow {
 }
 
 export interface IssueOptions { policies: StayPolicies; today?: string; now?: Date }
-export interface IssueInput extends PassRequest { paymentMethod?: string; paymentReference?: string | null; idempotencyKey?: string | null; issuedBy?: string | null }
+export interface IssueInput extends PassRequest { paymentMethod?: string; paymentReference?: string | null; cashTendered?: unknown; idempotencyKey?: string | null; issuedBy?: string | null }
 
 /** Bills the room and issues the pass: a settled advance bill, then the pass that points at it. Either both exist or neither does. */
 export async function issuePass(db: any, businessId: string, input: IssueInput, opts: IssueOptions): Promise<{ pass: PassRow; token: string; quote: StayQuote; reused: boolean }> {
@@ -129,6 +130,8 @@ export async function issuePass(db: any, businessId: string, input: IssueInput, 
   }
 
   const r = await resolveStay(db, businessId, input, opts.policies, opts.today);
+  const cash = readCashTender(tender, r.quote.amount, input.cashTendered);
+  if (cash.error) throw new StayPassError('INVALID', cash.error);
   const now = opts.now || new Date();
   const id = randomUUID();
   const token = passToken(id, 1);
@@ -138,6 +141,7 @@ export async function issuePass(db: any, businessId: string, input: IssueInput, 
     business_id: businessId, order_type: 'room_advance', order_source: 'POS', status: 'SETTLED', table_number: `ADV ${label}`,
     customer_name: r.guest.name, customer_phone: r.guest.phone, items: r.quote.lines, subtotal: r.quote.amount, grand_total: r.quote.amount,
     total_amount: r.quote.amount, payment_method: tender,
+    ...(cash.tender ? { cash_tendered: cash.tender.cash_tendered, cash_change: cash.tender.cash_change } : {}),
   }).select('id').maybeSingle();
   if (billErr || !bill) throw new StayPassError('FAILED', 'The bill could not be saved. Nothing was recorded; please try again.');
   // A guest who reserved with their Vibers ID owns this bill: it then appears among their invoices. Best effort.

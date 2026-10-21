@@ -43,14 +43,18 @@ export async function computeEodZReport(
   business: { id: string; business_name?: string | null; name?: string | null; gst_number?: string | null },
   range: ReturnType<typeof resolveZRange>,
 ): Promise<EodZReport> {
-  const { data, error } = await supabase
+  const BASE = 'id, status, order_type, created_at, subtotal, discount_amount, tax_amount, grand_total, payment_method, items, customer_name, customer_phone, guest_name, session_id';
+  const load = (columns: string) => supabase
     .from('orders')
-    .select('id, status, created_at, subtotal, discount_amount, tax_amount, grand_total, payment_method, items, customer_name, customer_phone, guest_name, session_id')
+    .select(columns)
     .eq('business_id', business.id)
     .gte('created_at', range.start)
     .lte('created_at', range.end)
     .order('created_at', { ascending: true })
     .limit(Z_MAX_ORDERS);
+  // The cash columns arrive with migration 20261022000001; a database without them still gets its report.
+  let { data, error } = await load(`${BASE}, cash_tendered, cash_change`);
+  if (error && /cash_tendered|cash_change/.test(String(error.message || ''))) ({ data, error } = await load(BASE));
   if (error) throw error;
 
   const orders = (data || []) as any[];

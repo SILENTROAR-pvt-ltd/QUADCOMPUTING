@@ -18,6 +18,7 @@ import { BillingHeader } from './billing/components/BillingHeader';
 import { BillRequestsModal } from './billing/BillRequestsModal';
 import { usePOSCatalog } from './billing/hooks/usePOSCatalog';
 import { useOpenTableRequest } from '@/lib/host/useOpenTableRequest';
+import { useSettleRoomRequest } from '@/lib/host/useSettleRoomRequest';
 
 export function BillingWorkspace({ onNavigate }: { onNavigate?: (tab: string) => void }) {
   const storeBusinessId = useHostWorkspace((state) => state.businessId);
@@ -68,6 +69,19 @@ export function BillingWorkspace({ onNavigate }: { onNavigate?: (tab: string) =>
 
   // A table named from the bell ("Table T-03 requested the bill") is selected here as soon as the tables are known.
   useOpenTableRequest(tables, (table) => { void handleSelectActiveTable(table); setActiveTab('pos'); });
+  // The desk's "check out & bill": the room's folio loads and its receipt opens with checkout chosen. The room stays
+  // checked in until that receipt is saved.
+  const billWhenLoaded = React.useRef(false);
+  useSettleRoomRequest((room) => {
+    setActiveTab('pos');
+    void handleSelectActiveRoom(room, 'checkout').then((loaded) => { billWhenLoaded.current = loaded; });
+  });
+  useEffect(() => {
+    if (!billWhenLoaded.current || !cart.selectedRoomId || cart.selectedItems.length === 0) return;
+    billWhenLoaded.current = false;
+    handleGenerateBill();
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- fires once the handed-over room's folio is in the cart
+  }, [cart.selectedRoomId, cart.selectedItems]);
 
   const unreadBillRequestCount = billRequestedTables.filter((table) =>
     !seenBillRequestIds.includes(table.activeSession?.sessionId || table.id)
@@ -199,6 +213,7 @@ export function BillingWorkspace({ onNavigate }: { onNavigate?: (tab: string) =>
                 onSelectActiveTable={handleSelectActiveTable}
                 onSelectActiveRoom={handleSelectActiveRoom}
                 onMarkVacant={handleMarkTableVacant}
+                onSelectTakeaway={cart.clearDestination}
               />
             </div>
 

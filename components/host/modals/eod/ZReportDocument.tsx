@@ -55,7 +55,7 @@ export function ZReportDocument({ report }: { report: EodZReport }) {
           openingCash={openingCash}
           actualCash={actualCash}
           systemCash={expectedCash}
-          cashSales={report.tenders.cash}
+          tenders={report.tenders}
           cashDiscrepancy={variance}
           onOpeningCashChange={setOpeningCash}
           onActualCashChange={setActualCash}

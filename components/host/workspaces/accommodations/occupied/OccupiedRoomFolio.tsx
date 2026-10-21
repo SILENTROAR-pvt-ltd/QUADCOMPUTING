@@ -58,7 +58,7 @@ export function OccupiedRoomFolio({ billingSummary: b, folioLines = [], ordersCo
       </div>
       {booked && <p className="mt-1 text-[11px] text-neutral-500">{booked}</p>}
       {Number(b.refundDue) > 0 && <p role="status" className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-900">Paid {money(Number(b.refundDue))} more than the stay comes to so far; return it to the guest at checkout.</p>}
-      <p className="mt-1 text-[11px] text-neutral-500">Taxes and the tender are applied in billing after checkout.</p>
+      <p className="mt-1 text-[11px] text-neutral-500">The tender is taken at the till; the room is checked out when that bill is saved.</p>
 
       <div className="mt-5 flex flex-col gap-2.5 sm:flex-row">
         <button type="button" onClick={onPrintFolio} aria-label="Print interim folio" className="flex h-11 items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 text-xs font-semibold text-neutral-800 hover:bg-neutral-50 cursor-pointer">
@@ -72,8 +72,8 @@ export function OccupiedRoomFolio({ billingSummary: b, folioLines = [], ordersCo
         <button type="button" onClick={onOpenSettlement} disabled={isCheckingOut}
           className="flex h-11 flex-[2] items-center justify-center gap-2 rounded-xl bg-neutral-950 text-xs font-semibold text-white hover:bg-neutral-800 disabled:opacity-50 cursor-pointer">
           {isCheckingOut
-            ? <><span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" /> Checking out…</>
-            : <><LogOut className="h-4 w-4" /> Check out &amp; bill {money(b.grandTotalPayable)}</>}
+            ? <><span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" /> Opening the till…</>
+            : <><LogOut className="h-4 w-4" /> Bill {money(b.grandTotalPayable)} &amp; check out</>}
         </button>
       </div>
     </section>

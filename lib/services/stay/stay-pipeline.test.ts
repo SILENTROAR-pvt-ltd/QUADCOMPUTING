@@ -368,6 +368,67 @@ describe('the stay, to the final invoice', () => {
     expect(db.tables.rooms[0].status).toBe('CLEANING');
   });
 
+  it('"My room" opens the room from the last four mobile digits alone, and asks for the room number only when two stays share them', async () => {
+    await reserve('Asha Rao', '9876543210');
+    await checkIn(tokenOf((await bill(bookingId())).body.pass.link)); // suite1, phone ending 3210
+    const { POST: lookup } = await import('@/app/api/guest/stay/room-lookup/route');
+    const find = async (body: Record<string, unknown>) => json(await lookup(req('/api/guest/stay/room-lookup', { method: 'POST', body: { venue: BIZ, ...body } })));
+    const one = await find({ phone_last4: '3210' });
+    expect(one.status).toBe(200);
+    expect(one.body).toMatchObject({ success: true, room_number: 'suite1' });
+    expect(String(one.headers.get('set-cookie'))).toMatch(/room/);
+    expect((await find({ phone_last4: '0000' })).status).toBe(404);
+
+    // A second guest at the desk whose number ends the same way: the digits alone are no longer enough.
+    const { PATCH } = await import('@/app/api/host/accommodations/rooms/[id]/status/route');
+    await PATCH(req('/api/host/accommodations/rooms/room-2/status', { method: 'PATCH', body: { action: 'check-in', guest_name: 'Other Guest', guest_phone: '9000003210', id_type: 'Aadhaar', id_number: '1', total_guests: 1, check_in_time: '2026-10-21T08:00:00.000Z', check_out_time: '2026-10-22T05:30:00.000Z' } }), idParams('room-2'));
+    const two = await find({ phone_last4: '3210' });
+    expect(two.status).toBe(409);
+    expect(two.body.code).toBe('AMBIGUOUS');
+    expect((await find({ phone_last4: '3210', room_number: 'suite2' })).body).toMatchObject({ success: true, room_number: 'suite2' });
+  });
+
+  it('a room released earlier with its invoice waiting is settled by the till whichever choice the receipt carries', async () => {
+    await reserve();
+    await checkIn(tokenOf((await bill(bookingId())).body.pass.link));
+    db.tables.orders.push({ id: 'o1', business_id: BIZ, room_id: 'room-1', order_type: 'room_service', status: 'pending', grand_total: 500, items: [{ id: 'x', name: 'Chai', price: 500, qty: 1 }], created_at: '2026-10-21T10:00:00Z' });
+    // The old two-step flow: the room was released with no tender, leaving the invoice ready for settlement.
+    const { POST: checkout } = await import('@/app/api/host/accommodations/rooms/[id]/checkout/route');
+    const released = await json(await checkout(req('/api/host/accommodations/rooms/room-1/checkout', { method: 'POST', body: {} }), idParams('room-1')));
+    expect(released.status).toBe(200);
+    expect(db.tables.rooms[0].status).toBe('CLEANING');
+    expect(db.tables.orders.find((o: any) => o.id === released.body.order_id)?.status).toBe('ready_for_settlement');
+
+    // The till saves the bill with the default ("adjust in the stay"): there is no stay, so the waiting invoice is settled instead.
+    const { POST: createOrder } = await import('@/app/api/host/orders/create/route');
+    const settled = await json(await createOrder(req('/api/host/orders/create', { method: 'POST', body: { id: 'bill-p', roomId: 'room-1', paymentMethod: 'CASH', grandTotal: 500, cashTendered: 1000, settlement: { mode: 'payment' } } })));
+    expect(settled.status).toBe(200);
+    expect(settled.body).toMatchObject({ success: true, settled: true, change: 500, order: { id: released.body.order_id } });
+    expect(db.tables.orders.find((o: any) => o.id === released.body.order_id)).toMatchObject({ status: 'SETTLED', payment_method: 'CASH', cash_tendered: 1000, cash_change: 500 });
+  });
+
+  it('cash handed over and change are kept with the bill at the till and at the desk, and the drawer count reconciles', async () => {
+    await reserve();
+    await checkIn(tokenOf((await bill(bookingId())).body.pass.link));
+    db.tables.orders.push({ id: 'o1', business_id: BIZ, room_id: 'room-1', order_type: 'room_service', status: 'pending', grand_total: 3050, items: [{ id: 'thali', name: 'Thali', price: 3050, qty: 1 }], created_at: '2026-10-21T10:00:00Z' });
+
+    // ₹3,050 owed, ₹4,000 in notes at the till, adjusted in the stay: ₹950 goes back, the sale is ₹3,050.
+    const { POST: createOrder } = await import('@/app/api/host/orders/create/route');
+    const short = await json(await createOrder(req('/api/host/orders/create', { method: 'POST', body: { id: 'bill-s', roomId: 'room-1', paymentMethod: 'CASH', grandTotal: 3050, cashTendered: 3000, settlement: { mode: 'payment' } } })));
+    expect(short.status).toBe(400); // less than the bill
+    const paid = await json(await createOrder(req('/api/host/orders/create', { method: 'POST', body: { id: 'bill-c', roomId: 'room-1', paymentMethod: 'CASH', grandTotal: 3050, cashTendered: 4000, settlement: { mode: 'payment' } } })));
+    expect(paid.body).toMatchObject({ success: true, change: 950, payment: { amount: 3050, balance: 0 } });
+    const cashBill = db.tables.orders.find((o: any) => o.id === paid.body.order.id);
+    expect(cashBill).toMatchObject({ order_type: 'room_advance', payment_method: 'CASH', grand_total: 3050, cash_tendered: 4000, cash_change: 950 });
+
+    // A counter bill paid with the exact cash records nothing extra; the Z-report then shows the drawer's side of the day.
+    const counter = await json(await createOrder(req('/api/host/orders/create', { method: 'POST', body: { id: 'bill-k', tableNumber: 'Takeaway / Counter', paymentMethod: 'CASH', items: [{ id: 'x', name: 'Chai', price: 20, qty: 1 }], subtotal: 20, grandTotal: 20, cashTendered: 100 } })));
+    expect(counter.body).toMatchObject({ success: true, change: 80 });
+    const { buildZFigures } = await import('@/lib/services/analytics/eod-z-report.util');
+    const z = buildZFigures(db.tables.orders.filter((o: any) => o.business_id === BIZ), 0, () => null);
+    expect(z.tenders).toMatchObject({ cash: 3070, cash_received: 4100, change_given: 1030, upi: 7000 });
+  });
+
   it('the desk checks in a walk-in and takes the room payment at once; the guest then owes nothing', async () => {
     const { PATCH } = await import('@/app/api/host/accommodations/rooms/[id]/status/route');
     const res = await json(await PATCH(req('/api/host/accommodations/rooms/room-3/status', { method: 'PATCH', body: { action: 'check-in', guest_name: 'Walk In', guest_phone: '9000000009', id_type: 'Aadhaar', id_number: '9', total_guests: 1, check_in_time: '2026-10-21T08:00:00.000Z', check_out_time: '2026-10-23T05:30:00.000Z' } }), idParams('room-3')));
@@ -380,6 +441,28 @@ describe('the stay, to the final invoice', () => {
     expect(db.tables.orders.find((o: any) => o.order_type === 'room_advance')).toMatchObject({ room_id: 'room-3', payment_method: 'UPI', status: 'SETTLED' });
     const { GET: dossier } = await import('@/app/api/host/accommodations/rooms/[id]/dossier/route');
     expect((await json(await dossier(req('/api/host/accommodations/rooms/room-3/dossier'), idParams('room-3')))).body.billingSummary).toMatchObject({ advancePaid: 7000, grandTotalPayable: 0 });
+    // The payment is a visit in My Guests for the walk-in, by their phone, with what they paid.
+    const visit = db.calls.rpc.find((c) => c.name === 'ledger_record_visit' && c.args.p_order_id === taken.body.billId);
+    expect(visit?.args).toMatchObject({ p_business_id: BIZ, p_guest_key: 'p:9000000009', p_spend: 7000, p_guest_name: 'Walk In' });
+  });
+
+  it('the advance before check-in and the invoice at checkout are both visits for the guest in My Guests', async () => {
+    await reserve('Asha Rao', '9876543210');
+    const paid = await bill(bookingId());
+    const advanceVisit = db.calls.rpc.find((c) => c.name === 'ledger_record_visit' && c.args.p_order_id === paid.body.pass.bill_order_id);
+    expect(advanceVisit?.args).toMatchObject({ p_guest_key: 'p:9876543210', p_spend: 7000 });
+    await checkIn(tokenOf(paid.body.pass.link));
+    db.tables.orders.push({ id: 'o1', business_id: BIZ, room_id: 'room-1', order_type: 'room_service', status: 'pending', grand_total: 650, items: [{ id: 'thali', name: 'Thali', price: 650, qty: 1 }], created_at: '2026-10-21T10:00:00Z' });
+    vi.setSystemTime(D('2026-10-23T04:00:00Z'));
+    const { POST: checkout } = await import('@/app/api/host/accommodations/rooms/[id]/checkout/route');
+    const out = await json(await checkout(req('/api/host/accommodations/rooms/room-1/checkout', { method: 'POST', body: { payment_method: 'CASH' } }), idParams('room-1')));
+    const stayVisit = db.calls.rpc.find((c) => c.name === 'ledger_record_visit' && c.args.p_order_id === out.body.order_id);
+    expect(stayVisit?.args).toMatchObject({ p_guest_key: 'p:9876543210', p_spend: 650 });
+    // The reports then put both bills in the rooms channel, apart from dine-in.
+    const { buildReports } = await import('@/lib/services/analytics/reports.util');
+    const r = buildReports(db.tables.orders.filter((o: any) => o.business_id === BIZ));
+    expect(r.channels.find((c) => c.id === 'rooms')).toMatchObject({ bills: 2, sales: 7650 });
+    expect(r.channels.find((c) => c.id === 'dine_in')?.bills).toBe(0);
   });
 });
 

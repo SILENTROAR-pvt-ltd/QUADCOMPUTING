@@ -58,6 +58,7 @@ export function CollectSheet({ spec, categories, settings, onClose, onToast, onR
           )}
           {c.step === 'pay' && c.quote && (
             <PayStep quote={c.quote} tender={c.tender} reference={c.reference} received={c.received} busy={c.busy} error={c.error} upiId={settings?.upi_id || null} businessName={name} code={code}
+              cashGiven={c.cashGiven} onCashGiven={c.setCashGiven}
               onTender={c.setTender} onReference={c.setReference} onReceived={c.setReceived} onBack={() => c.setStep('review')} onConfirm={() => void c.confirm()} />
           )}
           {c.step === 'done' && <DoneStep receipt={c.receipt} businessName={name} upiId={settings?.upi_id || null} onCopy={onToast} onClose={onClose} />}

@@ -8,6 +8,7 @@ import { withIdempotency } from '@/lib/services/api-idempotency.util';
 import { afterResponse } from '@/lib/utils/after-response';
 import { isFeeBearingStatus } from '@/lib/services/orders/bill-status.util';
 import { adjustRoomFromTill, roomSettleMode, settleRoomFromTill } from '@/lib/services/billing/room-till-settlement';
+import { readCashTender } from '@/lib/services/billing/cash-tender';
 
 const TENDERS = ['UPI', 'CASH', 'CARD'];
 
@@ -25,12 +26,21 @@ export const POST = withApiErrorBoundary(async function POST(request: Request) {
       );
     }
 
+    // Cash handed over must cover what this bill takes: the whole bill, or the part adjusted in a room's stay.
+    const partOfStay = body.roomId && body.settlement && roomSettleMode(body.settlement) === 'payment' ? Number(body.settlement.amount) : NaN;
+    const due = Number.isFinite(partOfStay) && partOfStay > 0 ? partOfStay : Number(body.grandTotal) || 0;
+    const cash = readCashTender(body.paymentMethod, due, body.cashTendered);
+    if (cash.error) return NextResponse.json({ success: false, error: cash.error }, { status: 400 });
+
     // A room's bill from the till (room-till-settlement.ts): adjusted in the running stay, or, only when the receipt
     // says so, the guest's checkout. Never a table settlement, and never a checkout by accident.
     if (body.roomId && body.settlement) {
-      return roomSettleMode(body.settlement) === 'checkout'
-        ? settleRoomFromTill(request, String(body.roomId), body.paymentMethod)
-        : adjustRoomFromTill(businessId, String(body.roomId), body);
+      const roomId = String(body.roomId);
+      if (roomSettleMode(body.settlement) === 'checkout') return settleRoomFromTill(request, businessId, roomId, body.paymentMethod, cash.tender);
+      const adjusted = await adjustRoomFromTill(businessId, roomId, body);
+      // No guest in the room: it was released earlier with its invoice waiting (the old two-step checkout). Settle that.
+      if (adjusted.status === 409) return settleRoomFromTill(request, businessId, roomId, body.paymentMethod, cash.tender);
+      return adjusted;
     }
 
     const order = await createHostOrder(supabase, businessId, body);
@@ -62,9 +72,12 @@ export const POST = withApiErrorBoundary(async function POST(request: Request) {
           }, adminDb());
           return { response: result, status: 200 };
         });
-        return NextResponse.json({ success: true, order, settled: true, settlement: response });
+        return NextResponse.json({ success: true, order, settled: true, settlement: response, change: cash.tender?.cash_change ?? null });
       } catch (settleError) {
-        return handleApiError(settleError, request, 'HostOrdersCreateSettle');
+        // A database error object is not an Error: give it a real message and its own status so the till reads why.
+        const e: any = settleError;
+        const err = e instanceof Error ? e : Object.assign(new Error(String(e?.message || e?.error || 'The settlement was refused.')), { status: e?.status, code: e?.code, details: e?.details });
+        return handleApiError(err, request, 'HostOrdersCreateSettle');
       }
     }
 
@@ -83,7 +96,7 @@ export const POST = withApiErrorBoundary(async function POST(request: Request) {
       });
     }
 
-    return NextResponse.json({ success: true, order });
+    return NextResponse.json({ success: true, order, change: cash.tender?.cash_change ?? null });
   } catch (error: any) {
     console.error('[API Orders POST]', error);
     return NextResponse.json(

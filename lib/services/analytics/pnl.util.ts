@@ -15,6 +15,8 @@ export interface StockLog { action_type: string | null; change_amount: number | 
 export interface ExpenseRow { category: string | null; custom_category_name?: string | null; amount: number | string; status?: string | null }
 export interface PnlInput {
   net_sales: number; delivery_fees: number; other_charges: number; gst: number;
+  /** The rooms' share of net sales (reports.util segments); the rest of net sales is food & drinks. */
+  rooms?: { rooms: number; room_addons: number; room_extras: number };
   logs: StockLog[];
   expenses: ExpenseRow[];
   salaries: Array<{ amount: number | string }>;
@@ -61,8 +63,16 @@ export function buildProfitAndLoss(input: PnlInput): ProfitAndLoss {
     }
   }
 
+  // A venue with rooms sees its two businesses apart: what the kitchen earned and what the rooms earned.
+  const rm = input.rooms;
+  const stayNet = rm ? r2(rm.rooms + rm.room_addons + rm.room_extras) : 0;
   const revenue: PnlLine[] = [
-    { label: 'Net sales', amount: r2(input.net_sales), note: 'after discounts, before GST' },
+    ...(rm && stayNet !== 0 ? [
+      { label: 'Food & drinks', amount: r2(input.net_sales - stayNet), note: 'net sales after discounts, before GST' },
+      { label: 'Rooms & stays', amount: r2(rm.rooms), note: 'nights billed' },
+      ...(rm.room_addons ? [{ label: 'Room add-ons', amount: r2(rm.room_addons) }] : []),
+      ...(rm.room_extras ? [{ label: 'Early check-in & late check-out', amount: r2(rm.room_extras) }] : []),
+    ] : [{ label: 'Net sales', amount: r2(input.net_sales), note: 'after discounts, before GST' }]),
     { label: 'Delivery fees', amount: r2(input.delivery_fees) },
     ...(input.other_charges ? [{ label: 'Other charges & rounding', amount: r2(input.other_charges) }] : []),
   ];

@@ -5,6 +5,8 @@ import { withApiErrorBoundary, handleApiError } from '@/lib/middleware/error-han
 import { hostPassView } from '@/lib/services/stay/host-pass-view';
 import { issuePass, resolveStay, StayPassError, type PassRow } from '@/lib/services/stay/stay-pass.service';
 import { readPolicies } from '@/lib/services/stay/stay-policy';
+import { chargeBillFee } from '@/lib/services/wallet/bill-fee';
+import { recordStayVisit } from '@/lib/services/live-events/stay-visit';
 
 export const dynamic = 'force-dynamic';
 
@@ -68,7 +70,13 @@ export const POST = withApiErrorBoundary(async function POST(request: Request) {
     }
 
     const who = (auth as any).staff?.name || (auth as any).staff?.id || 'owner';
-    const out = await issuePass(db, businessId, { ...req, paymentMethod: body.payment_method, paymentReference: body.payment_reference, idempotencyKey: body.idempotency_key, issuedBy: String(who).slice(0, 60) }, { policies });
+    const out = await issuePass(db, businessId, { ...req, paymentMethod: body.payment_method, paymentReference: body.payment_reference, cashTendered: body.cash_tendered, idempotencyKey: body.idempotency_key, issuedBy: String(who).slice(0, 60) }, { policies });
+    // The advance bill is a settled bill: it carries the platform fee like every other, and is the guest's first visit
+    // of the stay in My Guests.
+    if (!out.reused) {
+      chargeBillFee(businessId, out.pass.bill_order_id, auth.supabase);
+      recordStayVisit(businessId, out.pass.bill_order_id, { phone: out.pass.guest_phone, email: out.pass.guest_email, name: out.pass.guest_name }, Number(out.pass.amount) || 0, out.pass.paid_at);
+    }
     return NextResponse.json({ success: true, reused: out.reused, quote: out.quote, pass: hostPassView(out.pass, new URL(request.url).origin, venue) }, { status: out.reused ? 200 : 201, headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     if (error instanceof StayPassError) return NextResponse.json({ success: false, error: error.message, code: error.code }, { status: STATUS[error.code] || 500 });

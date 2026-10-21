@@ -8,8 +8,10 @@ export type LedgerFilter = 'all' | 'repeat' | 'spenders' | 'recent';
 export interface LedgerGuest {
   id: string; guest_name: string; vibers_handle: string | null; email: string | null; phone: string | null;
   visits: number; total_spend: number; event_leads: number; last_visit_at: string | null;
+  /** Stays at the venue (from the stay log, by phone) and the nights they add up to. */
+  stays?: number; nights?: number; last_stay_at?: string | null;
 }
-export interface LedgerMetrics { totalGuests: number; repeatVisitors: number; totalEventLeads: number }
+export interface LedgerMetrics { totalGuests: number; repeatVisitors: number; totalEventLeads: number; stayGuests?: number; nights?: number }
 
 interface Response { metrics: LedgerMetrics; guests: LedgerGuest[]; highSpenderThreshold: number; recentDays: number }
 

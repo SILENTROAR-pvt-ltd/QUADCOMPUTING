@@ -25,6 +25,8 @@ export function StayReceipt({ receipt, businessName, upiId }: { receipt: Receipt
     discountAmount: 0,
     taxAmount: 0,
     grandTotal: quote.amount,
+    cash_tendered: receipt.cashGiven ?? null,
+    cash_change: receipt.change ?? null,
     isReadOnly: true,
   };
   const paid = receipt.tender ? `PAID · ${METHOD[receipt.tender]}` : 'PAID';

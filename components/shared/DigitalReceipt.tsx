@@ -43,6 +43,9 @@ export function DigitalReceiptModal({
     setRoomMode,
     roomAmount,
     setRoomAmount,
+    cashTendered,
+    setCashTendered,
+    due,
     isSaving,
     saveError,
     isOnline,
@@ -84,6 +87,8 @@ export function DigitalReceiptModal({
             isOnline={isOnline}
             paymentMethod={paymentMethod}
             showPayQr={!invoice.isReadOnly}
+            cashTendered={paymentMethod === 'CASH' ? cashTendered : null}
+            amountDue={due}
           />
         </div>
 
@@ -98,6 +103,9 @@ export function DigitalReceiptModal({
           roomAmount={roomAmount}
           onSetRoomMode={setRoomMode}
           onSetRoomAmount={setRoomAmount}
+          cashTendered={cashTendered}
+          due={due}
+          onSetCashTendered={setCashTendered}
           onSetPaymentMethod={setPaymentMethod}
           onSetUpiConfirmed={setUpiConfirmed}
           onPrint={handlePrint}

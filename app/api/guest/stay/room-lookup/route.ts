@@ -10,13 +10,14 @@ import { ensureRoomCode, loadStayBusiness } from '@/lib/services/stay/room-route
 export const dynamic = 'force-dynamic';
 
 const norm = (s: unknown) => String(s ?? '').trim().toLowerCase().replace(/\s+/g, '');
-const NO_MATCH = () => NextResponse.json({ success: false, error: 'We could not match that room and number. Check them, or use the QR card in your room.', code: 'NO_MATCH' }, { status: 404 });
+const NO_MATCH = () => NextResponse.json({ success: false, error: 'We could not match that. Check the digits, or use the QR card in your room.', code: 'NO_MATCH' }, { status: 404 });
 
 /**
- * POST /api/guest/stay/room-lookup { venue, room_number, phone_last4 }
- * A hotel guest on the venue's menu ("Room delivery") or on its stay page ("My room"): the room number and the last four
- * digits of the phone given at check-in find their room and confirm this phone, exactly as the room's own page does. A
- * few tries per quarter hour per address, and one answer for every kind of mismatch, so room numbers cannot be probed.
+ * POST /api/guest/stay/room-lookup { venue, phone_last4, room_number? }
+ * A hotel guest on the venue's menu ("Room delivery") or on its stay page ("My room"): the last four digits of the
+ * phone given at check-in find their room and confirm this phone, exactly as the room's own page does. The room number
+ * is asked only when two checked-in guests share those digits. A few tries per quarter hour per address, and one answer
+ * for every kind of mismatch, so room numbers and phones cannot be probed.
  */
 export const POST = withApiErrorBoundary(async function POST(request: Request) {
   try {
@@ -37,8 +38,13 @@ export const POST = withApiErrorBoundary(async function POST(request: Request) {
     const { data: rooms, error } = await db.from('rooms').select('id, business_id, category_id, room_number, guest_phone, check_in_time, check_in_date, qr_code_hash')
       .eq('business_id', businessId).eq('status', 'OCCUPIED');
     if (error) throw error;
-    const room = (rooms || []).find((r: any) => norm(r.room_number) === norm(body?.room_number));
-    if (!room || !phoneMatches(room, body?.phone_last4)) return NO_MATCH();
+    const wanted = norm(body?.room_number);
+    const matches = (rooms || []).filter((r: any) => phoneMatches(r, body?.phone_last4) && (!wanted || norm(r.room_number) === wanted));
+    if (matches.length === 0) return NO_MATCH();
+    if (matches.length > 1) {
+      return NextResponse.json({ success: false, error: 'More than one room is checked in under those digits. Add your room number.', code: 'AMBIGUOUS' }, { status: 409 });
+    }
+    const room = matches[0];
 
     const token = issueRoomSession(room.id, businessId, stayStartedAt(room) || '');
     if (!token) return NextResponse.json({ success: false, error: 'Room sessions are not configured.' }, { status: 503 });

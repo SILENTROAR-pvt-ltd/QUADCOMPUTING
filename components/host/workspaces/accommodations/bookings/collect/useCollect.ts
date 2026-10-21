@@ -10,7 +10,7 @@ export type Step = 'details' | 'review' | 'pay' | 'done';
 export type Tender = 'UPI' | 'CASH' | 'CARD';
 export interface QuoteLine { id: string; name: string; price: number; qty: number; notes?: string }
 export interface Quote { lines: QuoteLine[]; amount: number; title: string; subtitle: string; guestName: string; guestPhone: string | null }
-export interface Receipt { quote: Quote; tender: Tender | null; reference: string; paidAt: string; link: string | null; passId: string | null; billId: string | null }
+export interface Receipt { quote: Quote; tender: Tender | null; reference: string; cashGiven?: number | null; change?: number | null; paidAt: string; link: string | null; passId: string | null; billId: string | null }
 export interface WalkIn { categoryId: string; nights: number; guestName: string; guestPhone: string; guests: number }
 
 /**
@@ -26,6 +26,8 @@ export function useCollect(spec: CollectSpec) {
   const [quote, setQuote] = useState<Quote | null>(null);
   const [tender, setTender] = useState<Tender>('UPI');
   const [reference, setReference] = useState('');
+  // Cash: the notes handed over (null = exact); the change is shown and recorded with the bill.
+  const [cashGiven, setCashGiven] = useState<number | null>(null);
   const [received, setReceived] = useState(false);
   const [receipt, setReceipt] = useState<Receipt | null>(null);
   const [busy, setBusy] = useState(false);
@@ -63,14 +65,17 @@ export function useCollect(spec: CollectSpec) {
   const confirm = async () => {
     // A free item (a late check-out the owner offers at no charge) has no money to confirm.
     if (!quote || busy || (!received && quote.amount > 0)) return;
+    if (tender === 'CASH' && cashGiven !== null && cashGiven + 0.005 < quote.amount) { setError('The cash given is less than the amount.'); return; }
     setBusy(true); setError(null);
-    const base = quote.amount > 0 ? { payment_method: tender, payment_reference: reference, idempotency_key: idem.current } : { payment_method: 'CASH', idempotency_key: idem.current };
+    const cash = tender === 'CASH' && cashGiven !== null ? { cash_tendered: cashGiven } : {};
+    const base = quote.amount > 0 ? { payment_method: tender, payment_reference: reference, idempotency_key: idem.current, ...cash } : { payment_method: 'CASH', idempotency_key: idem.current };
     const r = await confirmRequest(spec, stayBody, base, quote.amount);
     setBusy(false);
     if (!r.ok) { setError(fail(r, 'The payment could not be recorded.')); return; }
-    setReceipt({ quote, tender: quote.amount > 0 ? tender : null, reference: reference.trim(), paidAt: new Date().toISOString(), link: r.data.pass?.link || null, passId: r.data.pass?.id || null, billId: r.data.pass?.bill_order_id || r.data.billId || null });
+    const change = tender === 'CASH' && cashGiven !== null && quote.amount > 0 ? Math.round((cashGiven - quote.amount) * 100) / 100 : null;
+    setReceipt({ quote, tender: quote.amount > 0 ? tender : null, reference: reference.trim(), cashGiven: change !== null ? cashGiven : null, change, paidAt: new Date().toISOString(), link: r.data.pass?.link || null, passId: r.data.pass?.id || null, billId: r.data.pass?.bill_order_id || r.data.billId || null });
     setStep('done');
   };
 
-  return { requote, step, setStep, walk, setWalk, earlyId, setEarlyId, quote, tender, setTender, reference, setReference, received, setReceived, receipt, setReceipt, busy, error, setError, confirm, booking };
+  return { requote, step, setStep, walk, setWalk, earlyId, setEarlyId, quote, tender, setTender, reference, setReference, cashGiven, setCashGiven, received, setReceived, receipt, setReceipt, busy, error, setError, confirm, booking };
 }

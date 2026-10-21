@@ -1,5 +1,6 @@
 import { businessHour } from '@/lib/utils/business-day';
 import type { ZHour, ZSalesLine } from './eod-z-report.types';
+import { STAY_CATEGORY, isAdvanceBill, staySegmentOf } from './stay-lines.util';
 
 const num = (v: unknown) => Number(v) || 0;
 export const round2 = (n: number) => Math.round(n * 100) / 100;
@@ -37,9 +38,20 @@ function toLines(acc: Acc, netTotal: number): ZSalesLine[] {
     .sort((a, b) => b.net_sales - a.net_sales || b.qty - a.qty);
 }
 
+/** A line's category: its own, the stay segment it belongs to (rooms, add-ons, check-out fees), or the menu's. */
+export function lineCategory(line: any, order: any, categoryOf: (name: string) => string | null): string {
+  if (line?.category) return String(line.category);
+  const stay = staySegmentOf(line);
+  if (stay) return STAY_CATEGORY[stay];
+  const menu = categoryOf(String(line?.name || 'Item').trim() || 'Item');
+  if (menu) return menu;
+  return isAdvanceBill(order?.order_type) ? STAY_CATEGORY.rooms : 'Uncategorised';
+}
+
 /**
- * Item and category sales from settled bills. A bill's discount is spread over
- * its lines by value, so the lines add up to net sales.
+ * Item and category sales from settled bills. A bill's discount is spread over its lines by value, so the lines add
+ * up to net sales. A stay's advance and its credit on the final invoice both count as rooms, so a stay paid before
+ * check-in is rooms revenue once, on the day it was paid.
  */
 export function salesBreakdown(orders: any[], categoryOf: (name: string) => string | null, netTotal: number) {
   const items: Acc = new Map();
@@ -51,8 +63,9 @@ export function salesBreakdown(orders: any[], categoryOf: (name: string) => stri
     for (const l of lines) {
       const name = String(l?.name || 'Item').trim() || 'Item';
       const share = lineSum > 0 ? ((unitOf(l) * qtyOf(l)) / lineSum) * net : 0;
-      add(items, name, qtyOf(l), share);
-      add(categories, String(l?.category || categoryOf(name) || 'Uncategorised'), qtyOf(l), share);
+      // The advance credit on a final invoice is not a thing sold: it adjusts the rooms figure, not the item list.
+      if (unitOf(l) >= 0) add(items, name, qtyOf(l), share);
+      add(categories, lineCategory(l, o, categoryOf), unitOf(l) >= 0 ? qtyOf(l) : 0, share);
     }
   }
   return { items: toLines(items, netTotal), categories: toLines(categories, netTotal) };

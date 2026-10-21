@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { PhysicalRoom, RoomStayLog } from '@/types';
 import type { FolioLine } from '@/lib/services/accommodation/stay-folio.util';
-import { checkoutRoom, openInvoiceInBilling } from './checkoutRoom';
+import { requestSettleRoom } from '@/lib/host/open-room-request';
 import { EMPTY_SUMMARY as EMPTY, type BillingSummary } from './folio-summary';
 
 export type { BillingSummary };
@@ -57,15 +57,16 @@ export function useOccupiedRoomDossier(room: PhysicalRoom | null, isOpen: boolea
     setError(body.error || 'The room number could not be changed.');
   };
 
-  const handleCheckoutAndSettle = async () => {
+  /**
+   * "Check out & bill": the room is handed to the till with its folio and the receipt opens with checkout chosen. The
+   * room is released only when that receipt is saved, so a guest is never shown as checked out with their bill unpaid.
+   */
+  const handleCheckoutAndSettle = () => {
     if (!activeRoom?.id || isCheckingOut) return;
-    setIsCheckingOut(true); setError(null);
-    const result = await checkoutRoom(activeRoom);
+    setIsCheckingOut(true);
+    requestSettleRoom({ id: activeRoom.id, room_number: activeRoom.room_number, status: activeRoom.status, guest_name: activeRoom.guest_name });
+    onNavigateToBilling?.(null);
     setIsCheckingOut(false);
-    if (!result.ok) { setError(result.error); return; }
-    openInvoiceInBilling(result.invoice, result.orderId);
-    onNavigateToBilling?.(result.invoice);
-    onRoomUpdated();
     onClose();
   };
 

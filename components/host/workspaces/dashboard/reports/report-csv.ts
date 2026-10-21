@@ -34,6 +34,14 @@ export function reportCsv(r: AnalyticsReports, periodLabel: string, pnl?: Profit
     '',
     row('Category', 'Qty', 'Net sales', 'Share %'), ...r.categories.map((c) => row(c.name, c.qty, c.net_sales, c.share)),
     '',
+    ...(r.segments ? [
+      row('Business', 'Net sales'), row('Food & drinks', r.segments.food), row('Rooms & stays', r.segments.rooms),
+      row('Room add-ons', r.segments.room_addons), row('Early check-in & late check-out', r.segments.room_extras), '',
+    ] : []),
+    ...(r.stays ? [
+      row('Stays', 'Value'), row('Stay bills settled', r.stays.stay_bills), row('Check-outs', r.stays.checkouts), row('Nights sold', r.stays.nights),
+      row('Average night rate', r.stays.avg_night_rate), row('Average stay value', r.stays.avg_stay_value), row('Room service on stay invoices', r.stays.room_service_net), '',
+    ] : []),
     row('Top dish', 'Qty', 'Net sales', 'Share %'), ...r.items.map((c) => row(c.name, c.qty, c.net_sales, c.share)),
     '',
     row('Guests', 'Count'), row('Connected guests', r.guests.known), row('Walk-ins', r.guests.walk_ins), row('New', r.guests.new_guests),

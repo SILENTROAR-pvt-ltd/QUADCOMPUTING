@@ -72,11 +72,7 @@ export function AccommodationsModalsHost({
         payNowOnOpen={Boolean(occupiedRoomForModal && occupiedRoomForModal.id === payNow?.roomId)}
         payNowAmount={payNow?.amount ?? null}
         onShowToast={onShowToast}
-        onNavigateToBilling={(invoiceData) => {
-          if (onNavigate) {
-            onNavigate('billing', invoiceData);
-          }
-        }}
+        onNavigateToBilling={(invoiceData) => onNavigate?.('billing', invoiceData)}
       />
 
       <EditCategoryModal

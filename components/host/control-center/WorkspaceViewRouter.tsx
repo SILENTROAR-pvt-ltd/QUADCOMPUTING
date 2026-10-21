@@ -47,7 +47,7 @@ export function WorkspaceViewRouter({ activeTab, venueId, onNavigate }: Workspac
         <div className="animate-in fade-in duration-300">
           {activeTab === 'billing' && <BillingWorkspace onNavigate={handleNav} />}
           {activeTab === 'tables' && <LiveTablesWorkspace venueId={venueId} onNavigate={handleNav} />}
-          {activeTab === 'reservations' && <ReservationsWorkspace />}
+          {activeTab === 'reservations' && <ReservationsWorkspace onNavigate={handleNav} />}
           {activeTab === 'delivery' && <DeliveryWorkspace />}
           {activeTab === 'kitchen' && <KitchenWorkspace cafeId={venueId} />}
           {activeTab === 'catalog' && <CatalogWorkspace cafeId={venueId} onNavigate={handleNav} />}
