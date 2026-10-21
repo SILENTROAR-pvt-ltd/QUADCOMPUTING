@@ -2,12 +2,15 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { businessFilter } from '@/lib/realtime/channels';
+import { useHostWorkspace } from '@/lib/store/host-workspace.store';
 import type { InventoryOverview } from '@/lib/services/inventory/inventory.types';
 
 const DEBOUNCE_MS = 900;
 
 /** Stock overview for the venue, refreshed when stock moves anywhere (sales, purchases, counts). */
 export function useInventory() {
+  const businessId = useHostWorkspace((s) => s.businessId);
   const [data, setData] = useState<InventoryOverview | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -41,13 +44,16 @@ export function useInventory() {
       if (timer) clearTimeout(timer);
       timer = setTimeout(() => { timer = null; void load(true); }, DEBOUNCE_MS);
     };
+    // Only this venue's stock movements wake the refresh (row-level security already hides other venues' rows; the
+    // filter keeps their events from reaching this tab at all).
     const supabase = createClient();
-    const channel = supabase.channel('raw_inventory_live')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'raw_inventory_items' }, schedule)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'inventory_logs' }, schedule)
+    const filter = businessFilter(businessId);
+    const channel = supabase.channel(businessId ? `raw_inventory_live_${businessId}` : 'raw_inventory_live')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'raw_inventory_items', ...(filter ? { filter } : {}) }, schedule)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'inventory_logs', ...(filter ? { filter } : {}) }, schedule)
       .subscribe();
     return () => { if (timer) clearTimeout(timer); supabase.removeChannel(channel); };
-  }, [load]);
+  }, [load, businessId]);
 
   /** `version` changes after every reload, so open panels can refresh their history too. */
   return { data, isLoading, isRefreshing, error, version, reload: () => load(true) };
