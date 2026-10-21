@@ -82,11 +82,15 @@ export function mapRawCatalogItems(rawItems: any[], targetVenueId: string): Cata
   });
 }
 
+/** A failed network round trip (the connection dropped, or the dev server was restarting): not a fault in the catalog. */
+const isNetworkFailure = (e: unknown) => e instanceof TypeError || (e as any)?.name === 'AbortError';
+const RETRY_MS = 2500;
+
 export function usePOSCatalog(businessId?: string | null) {
   const serviceCatalog = useHostWorkspace((state) => state.serviceCatalog);
   const targetVenueId = businessId || '';
 
-  const hydrateCatalog = useCallback(async () => {
+  const hydrateCatalog = useCallback(async (attempt = 0): Promise<void> => {
     const cacheKey = `pos_catalog_cache_${targetVenueId}`;
     if (typeof window !== 'undefined') localStorage.removeItem('pos_catalog_cache'); // Cleanup legacy cross-tenant leak
 
@@ -134,12 +138,22 @@ export function usePOSCatalog(businessId?: string | null) {
         } catch {}
       }
     } catch (e) {
+      // The cached catalog (if any) stays on screen. A dropped connection is retried a few times, then left to the
+      // next visit of the tab; only an unexpected failure is reported as an error.
+      if (isNetworkFailure(e)) {
+        if (attempt < 3) setTimeout(() => void hydrateCatalog(attempt + 1), RETRY_MS * (attempt + 1));
+        else console.warn('[usePOSCatalog] the catalog could not be reached; using what is cached');
+        return;
+      }
       console.error('[usePOSCatalog] Failed to load catalog items:', e);
     }
   }, [targetVenueId, serviceCatalog.length]);
 
   useEffect(() => {
     void hydrateCatalog();
+    const onVisible = () => { if (document.visibilityState === 'visible') void hydrateCatalog(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
   }, [hydrateCatalog]);
 
   return { serviceCatalog };
