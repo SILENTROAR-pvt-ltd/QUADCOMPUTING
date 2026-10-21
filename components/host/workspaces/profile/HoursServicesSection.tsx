@@ -2,8 +2,9 @@
 
 import React from 'react';
 import { Section, input } from './ProfileFields';
-import { DAY_NAMES, useOperatingHours } from './useOperatingHours';
+import { DAY_NAMES, isAllDay, useOperatingHours } from './useOperatingHours';
 import { DeliveryTermsBlock } from './DeliveryTermsBlock';
+import { OpenSwitch } from './OpenSwitch';
 
 /** Opening hours, table reservations and delivery terms. Guests see these on the menu. */
 export function HoursServicesSection() {
@@ -17,29 +18,36 @@ export function HoursServicesSection() {
         !h.loadError && <div className="h-48 animate-pulse rounded-2xl bg-neutral-100" aria-busy="true" />
       ) : (
         <div className="space-y-5">
-          <label className="flex cursor-pointer items-start justify-between gap-4 rounded-2xl border border-neutral-200 p-4">
+          <div className="flex items-start justify-between gap-4 rounded-2xl border border-neutral-200 p-4">
             <span>
               <span className="block text-sm font-semibold text-neutral-950">Take table reservations</span>
               <span className="mt-0.5 block text-xs text-neutral-500">Guests pick a time inside opening hours and a free table. You confirm each request.</span>
             </span>
-            <input type="checkbox" role="switch" aria-checked={h.reservationsOn} checked={h.reservationsOn}
-              onChange={(e) => h.setReservationsOn(e.target.checked)} className="mt-1 h-5 w-5 shrink-0 accent-neutral-900" />
-          </label>
+            <OpenSwitch on={h.reservationsOn} onChange={h.setReservationsOn} label="Table reservations" onText="On" offText="Off" size="sm" />
+          </div>
+
+          {/* Round the clock: one switch sets every day; the day rows then show it and wait for it to be switched off. */}
+          <div className={`flex items-start justify-between gap-4 rounded-2xl border p-4 ${h.open247 ? 'border-emerald-200 bg-emerald-50/60' : 'border-neutral-200'}`}>
+            <span>
+              <span className="block text-sm font-semibold text-neutral-950">Open 24/7</span>
+              <span className="mt-0.5 block text-xs text-neutral-500">{h.open247 ? 'Every day, all day. Switch off to set hours for each day below.' : 'Switch on to be open every day, all day; the hours below are set for you.'}</span>
+            </span>
+            <OpenSwitch on={h.open247} onChange={h.setOpen247} label="Open 24/7" onText="On" offText="Off" />
+          </div>
 
           <ul className="divide-y divide-neutral-100 rounded-2xl border border-neutral-200">
             {h.days.map((d) => (
-              <li key={d.weekday} className="grid grid-cols-[6.5rem_1fr] items-center gap-3 px-4 py-3 sm:grid-cols-[8rem_auto_1fr_1fr] sm:gap-4">
+              <li key={d.weekday} className={`grid grid-cols-[6.5rem_1fr] items-center gap-3 px-4 py-3 sm:grid-cols-[8rem_auto_1fr_1fr] sm:gap-4 ${d.isClosed ? 'bg-rose-50/30' : ''}`}>
                 <span className="text-sm font-semibold text-neutral-900">{DAY_NAMES[d.weekday]}</span>
-                <label className="col-span-2 flex items-center gap-2 text-xs text-neutral-600 sm:col-span-1">
-                  <input type="checkbox" checked={d.isClosed} onChange={(e) => h.updateDay(d.weekday, { isClosed: e.target.checked })} className="h-4 w-4 accent-neutral-900" />
-                  Closed
-                </label>
+                <div className="col-span-2 sm:col-span-1">
+                  <OpenSwitch on={!d.isClosed} onChange={(open) => h.updateDay(d.weekday, { isClosed: !open })} label={DAY_NAMES[d.weekday]} disabled={h.open247} size="sm" />
+                </div>
                 <label className="sr-only" htmlFor={`open-${d.weekday}`}>{DAY_NAMES[d.weekday]} opens</label>
-                <input id={`open-${d.weekday}`} type="time" value={d.openTime} disabled={d.isClosed} onChange={(e) => h.updateDay(d.weekday, { openTime: e.target.value })}
+                <input id={`open-${d.weekday}`} type="time" value={d.openTime} disabled={d.isClosed || h.open247} onChange={(e) => h.updateDay(d.weekday, { openTime: e.target.value })}
                   className={`${input} disabled:opacity-40`} />
                 <label className="sr-only" htmlFor={`close-${d.weekday}`}>{DAY_NAMES[d.weekday]} closes</label>
-                <input id={`close-${d.weekday}`} type="time" value={d.closeTime} disabled={d.isClosed} onChange={(e) => h.updateDay(d.weekday, { closeTime: e.target.value })}
-                  className={`${input} disabled:opacity-40`} />
+                <input id={`close-${d.weekday}`} type="time" value={d.closeTime} disabled={d.isClosed || h.open247} onChange={(e) => h.updateDay(d.weekday, { closeTime: e.target.value })}
+                  className={`${input} disabled:opacity-40`} title={isAllDay(d) ? 'All day' : undefined} />
               </li>
             ))}
           </ul>

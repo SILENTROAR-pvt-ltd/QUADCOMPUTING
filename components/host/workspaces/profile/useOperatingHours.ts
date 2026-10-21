@@ -9,6 +9,11 @@ export const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'
 const DEFAULT_DAY = (weekday: number): DayHours => ({ weekday, openTime: '10:00', closeTime: '22:00', isClosed: false });
 const sameDays = (a: DayHours[], b: DayHours[]) => JSON.stringify(a) === JSON.stringify(b);
 
+/** Open round the clock: every day open from midnight to the last minute of the day. */
+export const ALL_DAY = { openTime: '00:00', closeTime: '23:59' } as const;
+export const isAllDay = (d: DayHours) => !d.isClosed && d.openTime === ALL_DAY.openTime && d.closeTime === ALL_DAY.closeTime;
+export const isOpen247 = (days: DayHours[] | null) => Boolean(days && days.length === 7 && days.every(isAllDay));
+
 /** The venue's weekly opening hours and the reservations switch. Saved on its own, apart from the profile form. */
 export function useOperatingHours() {
   const [days, setDays] = useState<DayHours[] | null>(null);
@@ -47,6 +52,19 @@ export function useOperatingHours() {
   const updateDay = (weekday: number, patch: Partial<DayHours>) =>
     setDays((list) => list?.map((d) => (d.weekday === weekday ? { ...d, ...patch } : d)) ?? list);
 
+  /**
+   * "Open 24/7" on: every day opens at midnight and closes at the last minute. Off: back to the saved hours, or the
+   * usual 10 to 10 when the saved hours were themselves round the clock, so the day rows have something to edit.
+   */
+  const open247 = isOpen247(days);
+  const setOpen247 = (on: boolean) =>
+    setDays((list) => {
+      if (!list) return list;
+      if (on) return list.map((d) => ({ ...d, isClosed: false, ...ALL_DAY }));
+      const back = saved && !isOpen247(saved) ? saved : list.map((d) => DEFAULT_DAY(d.weekday));
+      return back.map((d) => ({ ...d }));
+    });
+
   const save = async () => {
     if (!days) return;
     setSaving(true); setError(null);
@@ -68,5 +86,5 @@ export function useOperatingHours() {
 
   const discard = () => { setDays(saved); setReservationsOn(savedReservations); setError(null); };
 
-  return { days, reservationsOn, setReservationsOn, updateDay, save, discard, dirty, saving, error, notice, loadError };
+  return { days, reservationsOn, setReservationsOn, updateDay, open247, setOpen247, save, discard, dirty, saving, error, notice, loadError };
 }
