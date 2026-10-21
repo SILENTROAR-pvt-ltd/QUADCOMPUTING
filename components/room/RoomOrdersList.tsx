@@ -13,7 +13,7 @@ export function RoomOrdersList({ orders, limit }: { orders: Order[]; limit?: num
   return (
     <ul className="divide-y divide-neutral-100">
       {shown.map((o) => {
-        const s = orderStatus(o.status);
+        const s = orderStatus(o.status, o.kot_status);
         return (
           <li key={o.id} className="flex items-start justify-between gap-3 py-3 text-sm">
             <span className="min-w-0">

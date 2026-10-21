@@ -3,7 +3,7 @@
 import React, { useEffect } from 'react';
 import type { PhysicalRoom } from '@/types';
 import { CleaningMaintenanceView } from './checkin/CleaningMaintenanceView';
-import { useRoomCheckInState } from './checkin/useRoomCheckInState';
+import { useRoomCheckInState, type CheckInPayment } from './checkin/useRoomCheckInState';
 import { RoomDetailsHeader } from './checkin/RoomDetailsHeader';
 import { RoomCheckInForm, CHECK_IN_FORM_ID } from './checkin/RoomCheckInForm';
 import { CheckInFooter } from './checkin/CheckInFooter';
@@ -17,14 +17,16 @@ interface Props {
   /** The reservation this guest arrives with, if any; it fills the form and is closed by the check-in. */
   booking?: StayBooking | null;
   onBookingChange?: (b: StayBooking | null) => void;
+  /** The guest is in: close, or (pay now) go straight on to the room payment in the occupied-room box. */
+  onCheckedIn?: (roomId: string, payment: CheckInPayment) => void;
 }
 
 /**
  * A free room: check a guest in (with or without a reservation), or move it between vacant, housekeeping and
  * maintenance. Fills the screen on a phone, a card on a desk; the total and the check-in button stay in view.
  */
-export function RoomDetailsPanel({ room, onClose, onRoomUpdated, booking = null, onBookingChange }: Props) {
-  const s = useRoomCheckInState(room, onClose, onRoomUpdated, booking);
+export function RoomDetailsPanel({ room, onClose, onRoomUpdated, booking = null, onBookingChange, onCheckedIn }: Props) {
+  const s = useRoomCheckInState(room, onClose, onRoomUpdated, booking, onCheckedIn);
 
   useEffect(() => {
     if (!room) return;
@@ -72,8 +74,8 @@ export function RoomDetailsPanel({ room, onClose, onRoomUpdated, booking = null,
         </div>
 
         {room.status === 'VACANT' && (
-          <CheckInFooter formId={CHECK_IN_FORM_ID} numNights={s.numNights} roomPrice={s.roomPrice} roomTariffTotal={s.roomTariffTotal}
-            checkInAddonsTotal={s.checkInAddonsTotal} estimatedTotal={s.estimatedTotalWithAddons} isUpdating={s.isUpdating} />
+          <CheckInFooter numNights={s.numNights} roomPrice={s.roomPrice} checkInAddonsTotal={s.checkInAddonsTotal} estimatedTotal={s.estimatedTotalWithAddons}
+            payment={s.payment()} isUpdating={s.isUpdating} onCheckIn={() => s.submitCheckIn(CHECK_IN_FORM_ID)} />
         )}
       </div>
     </div>

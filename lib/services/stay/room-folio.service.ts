@@ -1,4 +1,4 @@
-import { buildStayFolio, CLOSED_ORDER_STATUSES, stayNights } from '@/lib/services/accommodation/stay-folio.util';
+import { billableNights, buildStayFolio, CLOSED_ORDER_STATUSES } from '@/lib/services/accommodation/stay-folio.util';
 import { extrasTotal, readExtras, settleLedger } from './stay-ledger';
 import { belongsToStay, stayStartMs } from './stay-scope';
 import { stayStartedAt } from './room-access.service';
@@ -12,7 +12,14 @@ export async function roomFolio(db: any, businessId: string, room: any) {
   if (error) throw error;
   const startMs = stayStartMs(room);
   const dining = (orders || []).filter((o: any) => o.order_type !== 'room_stay' && belongsToStay(o, startMs));
-  const nights = stayNights(stayStartedAt(room), new Date());
+  // Where the kitchen has each order: its ticket's status, which the menu's tracker reads the same way.
+  const tickets = new Map<string, { status: string | null; ticket_number: string | null }>();
+  if (dining.length > 0) {
+    const { data: rows } = await db.from('kitchen_tickets').select('order_id, status, ticket_number').eq('business_id', businessId).in('order_id', dining.map((o: any) => o.id));
+    for (const t of rows || []) if (t.order_id && !tickets.has(t.order_id)) tickets.set(t.order_id, { status: t.status || null, ticket_number: t.ticket_number || null });
+  }
+  // Billed for the nights booked, or the nights stayed if that is more: leaving early does not shorten the bill.
+  const { billed: nights, stayed, booked } = billableNights({ check_in_time: stayStartedAt(room), check_out_time: room.check_out_time, check_out_date: room.check_out_date });
   const folio = buildStayFolio({
     roomId: room.id, roomNumber: room.room_number, categoryName: room.category?.name,
     rate: Number(room.category?.price) || 0, nights, addons: Array.isArray(room.selected_addons) ? room.selected_addons : [],
@@ -24,6 +31,8 @@ export async function roomFolio(db: any, businessId: string, room: any) {
   const ledger = settleLedger({ folioTotal: folio.total, extras, diningTotal, advancePaid: Number(room.advance_paid) || 0 });
   return {
     nights,
+    nights_stayed: stayed,
+    nights_booked: booked,
     tariff_total: folio.tariffTotal,
     addons_total: folio.addonsTotal,
     extras_total: extrasTotal(extras),
@@ -35,7 +44,7 @@ export async function roomFolio(db: any, businessId: string, room: any) {
     balance: ledger.payable,
     lines: [...folio.lines, ...extras],
     orders: dining.map((o: any) => ({
-      id: o.id, created_at: o.created_at, status: o.status, grand_total: Number(o.grand_total) || 0,
+      id: o.id, created_at: o.created_at, status: o.status, kot_status: tickets.get(o.id)?.status ?? null, ticket_number: tickets.get(o.id)?.ticket_number ?? null, grand_total: Number(o.grand_total) || 0,
       items: (Array.isArray(o.items) ? o.items : []).map((it: any) => ({ name: it.name || it.item_name, qty: Number(it.qty ?? it.quantity ?? 1), price: Number(it.price) || 0 })),
     })),
   };

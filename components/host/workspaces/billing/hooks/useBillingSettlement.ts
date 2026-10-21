@@ -23,16 +23,19 @@ export function useBillingSettlement({
     const isTableOrder = Boolean(sessionId || tableId || (tableNumber && tableNumber !== 'Takeaway / Counter'));
 
     try {
-      // A room bill: the save request ran the room checkout (orders/create forwards it). The room list refreshes; there
-      // is no table to vacate.
+      // A room bill: the save request adjusted a payment in the stay, or ran the room checkout (orders/create decides
+      // by the receipt's choice). The room list refreshes; there is no table to vacate.
       if (roomId) {
-        if (!saved?.settled) throw new Error('The room was not checked out. Please retry.');
+        if (!saved?.settled) throw new Error('The room payment was not recorded. Please retry.');
         dispatchWalletRefreshEvents();
         setInvoicePreview(null);
         cart.resetCart();
         try { window.dispatchEvent(new CustomEvent('quad:rooms-changed')); } catch {}
-        setSuccessMessage(`${tableNumber || 'Room'} checked out and settled.`);
-        window.setTimeout(() => setSuccessMessage(''), 3500);
+        const p = saved.payment;
+        setSuccessMessage(p
+          ? `₹${Math.round(p.amount).toLocaleString('en-IN')} adjusted in the stay of ${tableNumber || 'the room'} · ${p.balance > 0 ? `₹${Math.round(p.balance).toLocaleString('en-IN')} still on the room bill` : 'nothing left to pay'} · guest stays checked in.`
+          : `${tableNumber || 'Room'} checked out and settled.`);
+        window.setTimeout(() => setSuccessMessage(''), p ? 6000 : 3500);
         clearOrderIdUrlParam();
         onHistoryRefresh?.();
         return;

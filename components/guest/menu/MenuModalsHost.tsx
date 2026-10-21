@@ -14,10 +14,11 @@ interface MenuModalsHostProps {
   featuredIds?: string[];
   onExploreServices: () => void;
   onExploreLounge: () => void;
+  onTrackOrder: () => void;
 }
 
 /** Every sheet that opens over the menu: customising a dish, reviewing the tray, a venue service, and the order thank-you. */
-export function MenuModalsHost({ state: s, cafeId, featuredIds, onExploreServices, onExploreLounge }: MenuModalsHostProps) {
+export function MenuModalsHost({ state: s, cafeId, featuredIds, onExploreServices, onExploreLounge, onTrackOrder }: MenuModalsHostProps) {
   return (
     <>
       <CustomizationDrawer
@@ -39,7 +40,7 @@ export function MenuModalsHost({ state: s, cafeId, featuredIds, onExploreService
       <OrderSuccessModal
         isOpen={s.orderCelebration} tableNumber={s.tableNumber} businessName={s.businessName}
         isAddon={s.isAddonOrderSuccess} roomCode={s.roomCode || undefined} onClose={() => s.setOrderCelebration(false)}
-        onExploreServices={onExploreServices} onExploreLounge={onExploreLounge}
+        onExploreServices={onExploreServices} onExploreLounge={onExploreLounge} onTrackOrder={onTrackOrder}
       />
     </>
   );

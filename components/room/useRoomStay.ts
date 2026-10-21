@@ -5,17 +5,19 @@ import type { FrontDeskContact } from '@/lib/guest/front-desk';
 import type { StayInvoiceView } from '@/components/stay/stay-invoice';
 import { fetchRoomState, postRoomAction, verifyRoom } from './room-stay-api';
 import { markCheckedOut, rememberStay, type LastStay } from './last-stay';
+import { useRoomLive } from './useRoomLive';
 
 export interface RoomState {
   room: { id: string; room_number: string; status: string; guest_first_name: string | null; check_in_time: string | null; check_out_time: string | null; total_guests: number; category: { name: string; price: number; amenities: string[]; photos: string[] } | null };
-  business: { id: string; name: string; slug: string | null; in_room_dining_enabled: boolean; checkout_time: string | null; gstin: string | null; address: string | null; front_desk: FrontDeskContact };
+  business: { id: string; name: string; slug: string | null; in_room_dining_enabled: boolean; self_checkin_enabled?: boolean; checkout_time: string | null; gstin: string | null; address: string | null; front_desk: FrontDeskContact };
   occupied: boolean;
   verified: boolean;
   dining: { enabled: boolean; open: boolean; message: string; opens_at: string | null; closes_at: string | null };
   folio: null | {
-    nights: number; tariff_total: number; addons_total: number; extras_total: number; dining_total: number; total: number; advance_paid: number; advance_total: number; balance: number;
+    nights: number; nights_stayed?: number; nights_booked?: number | null; tariff_total: number; addons_total: number; extras_total: number; dining_total: number; total: number; advance_paid: number; advance_total: number; balance: number;
     lines: Array<{ id: string; name: string; price: number; qty: number; notes?: string; type: string }>;
-    orders: Array<{ id: string; created_at: string; status: string; grand_total: number; items: Array<{ name: string; qty: number; price: number }> }>;
+    /** `kot_status` and `ticket_number` come from the kitchen's ticket for the order, as the menu's tracker reads them. */
+    orders: Array<{ id: string; created_at: string; status: string; kot_status?: string | null; ticket_number?: string | null; grand_total: number; items: Array<{ name: string; qty: number; price: number }> }>;
   };
   /** The room's tax invoice as the desk issued it; null for a stay the desk checked in without a pass. */
   invoice: null | (StayInvoiceView & { guests: number; check_in: string; check_out: string; nights: number });
@@ -26,8 +28,8 @@ export interface RoomState {
     /** False when another guest is due in a room of this type after the check-out: the time cannot be extended. */
     available: boolean;
   };
-  /** The guest has said they are ready to leave; the desk is preparing the bill. */
-  checkout_request: null | { status: 'pending'; requested_at: string; note: string | null };
+  /** The guest's one request to the desk: ready to leave (checkout), or wants to pay the running bill now (bill). */
+  checkout_request: null | { kind: 'checkout' | 'bill'; status: 'pending'; requested_at: string; note: string | null };
 }
 
 /**
@@ -62,13 +64,19 @@ export function useRoomStay(code: string) {
   }, [code]);
   useEffect(() => { void load(); }, [load]);
 
-  // The bill, the kitchen hours and the desk's answers move while the guest watches; a light refresh keeps them current.
+  // The kitchen, the till and the desk push every change to this room's channel (the same one the menu's tracker
+  // listens on), so an order moving on shows here the moment it does. Polling stays as the safety net, slower while
+  // the push channel is up. An empty room is read too, so the page becomes the guest's the moment the desk checks them in.
+  const live = Boolean(data?.occupied && data.verified);
+  const pushed = useRoomLive(live ? data!.business.id : null, live ? data!.room.room_number : null, () => void load(true));
   useEffect(() => {
-    if (!data?.verified) return;
+    if (!data || (data.occupied && !data.verified)) return;
     const waiting = data.late_checkout?.request?.status === 'pending' || Boolean(data.checkout_request);
-    const t = setInterval(() => void load(true), waiting ? 15_000 : 45_000);
+    const cooking = (data.folio?.orders || []).some((o) => !['SERVED', 'COMPLETED', 'DELIVERED', 'CANCELLED'].includes(String(o.kot_status || o.status).toUpperCase()));
+    const every = !data.occupied ? 20_000 : pushed ? (waiting || cooking ? 30_000 : 90_000) : cooking ? 8_000 : waiting ? 15_000 : 45_000;
+    const t = setInterval(() => void load(true), every);
     return () => clearInterval(t);
-  }, [data?.verified, data?.late_checkout?.request?.status, data?.checkout_request, load]);
+  }, [data, load, pushed]);
 
   const verify = async (last4: string) => { const err = await verifyRoom(code, last4); if (!err) await load(true); return err; };
   const send = async (path: string, body: unknown, ok: string) => {
@@ -78,8 +86,8 @@ export function useRoomStay(code: string) {
   };
   const request = (kind: string, message?: string) => send('service', { kind, message }, 'The desk has been told.');
   const requestLateCheckout = (optionId: string) => send('late-checkout', { option_id: optionId }, 'Requested. The desk will confirm.');
-  const requestCheckout = (action: 'request' | 'cancel', note?: string) =>
-    send('checkout-request', { action, note }, action === 'cancel' ? 'Taken back.' : 'The desk is preparing your bill.');
+  const requestCheckout = (action: 'request' | 'cancel', note?: string, kind: 'checkout' | 'bill' = 'checkout') =>
+    send('checkout-request', { action, note, kind }, action === 'cancel' ? 'Taken back.' : kind === 'bill' ? 'The desk is on its way to take your payment.' : 'The desk is preparing your bill.');
 
-  return { data, loading, error, checkedOut, justLeft, dismissLeft: () => setJustLeft(false), reload: load, verify, request, requestLateCheckout, requestCheckout };
+  return { data, loading, error, live: pushed, checkedOut, justLeft, dismissLeft: () => setJustLeft(false), reload: load, verify, request, requestLateCheckout, requestCheckout };
 }

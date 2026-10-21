@@ -3,7 +3,8 @@ import { fetchRoomFolioLines } from './handle-room-selection.util';
 
 /**
  * A room, picked the way a table is: its running folio fills the POS at once. Cashback on a room's food is credited by
- * checkout, not by the till, and GST is not charged on the stay. Settling the loaded bill checks the guest out.
+ * checkout, not by the till, and GST is not charged on the stay. On the receipt the host chooses whether the money is
+ * adjusted in the stay (the guest stays checked in) or settles the stay and checks the guest out.
  */
 export function useSelectActiveRoom(cart: any, setSuccessMessage: (m: string) => void) {
   return useCallback(async (room: any) => {
@@ -21,7 +22,7 @@ export function useSelectActiveRoom(cart: any, setSuccessMessage: (m: string) =>
       const folio = await fetchRoomFolioLines(room.id);
       cart.setSelectedItems(folio.lines); cart.setLinkedOrderId(folio.masterOrderId);
       cart.setLinkedGuestName(folio.guestName || room.guest_name || null); cart.setLinkedGuestPhone(folio.guestPhone); cart.setGstEnabled(false);
-      say(`Room ${room.room_number} folio loaded (${folio.lines.length} lines, ${folio.nights} night${folio.nights === 1 ? '' : 's'}) · ₹${folio.payable.toLocaleString('en-IN')} to settle at checkout`, 5000);
+      say(`Room ${room.room_number} folio loaded (${folio.lines.length} lines, ${folio.nights} night${folio.nights === 1 ? '' : 's'}) · ₹${folio.payable.toLocaleString('en-IN')} owed · on the receipt, adjust a payment in the stay or check out`, 6000);
     } catch (e: any) {
       say(e?.message || `The folio for Room ${room.room_number} could not be loaded.`);
     }

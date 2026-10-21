@@ -12,6 +12,8 @@ import { MobileNavDrawer } from './control-center/MobileNavDrawer';
 import { WorkspaceViewRouter } from './control-center/WorkspaceViewRouter';
 import { useStaffAlerts } from './control-center/useStaffAlerts';
 import { StaffAlertsTray } from './control-center/StaffAlertsTray';
+import { requestOpenRoom, requestOpenTable } from '@/lib/host/open-room-request';
+import { alertCountsByTab } from '@/lib/host/alert-routing';
 import { HostAlertSound } from './control-center/HostAlertSound';
 import { useVenueTabGuard } from './control-center/useVenueTabGuard';
 import { useCopilotHost } from './vibey/useCopilotHost';
@@ -81,10 +83,12 @@ export default function ControlCenterWorkspace({
     switchTab(resolvedTab);
   };
 
+  // Each waiting call lights the workspace it belongs to, so the desk sees where it is wanted without opening the tray.
+  const alertCounts = alertCountsByTab(staffAlerts.alerts);
   const navProps = {
     activeTab, onTabChange: handleTabChange, securityStatus, isMasterUnlocked, isTabProtected,
     onLockSession: handleLockSession, onUnlockRequest: handleUnlockRequest, billRequests, venueName, venueId,
-    onOpenCopilot: copilot.open,
+    onOpenCopilot: copilot.open, alertCounts,
   };
 
   return (
@@ -99,7 +103,8 @@ export default function ControlCenterWorkspace({
         <WorkspaceViewRouter activeTab={activeTab} venueId={venueId} onNavigate={handleTabChange} />
       </div>
 
-      <StaffAlertsTray alerts={staffAlerts.alerts} freshIds={staffAlerts.freshIds} onResolve={staffAlerts.resolve} />
+      <StaffAlertsTray alerts={staffAlerts.alerts} freshIds={staffAlerts.freshIds} onResolve={staffAlerts.resolve}
+        onOpen={(t) => { if (t.room) requestOpenRoom(t.room); else if (t.table) requestOpenTable(t.table); handleTabChange(t.tab); }} />
       {/* On every tab: the bell for new orders and guest calls. */}
       <HostAlertSound alerts={staffAlerts.alerts} freshIds={staffAlerts.freshIds} kotArrivals={kotArrivals} />
       {copilot.drawer}

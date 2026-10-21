@@ -8,6 +8,7 @@ import { roomMenuHref, roomTableLabel } from '@/lib/guest/room-mode';
 import { menuApiUrl, prefetchMenu, writeRoomMenuSeed } from '@/lib/guest/menu-seed';
 import { inr } from '@/components/stay/stay-format';
 import { RoomOrdersList } from './RoomOrdersList';
+import { RoomLiveTracker, trackedOrder } from './RoomLiveTracker';
 import { RoomNudge } from './RoomNudge';
 import type { RoomState } from './useRoomStay';
 
@@ -23,15 +24,17 @@ const STEPS = [
  * menu in room mode. The orders come back to this page's bill. The kitchen's hours are shown, and the button stays
  * usable when it is closed so the guest can browse; the menu itself refuses an order until the kitchen opens.
  */
-interface Props { data: RoomState; code: string; onOpenBill: () => void; onStayLonger?: () => void; onCheckOut?: () => void }
+interface Props { data: RoomState; code: string; live?: boolean; onRefresh?: () => void; onOpenBill: () => void; onStayLonger?: () => void; onCheckOut?: () => void }
 
-export function RoomOrderCta({ data, code, onOpenBill, onStayLonger, onCheckOut }: Props) {
+export function RoomOrderCta({ data, code, live = false, onRefresh, onOpenBill, onStayLonger, onCheckOut }: Props) {
   const { dining, business, room, folio, late_checkout: late } = data;
   const balance = folio?.balance || 0;
   // Offered on the main tab while the room is free after the guest and the desk has options to offer.
-  const longer = late && late.available && late.options.length > 0 && !late.request && !data.checkout_request ? late.options[0] : null;
+  const leaving = data.checkout_request?.kind === 'checkout';
+  const longer = late && late.available && late.options.length > 0 && !late.request && !leaving ? late.options[0] : null;
   const open = dining.enabled && dining.open;
   const orders = folio?.orders || [];
+  const tracked = trackedOrder(orders);
   const href = roomMenuHref(business.id, code, room.room_number);
   const router = useRouter();
 
@@ -49,6 +52,8 @@ export function RoomOrderCta({ data, code, onOpenBill, onStayLonger, onCheckOut 
   }
   return (
     <div className="space-y-4">
+      {/* An order on its way through the kitchen comes first: the same tracker as the menu, moved by the same pushes. */}
+      {tracked && <RoomLiveTracker order={tracked} roomNumber={room.room_number} live={live} onRefresh={() => onRefresh?.()} />}
       <section className="overflow-hidden rounded-[1.75rem] border border-[#e6d9b8] bg-white shadow-[0_18px_40px_-34px_rgba(10,50,34,0.5)]">
         <div className="p-6 sm:p-8">
           <div className="flex items-start justify-between gap-4">
@@ -83,7 +88,7 @@ export function RoomOrderCta({ data, code, onOpenBill, onStayLonger, onCheckOut 
       </section>
 
       {/* Leaving: the two doors out of the stay, right under the food, where the guest already is. */}
-      {!data.checkout_request && onCheckOut && (
+      {!leaving && onCheckOut && (
         <RoomNudge Icon={LogOut} title="Leaving today? Request check-out" onClick={onCheckOut}
           hint={`One tap tells the desk; your bill${balance > 0 ? ` (${inr(balance)} so far)` : ''} will be ready to pay when you come down.`} />
       )}

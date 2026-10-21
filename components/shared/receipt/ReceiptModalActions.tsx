@@ -3,6 +3,8 @@
 import React from 'react';
 import { Printer, Loader2, Send, Check } from 'lucide-react';
 import type { InvoiceData } from '@/lib/utils/receipt-adapter';
+import { RoomSettleChoice } from './RoomSettleChoice';
+import type { RoomMode } from './useDigitalReceiptActions';
 
 type Tender = 'UPI' | 'CASH' | 'CARD';
 
@@ -12,11 +14,26 @@ interface Props {
   upiConfirmed: boolean;
   isSaving: boolean;
   saveError?: string | null;
+  /** A room bill: adjust the payment in the stay, or check the guest out (RoomSettleChoice). */
+  roomMode?: RoomMode;
+  roomAmount?: number;
+  onSetRoomMode?: (m: RoomMode) => void;
+  onSetRoomAmount?: (n: number) => void;
   onSetPaymentMethod: (pm: Tender) => void;
   onSetUpiConfirmed: (c: boolean) => void;
   onPrint: () => void;
   onSaveOrder: () => void;
   onClose: () => void;
+}
+
+const inr = (n: number) => `₹${Math.round(n).toLocaleString('en-IN')}`;
+
+/** The primary button's words: what saving this bill will do. */
+export function saveLabel(invoice: InvoiceData, roomMode: RoomMode, roomAmount: number, delivery: boolean): string {
+  if (invoice.room_id && invoice.settlement) {
+    return roomMode === 'checkout' ? 'Check out & settle' : `Take ${inr(roomAmount)} · adjust in stay`;
+  }
+  return delivery ? 'Save & send to guest' : 'Save bill';
 }
 
 const TENDERS: Array<{ id: Tender; label: string }> = [
@@ -37,11 +54,12 @@ export function deliveryNote(invoice: InvoiceData): { title: string; hint: strin
 
 /** Pay-and-save controls under the receipt: how it was paid, one clear primary action, and where the bill goes. */
 export function ReceiptModalActions({
-  invoice, paymentMethod, upiConfirmed, isSaving, saveError,
-  onSetPaymentMethod, onSetUpiConfirmed, onPrint, onSaveOrder, onClose,
+  invoice, paymentMethod, upiConfirmed, isSaving, saveError, roomMode = 'payment', roomAmount = invoice.grandTotal,
+  onSetRoomMode, onSetRoomAmount, onSetPaymentMethod, onSetUpiConfirmed, onPrint, onSaveOrder, onClose,
 }: Props) {
   const delivery = deliveryNote(invoice);
   const waitingForUpi = paymentMethod === 'UPI' && !upiConfirmed;
+  const roomChoice = Boolean(invoice.room_id && invoice.settlement && !invoice.isReadOnly && onSetRoomMode && onSetRoomAmount);
 
   if (invoice.isReadOnly) {
     return (
@@ -55,7 +73,11 @@ export function ReceiptModalActions({
   }
 
   return (
-    <div className="shrink-0 space-y-3 border-t border-neutral-200 bg-white px-4 pt-3 pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)] shadow-[0_-12px_24px_-18px_rgba(0,0,0,0.25)] print:hidden">
+    // The footer never pushes its own Save button off a phone's screen: past two thirds of the viewport it scrolls.
+    <div className="max-h-[68dvh] shrink-0 space-y-2.5 overflow-y-auto overscroll-contain border-t border-neutral-200 bg-white px-4 pt-3 pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)] shadow-[0_-12px_24px_-18px_rgba(0,0,0,0.25)] print:hidden sm:space-y-3">
+      {roomChoice && (
+        <RoomSettleChoice billTotal={invoice.grandTotal} mode={roomMode} amount={roomAmount} disabled={isSaving} onMode={onSetRoomMode!} onAmount={onSetRoomAmount!} />
+      )}
       <div role="radiogroup" aria-label="How was it paid" className="grid grid-cols-3 gap-1 rounded-2xl bg-neutral-100 p-1">
         {TENDERS.map((t) => (
           <button
@@ -116,7 +138,7 @@ export function ReceiptModalActions({
             ? <><Loader2 className="h-4 w-4 animate-spin" aria-hidden /> Saving…</>
             : waitingForUpi
               ? 'Confirm UPI to continue'
-              : <><Send className="h-4 w-4" aria-hidden /> <span className="truncate">{delivery ? 'Save & send to guest' : 'Save bill'}</span></>}
+              : <><Send className="h-4 w-4" aria-hidden /> <span className="truncate">{saveLabel(invoice, roomMode, roomAmount, Boolean(delivery))}</span></>}
         </button>
       </div>
     </div>

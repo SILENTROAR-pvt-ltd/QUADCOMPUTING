@@ -8,9 +8,9 @@ import { requestRoomCheckout } from '@/lib/services/stay/checkout-request.servic
 export const dynamic = 'force-dynamic';
 
 /**
- * POST /api/guest/room/[code]/checkout-request { action: 'request' | 'cancel', note? }
- * The guest is ready to leave: the desk is told to prepare the bill. Settlement and the checkout itself happen at the
- * desk, where the bill is paid; nothing is charged here.
+ * POST /api/guest/room/[code]/checkout-request { action: 'request' | 'cancel', kind?: 'checkout' | 'bill', note? }
+ * The guest is ready to leave (the desk prepares the bill and checks them out), or wants to pay the running bill now
+ * (the desk takes the money; the stay goes on). Money changes hands at the desk; nothing is charged here.
  */
 export const POST = withApiErrorBoundary(async function POST(request: Request, { params }: { params: Promise<{ code: string }> }) {
   try {
@@ -26,7 +26,8 @@ export const POST = withApiErrorBoundary(async function POST(request: Request, {
 
     const body = await request.json().catch(() => ({}));
     const action = body?.action === 'cancel' ? 'cancel' : 'request';
-    const result = await requestRoomCheckout(db, stay, action, body?.note);
+    const kind = body?.kind === 'bill' ? 'bill' : 'checkout';
+    const result = await requestRoomCheckout(db, stay, action, body?.note, new Date(), kind);
     if (!result.ok) {
       return result.code === 'NO_STAY' ? noStay() : NextResponse.json({ success: false, error: result.error }, { status: 500 });
     }

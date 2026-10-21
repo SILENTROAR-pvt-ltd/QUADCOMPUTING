@@ -19,10 +19,12 @@ export interface RoomOrderInput {
   idempotencyKey?: string | null;
   /** The verified sign-in handle of the guest placing it (request-identity.ts), or null for a guest without an account. */
   guestHandle?: string | null;
+  /** The route already checked every line is a dish (beside its other checks), so it is not read again here. */
+  dishesChecked?: boolean;
 }
 
 export async function placeRoomOrder(db: any, o: RoomOrderInput) {
-  await assertDishesOnly(db, o.business.id, o.items);
+  if (!o.dishesChecked) await assertDishesOnly(db, o.business.id, o.items);
   const note = [roomDiningNote(o.room.room_number), typeof o.note === 'string' ? o.note.replace(/[<>]/g, '').trim() : '']
     .filter(Boolean).join(' · ').slice(0, 200);
   const body = {
@@ -40,10 +42,12 @@ export async function placeRoomOrder(db: any, o: RoomOrderInput) {
 
   const orderId = result?.order_id;
   if (orderId) {
-    const { error } = await db.from('orders').update({ room_id: o.room.id, order_type: 'room_service', order_source: 'ROOM_QR' })
-      .eq('id', orderId).eq('business_id', o.business.id);
+    // The order and its ticket are tied to the room together: two writes, one round trip.
+    const [{ error }, { error: ticketErr }] = await Promise.all([
+      db.from('orders').update({ room_id: o.room.id, order_type: 'room_service', order_source: 'ROOM_QR' }).eq('id', orderId).eq('business_id', o.business.id),
+      db.from('kitchen_tickets').update({ room_id: o.room.id }).eq('order_id', orderId).eq('business_id', o.business.id),
+    ]);
     if (error) console.error('[room order] could not tie the order to the room', error);
-    const { error: ticketErr } = await db.from('kitchen_tickets').update({ room_id: o.room.id }).eq('order_id', orderId).eq('business_id', o.business.id);
     if (ticketErr) console.error('[room order] could not tie the ticket to the room', ticketErr);
   }
   return result;

@@ -1,14 +1,19 @@
-// What an in-room order's kitchen status means to the guest, in their words and a colour.
+// What an in-room order's kitchen status means to the guest, in their words and a colour. The kitchen's ticket status
+// comes first, then the order's own, the same rule as the menu's tracker (tracker-copy.ts).
+
+import { resolveTrackerStage } from '@/components/guest/menu/tracker/tracker-copy';
 
 export type OrderTone = 'wait' | 'busy' | 'go' | 'done' | 'off';
 
-export function orderStatus(raw: string): { label: string; tone: OrderTone } {
+export function orderStatus(raw: string, kot?: string | null): { label: string; tone: OrderTone } {
   const s = String(raw || '').toUpperCase();
-  if (['SERVED', 'COMPLETED', 'DELIVERED'].includes(s)) return { label: 'Delivered', tone: 'done' };
-  if (s === 'READY') return { label: 'On its way', tone: 'go' };
-  if (['PREPARING', 'PROCESSING', 'STARTED', 'COOKING', 'IN_PROGRESS', 'ACCEPTED'].includes(s)) return { label: 'Being prepared', tone: 'busy' };
   if (['CANCELLED', 'REJECTED', 'VOID'].includes(s)) return { label: 'Cancelled', tone: 'off' };
-  return { label: 'Received', tone: 'wait' };
+  switch (resolveTrackerStage(kot || '', s)) {
+    case 'served': return { label: 'Delivered', tone: 'done' };
+    case 'ready': return { label: 'On its way', tone: 'go' };
+    case 'preparing': return { label: 'Being prepared', tone: 'busy' };
+    default: return { label: 'Received', tone: 'wait' };
+  }
 }
 
 export const ORDER_TONE: Record<OrderTone, string> = {

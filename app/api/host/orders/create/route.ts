@@ -7,7 +7,7 @@ import { withApiErrorBoundary, handleApiError } from '@/lib/middleware/error-han
 import { withIdempotency } from '@/lib/services/api-idempotency.util';
 import { afterResponse } from '@/lib/utils/after-response';
 import { isFeeBearingStatus } from '@/lib/services/orders/bill-status.util';
-import { settleRoomFromTill } from '@/lib/services/billing/room-till-settlement';
+import { adjustRoomFromTill, roomSettleMode, settleRoomFromTill } from '@/lib/services/billing/room-till-settlement';
 
 const TENDERS = ['UPI', 'CASH', 'CARD'];
 
@@ -25,8 +25,13 @@ export const POST = withApiErrorBoundary(async function POST(request: Request) {
       );
     }
 
-    // A room's bill settled from the till is the guest's checkout (room-till-settlement.ts), never a table settlement.
-    if (body.roomId && body.settlement) return settleRoomFromTill(request, String(body.roomId), body.paymentMethod);
+    // A room's bill from the till (room-till-settlement.ts): adjusted in the running stay, or, only when the receipt
+    // says so, the guest's checkout. Never a table settlement, and never a checkout by accident.
+    if (body.roomId && body.settlement) {
+      return roomSettleMode(body.settlement) === 'checkout'
+        ? settleRoomFromTill(request, String(body.roomId), body.paymentMethod)
+        : adjustRoomFromTill(businessId, String(body.roomId), body);
+    }
 
     const order = await createHostOrder(supabase, businessId, body);
 

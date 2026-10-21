@@ -125,6 +125,12 @@ function GuestMenuContent() {
           toServices();
         }}
         onExploreLounge={() => { state.setOrderCelebration(false); lounge(); }}
+        onTrackOrder={() => {
+          state.setOrderCelebration(false);
+          if (roomParam) { roomPage(); return; }
+          goTab('live_order');
+          setTimeout(() => document.getElementById('live-order-tracker')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150);
+        }}
       />
     </div>
   );

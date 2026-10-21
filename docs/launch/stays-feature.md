@@ -110,6 +110,60 @@ and at the top of the occupied-room box with the balance and **Settle & check ou
 it as pending (with "See my bill" and "Not leaving yet") and hides the late check-out offer. Checking the room out, or
 releasing it, clears the request; the desk's Dismiss clears it without checking out.
 
+## What a stay is billed for
+
+The nights booked, or the nights stayed if that is more (`billableNights` in `stay-folio.util.ts`), on the guest's
+bill, the desk's folio and the checkout alike. A guest who books two nights and leaves after one pays for two; one who
+stays a third night pays for three. An advance paid for the booked nights therefore never comes back as a refund for
+leaving early; a refund arises only when more was paid than the stay comes to (a desk correction).
+
+## Guests waiting on the desk
+
+A guest's request from the room page ("ready to check out", "wants to pay now") stays visible until acted on: on the
+room's front-desk card, at the top of the front desk as a bold "Waiting on the desk" strip (a tap opens the room with
+the action ready), in the occupied-room box, and in the bell tray on every host tab, where a room's call is bold and
+"Open room" takes the host to Accommodations with that room open. Checkout, a recorded payment, or Dismiss clears it.
+
+## Paying during the stay
+
+Money is taken at the desk, but it can be taken at any point of the stay, not only at checkout:
+
+- **Desk check-in** has a **Payment** section before the button: "Take payment now" (the whole stay, or any advance
+  typed in) or "Pay at checkout". The one button says what it will do ("Check in & take ₹X now" / "Check in · pay at
+  checkout"). Pay now opens the occupied-room box straight on the payment sheet for that amount (UPI QR, cash or card,
+  with reference); the rest stays on the room bill for checkout. A guest arriving with a paid booking defaults to "pay
+  at checkout" since nothing is owed yet.
+- **The till (Billing / POS)**: picking a room loads its folio, and the receipt asks what the money does before saving.
+  **Adjust in the stay · guest stays checked in** (the default; the amount can be part of the bill) records a
+  `room_advance` payment and the guest keeps ordering; **Check out & settle · frees the room** runs the room checkout.
+  A part payment can never check a guest out (`settlement.mode` on `POST /api/host/orders/create`,
+  `room-till-settlement.ts`).
+- **Guest's bill tab** shows Paid / Stay so far / Food, the pending amount, and "Pay ₹X now". It sends a BILL call and
+  marks the room (`checkout_request.kind = 'bill'`); the desk sees "wants to pay the running bill now" on the card
+  and in the box, with "Take payment". The guest can take it back ("Not now").
+- **Occupied-room box** has "Take payment now" under the folio at any time (part or full, never more than owed).
+- A payment is `POST /api/host/accommodations/rooms/[id]/payment` (`preview` / `record`): a settled `room_advance`
+  bill plus `rooms.advance_paid` raised by it, so the guest's bill, the desk's folio and the checkout all show it as
+  paid and bill only the balance (`room-payment.service.ts`, idempotent per sheet).
+
+## Live orders in the room
+
+The room page subscribes to the same venue-scoped channel the menu's tracker uses (`biz_<venue>_table_RS-<room>`,
+`components/room/useRoomLive.ts`): the database pings it on every change to the room's orders and kitchen tickets
+(`20261016000006_table_ping.sql`) and the kitchen's status PATCH pushes to it too, so a dish moving from received to
+being prepared to on its way shows at once, without a reload. The newest order still in the kitchen is shown with the
+menu's own tracker (steps, wording and ticket number; `RoomLiveTracker.tsx`), fed by the ticket status the room API now
+returns per order (`kot_status`, `ticket_number`). Polling stays as the safety net: every 8 s while something is
+cooking and the push channel is down, 30–90 s while it is up.
+
+## My room without signing in
+
+The stay page's hero has a **My room** button beside "Reserve a room" and "I have a booking". A guest checked in at the
+desk (or on another phone) enters the room number and the last four digits of the mobile given at check-in; the same
+lookup the menu's "Room delivery" uses (`POST /api/guest/stay/room-lookup`, rate-limited, one answer for every
+mismatch) confirms the phone and opens the room page. A phone that already confirmed a room goes straight to it.
+Signed-in guests with a live room see "My room · <n>" instead.
+
 ## After checkout
 
 Checking a room out marks its booking `checked_out` (not by moving the check-out date: a same-day stay has no earlier

@@ -27,6 +27,9 @@ interface AccommodationsModalsHostProps {
   onDataRefresh: () => void;
   onShowToast: (msg: string) => void;
   onNavigate?: (tab: string, meta?: any) => void;
+  /** A check-in just finished with "pay now": the occupied-room box opens on the payment sheet for that amount (null: the whole stay). */
+  payNow?: { roomId: string; amount: number | null } | null;
+  onCheckedIn?: (roomId: string, payment: { payNow: boolean; amount: number | null }) => void;
 }
 
 export function AccommodationsModalsHost({
@@ -47,6 +50,8 @@ export function AccommodationsModalsHost({
   onDataRefresh,
   onShowToast,
   onNavigate,
+  payNow = null,
+  onCheckedIn,
 }: AccommodationsModalsHostProps) {
   return (
     <>
@@ -56,6 +61,7 @@ export function AccommodationsModalsHost({
         onRoomUpdated={onDataRefresh}
         booking={checkInBooking}
         onBookingChange={onCheckInBookingChange}
+        onCheckedIn={onCheckedIn}
       />
 
       <OccupiedRoomModal
@@ -63,6 +69,9 @@ export function AccommodationsModalsHost({
         isOpen={Boolean(occupiedRoomForModal)}
         onClose={onCloseOccupiedModal}
         onRoomUpdated={onDataRefresh}
+        payNowOnOpen={Boolean(occupiedRoomForModal && occupiedRoomForModal.id === payNow?.roomId)}
+        payNowAmount={payNow?.amount ?? null}
+        onShowToast={onShowToast}
         onNavigateToBilling={(invoiceData) => {
           if (onNavigate) {
             onNavigate('billing', invoiceData);

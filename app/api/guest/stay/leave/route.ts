@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { withApiErrorBoundary } from '@/lib/middleware/error-handler';
+import { enforceRateLimit } from '@/lib/middleware/rate-limiter';
 import { roomCookieOptions } from '@/lib/services/stay/room-session';
 
 export const dynamic = 'force-dynamic';
@@ -9,6 +10,8 @@ export const dynamic = 'force-dynamic';
  * Vibers ID on a phone, so the next person holding it does not find someone else's room, bill and ordering.
  */
 export const POST = withApiErrorBoundary(async function POST(request: Request) {
+  const limited = await enforceRateLimit(request, 'stay_leave', 30, 60_000, 'all');
+  if (limited) return limited;
   const names = (request.headers.get('cookie') || '').split(';').map((p) => p.trim().split('=')[0]).filter((n) => n.startsWith('qc_room_'));
   const response = NextResponse.json({ success: true, left: names.length }, { headers: { 'Cache-Control': 'no-store' } });
   for (const name of names) response.cookies.set(name, '', { ...roomCookieOptions, maxAge: 0 });

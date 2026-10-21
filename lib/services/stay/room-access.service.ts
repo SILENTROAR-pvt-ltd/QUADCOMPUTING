@@ -9,7 +9,7 @@ import { readPolicies } from './stay-policy';
 export const ROOM_CODE = /^[A-Za-z0-9_-]{6,80}$/;
 // The room, its type and its venue come back in one query: this runs on every load of the guest's page, and each
 // separate lookup was another round trip to the database.
-const ROOM_SELECT = '*, category:room_categories(id, name, price, occupancy, photos, amenities), business:businesses(id, business_name, name, slug, in_room_dining_enabled, checkin_time, checkout_time, menu_info, stay_policies, gst_number)';
+const ROOM_SELECT = '*, category:room_categories(id, name, price, occupancy, photos, amenities), business:businesses(id, business_name, name, slug, in_room_dining_enabled, self_checkin_enabled, checkin_time, checkout_time, menu_info, stay_policies, gst_number)';
 
 export interface RoomStay { room: any; business: any }
 
@@ -64,6 +64,7 @@ export function publicBusiness(business: any) {
     name: business.business_name || business.name || 'Venue',
     slug: business.slug || null,
     in_room_dining_enabled: business.in_room_dining_enabled !== false,
+    self_checkin_enabled: Boolean(business.self_checkin_enabled),
     checkout_time: business.checkout_time || null,
     // What the venue prints on every tax invoice, so the guest's copy of the room bill carries the same header.
     gstin: business.gst_number ? String(business.gst_number).toUpperCase() : null,

@@ -2,7 +2,7 @@ import { safeMessage } from '@/lib/utils/safe-message';
 import { NextResponse } from 'next/server';
 import { requireHost } from '@/lib/auth/guards';
 import { withApiErrorBoundary } from '@/lib/middleware/error-handler';
-import { buildStayFolio, CLOSED_ORDER_STATUSES, stayNights } from '@/lib/services/accommodation/stay-folio.util';
+import { billableNights, buildStayFolio, CLOSED_ORDER_STATUSES } from '@/lib/services/accommodation/stay-folio.util';
 import { extrasTotal, readExtras, settleLedger } from '@/lib/services/stay/stay-ledger';
 import { belongsToStay, stayStartMs } from '@/lib/services/stay/stay-scope';
 
@@ -81,11 +81,9 @@ export const GET = withApiErrorBoundary(async function GET(
       stayLogs = logs || [];
     }
 
-    // 5. What checkout would bill right now (nights stayed so far), and the nights booked.
+    // 5. What checkout would bill right now: the nights booked, or more if the guest has stayed longer.
     const roomRate = Number(room.category?.price) || 0;
-    const checkIn = room.check_in_time || room.check_in_date;
-    const nights = stayNights(checkIn, new Date());
-    const bookedNights = room.check_out_time || room.check_out_date ? stayNights(checkIn, room.check_out_time || room.check_out_date) : null;
+    const { billed: nights, booked: bookedNights, stayed: nightsStayed } = billableNights(room);
     const folio = buildStayFolio({
       roomId,
       roomNumber: room.room_number,
@@ -113,6 +111,7 @@ export const GET = withApiErrorBoundary(async function GET(
       billingSummary: {
         nights,
         bookedNights,
+        nightsStayed,
         roomRate,
         roomTariffSubtotal,
         addonsSubtotal,

@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { LogOut, Printer, Receipt } from 'lucide-react';
+import { HandCoins, LogOut, Printer, Receipt } from 'lucide-react';
 import type { FolioLine } from '@/lib/services/accommodation/stay-folio.util';
 import type { BillingSummary } from './useOccupiedRoomDossier';
 
@@ -11,6 +11,8 @@ interface Props {
   ordersCount: number;
   onPrintFolio: () => void;
   onOpenSettlement: () => void;
+  /** Take some or all of what is owed now, without checking out. */
+  onTakePayment?: () => void;
   isCheckingOut: boolean;
 }
 
@@ -29,8 +31,11 @@ function Row({ label, note, value, strong }: { label: string; note?: string; val
 }
 
 /** The running bill if the guest checked out now, and the checkout action that hands it to billing. */
-export function OccupiedRoomFolio({ billingSummary: b, folioLines = [], ordersCount, onPrintFolio, onOpenSettlement, isCheckingOut }: Props) {
-  const booked = b.bookedNights && b.bookedNights !== b.nights ? `Booked for ${b.bookedNights} night${b.bookedNights === 1 ? '' : 's'}; billed for nights stayed.` : null;
+export function OccupiedRoomFolio({ billingSummary: b, folioLines = [], ordersCount, onPrintFolio, onOpenSettlement, onTakePayment, isCheckingOut }: Props) {
+  const stayed = b.nightsStayed ?? b.nights;
+  const booked = b.bookedNights && stayed < b.bookedNights
+    ? `Booked for ${b.bookedNights} night${b.bookedNights === 1 ? '' : 's'}, ${stayed} stayed so far: billed for the nights booked.`
+    : b.bookedNights && b.nights > b.bookedNights ? `Booked for ${b.bookedNights}, staying ${b.nights}: billed for the nights stayed.` : null;
   return (
     <section aria-label="Folio" className="rounded-2xl border border-neutral-200 bg-white p-5 sm:p-6">
       <div className="flex items-baseline justify-between border-b border-neutral-200 pb-2.5">
@@ -44,7 +49,7 @@ export function OccupiedRoomFolio({ billingSummary: b, folioLines = [], ordersCo
           : <Row label={`Room (${b.nights} × ${money(b.roomRate)})`} value={b.roomTariffSubtotal} />}
         {folioLines.length === 0 && b.addonsSubtotal > 0 && <Row label="Add-ons" value={b.addonsSubtotal} />}
         <Row label={`Room service (${ordersCount} order${ordersCount === 1 ? '' : 's'})`} note={ordersCount ? undefined : 'Nothing charged to the room yet'} value={b.ordersSubtotal} />
-        {Number(b.advancePaid) > 0 && <Row label="Advance paid" note="Room payment taken before check-in" value={-Number(b.advancePaid)} />}
+        {Number(b.advancePaid) > 0 && <Row label="Paid so far" note="Taken before check-in or during the stay" value={-Number(b.advancePaid)} />}
       </div>
 
       <div className="mt-2 flex items-baseline justify-between border-t border-neutral-900 pt-3">
@@ -56,9 +61,14 @@ export function OccupiedRoomFolio({ billingSummary: b, folioLines = [], ordersCo
       <p className="mt-1 text-[11px] text-neutral-500">Taxes and the tender are applied in billing after checkout.</p>
 
       <div className="mt-5 flex flex-col gap-2.5 sm:flex-row">
-        <button type="button" onClick={onPrintFolio} className="flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white text-xs font-semibold text-neutral-800 hover:bg-neutral-50 cursor-pointer">
-          <Printer className="h-4 w-4" /> Print interim folio
+        <button type="button" onClick={onPrintFolio} aria-label="Print interim folio" className="flex h-11 items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 text-xs font-semibold text-neutral-800 hover:bg-neutral-50 cursor-pointer">
+          <Printer className="h-4 w-4" /><span className="sm:hidden">Print folio</span>
         </button>
+        {onTakePayment && b.grandTotalPayable > 0 && (
+          <button type="button" onClick={onTakePayment} disabled={isCheckingOut} className="flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-emerald-300 bg-emerald-50 text-xs font-semibold text-emerald-900 hover:bg-emerald-100 disabled:opacity-50 cursor-pointer">
+            <HandCoins className="h-4 w-4" /> Take payment now
+          </button>
+        )}
         <button type="button" onClick={onOpenSettlement} disabled={isCheckingOut}
           className="flex h-11 flex-[2] items-center justify-center gap-2 rounded-xl bg-neutral-950 text-xs font-semibold text-white hover:bg-neutral-800 disabled:opacity-50 cursor-pointer">
           {isCheckingOut

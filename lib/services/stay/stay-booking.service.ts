@@ -1,5 +1,5 @@
 import { todayIst } from '@/lib/services/reservations/venue-hours.service';
-import { categoryAvailability } from './stay-availability.service';
+import { categoryAvailability, overbooked } from './stay-availability.service';
 import { newConfirmationCode } from './booking-code';
 
 // An advance booking from the public showcase: pay on arrival, confirmed at once when the category has a free room
@@ -92,13 +92,21 @@ export async function createStayBooking(db: any, businessId: string, input: Stay
     business_id: businessId, category_id: category.id, check_in: input.checkIn, check_out: input.checkOut,
     guests: input.guests, guest_name: input.guestName.trim(), guest_phone: input.guestPhone, guest_email: input.guestEmail,
     note: input.note, status: 'confirmed', source, expected_arrival: input.expectedArrival || 'standard',
-    guest_account_id: input.guestAccountId || null,
+    guest_account_id: input.guestAccountId || null, created_at: new Date().toISOString(),
   };
   // The code is unique; on the rare collision a new one is drawn.
   for (let attempt = 0; attempt < 3; attempt++) {
     const confirmation_code = newConfirmationCode();
     const { data, error } = await db.from('stay_booking_requests').insert({ ...row, confirmation_code }).select().maybeSingle();
-    if (!error && data) return { booking: data, code: confirmation_code, category, nights: nightsBetween(input.checkIn, input.checkOut) };
+    if (!error && data) {
+      // Two guests taking the last room in the same instant both passed the check above. Once written, each booking is
+      // ranked among the bookings that overlap it; one past the rooms that exist withdraws itself.
+      if (await overbooked(db, businessId, category.id, data)) {
+        await db.from('stay_booking_requests').delete().eq('id', data.id).eq('business_id', businessId);
+        throw new StayBookingError('NO_AVAILABILITY', `${category.name} was just taken for those dates. Try other dates or another room type.`);
+      }
+      return { booking: data, code: confirmation_code, category, nights: nightsBetween(input.checkIn, input.checkOut) };
+    }
     if (error?.code !== '23505') throw new StayBookingError('FAILED', 'The booking could not be saved. Please try again.');
   }
   throw new StayBookingError('FAILED', 'The booking could not be saved. Please try again.');

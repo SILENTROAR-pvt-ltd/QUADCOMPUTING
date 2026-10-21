@@ -78,7 +78,7 @@ export interface PhysicalRoom {
   /** The guest's late check-out request, waiting for (or declined by) the desk. */
   late_checkout_request?: { status: 'pending' | 'declined'; option_id: string; label: string; time: string; fee: number; requested_at: string } | null;
   /** The guest says they are ready to leave: the desk prepares the bill and checks them out, or dismisses it. */
-  checkout_request?: { status: 'pending'; requested_at: string; note: string | null } | null;
+  checkout_request?: { kind?: 'checkout' | 'bill'; status: 'pending'; requested_at: string; note: string | null } | null;
 }
 
 export interface RoomStayLog {

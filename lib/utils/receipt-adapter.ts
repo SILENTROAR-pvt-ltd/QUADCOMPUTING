@@ -44,7 +44,13 @@ export interface InvoiceData {
    * Set by the POS for a table or room bill: the order is then saved and settled in one request. Carries what only the
    * POS knows about the table's running session.
    */
-  settlement?: { session_id?: string | null; redemption_code?: string | null; credit_cashback?: boolean };
+  settlement?: {
+    session_id?: string | null; redemption_code?: string | null; credit_cashback?: boolean;
+    /** A room bill only: 'payment' adjusts the amount in the running stay (the guest stays checked in); 'checkout' settles and frees the room. */
+    mode?: 'payment' | 'checkout';
+    /** With mode 'payment': the amount taken, when it is not the whole bill on screen. */
+    amount?: number;
+  };
 }
 
 /**

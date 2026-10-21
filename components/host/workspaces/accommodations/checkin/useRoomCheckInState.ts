@@ -20,12 +20,21 @@ async function patchRoom(roomId: string, body: Record<string, unknown>): Promise
   }
 }
 
-/** The vacant-room panel: check-in form, live quote, room renaming and housekeeping status. */
-export function useRoomCheckInState(room: PhysicalRoom | null, onClose: () => void, onRoomUpdated: () => void, booking: StayBooking | null = null) {
+/** The desk's choice, made before check-in: take money now (this much; null is the whole stay) or at checkout. */
+export interface CheckInPayment { payNow: boolean; amount: number | null }
+
+/**
+ * The vacant-room panel: check-in form, live quote, the payment choice, room renaming and housekeeping status.
+ * `onCheckedIn`, when given, takes over from closing after a check-in, so the desk goes straight on to taking the money.
+ */
+export function useRoomCheckInState(room: PhysicalRoom | null, onClose: () => void, onRoomUpdated: () => void, booking: StayBooking | null = null, onCheckedIn?: (roomId: string, payment: CheckInPayment) => void) {
   const form = useCheckInForm(room, booking);
   const quote = useCheckInQuote({ room, ...form, customAddons: form.customAddons });
   const [isUpdating, setIsUpdating] = useState(false);
   const [isSavingRoomNumber, setIsSavingRoomNumber] = useState(false);
+  // A guest arriving with a paid booking owes nothing now; a walk-in usually pays the room on arrival.
+  const [payNow, setPayNow] = useState(!booking?.pass);
+  const [advance, setAdvance] = useState('');
   // An error belongs to the room it happened on; opening another room starts clean.
   const [error, setError] = useState<{ roomId: string; text: string } | null>(null);
 
@@ -43,6 +52,13 @@ export function useRoomCheckInState(room: PhysicalRoom | null, onClose: () => vo
     setIsSavingRoomNumber(true);
     await run({ room_number: form.roomNumber.trim() }, () => form.setIsEditingRoomNumber(false));
     setIsSavingRoomNumber(false);
+  };
+
+  const stayTotal = quote.roomTariffTotal + quote.checkInAddonsTotal;
+  const payment = (): CheckInPayment => {
+    const typed = Number(advance);
+    const amount = advance.trim() !== '' && Number.isFinite(typed) && typed > 0 ? Math.min(stayTotal, typed) : null;
+    return { payNow: payNow && (amount === null ? stayTotal > 0 : amount > 0), amount };
   };
 
   const handleCheckIn = async (e: React.FormEvent) => {
@@ -68,15 +84,19 @@ export function useRoomCheckInState(room: PhysicalRoom | null, onClose: () => vo
       celebration_type: form.isCelebration ? form.celebrationType : null,
       celebration_note: form.isCelebration ? form.celebrationNote.trim() : null,
       selected_addons: quote.selectedAddonsList,
-    }, onClose);
+    }, () => (onCheckedIn && room ? onCheckedIn(room.id, payment()) : onClose()));
   };
+
+  /** The footer's button: submits the form above it (the form element lives in the scrolling body). */
+  const submitCheckIn = (formId: string) => (document.getElementById(formId) as HTMLFormElement | null)?.requestSubmit();
 
   const handleSetStatus = (status: 'VACANT' | 'CLEANING' | 'MAINTENANCE') =>
     run({ action: status === 'VACANT' ? 'mark-clean' : undefined, status }, onClose);
 
   return {
-    ...form, ...quote, nights: String(quote.numNights), isUpdating, isSavingRoomNumber,
+    ...form, ...quote, nights: String(quote.numNights), isUpdating, isSavingRoomNumber, stayTotal,
+    payNow, setPayNow, advance, setAdvance, payment,
     error: error && error.roomId === room?.id ? error.text : null, clearError: () => setError(null),
-    handleSaveRoomNumberStandalone, handleCheckIn, handleSetStatus,
+    handleSaveRoomNumberStandalone, handleCheckIn, submitCheckIn, handleSetStatus,
   };
 }

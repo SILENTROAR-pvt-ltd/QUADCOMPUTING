@@ -41,7 +41,7 @@ export function RoomLookupForm({ cafeId, onFound }: { cafeId: string; onFound: (
   return (
     <form onSubmit={(e) => void submit(e)} className="space-y-3">
       <input aria-label="Room number" value={room} onChange={(e) => setRoom(e.target.value.slice(0, 20))} placeholder="Room number" autoComplete="off" className={field} />
-      <input aria-label="Last four digits of your mobile number" inputMode="numeric" maxLength={4} value={digits} onChange={(e) => setDigits(e.target.value.replace(/\D/g, '').slice(0, 4))} placeholder="Last 4 digits of your mobile" className={`${field} font-mono tracking-[0.3em]`} />
+      <input aria-label="Last four digits of your mobile number" inputMode="numeric" maxLength={4} value={digits} onChange={(e) => setDigits(e.target.value.replace(/\D/g, '').slice(0, 4))} placeholder="Last 4 digits" className={`${field} font-mono tracking-[0.3em] placeholder:tracking-normal`} />
       {error && <p role="alert" className="text-[12.5px] font-medium text-rose-600">{error}</p>}
       <button type="submit" disabled={busy || !room.trim() || digits.length !== 4}
         className="inline-flex h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-full bg-zinc-950 text-[14px] font-semibold text-white hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50">

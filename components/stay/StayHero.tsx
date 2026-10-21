@@ -7,6 +7,7 @@ import { roomMenuHref } from '@/lib/guest/room-mode';
 import type { MyRoom } from '@/lib/services/stay/stay-hub.service';
 import type { StayVenue } from './stay-format';
 import { stayButton } from './StayShell';
+import { StayFindRoom } from './StayFindRoom';
 
 interface Props { venue: StayVenue; venueParam: string; coverPhoto: string | null; roomsCount: number; myRoom?: MyRoom | null }
 
@@ -66,6 +67,8 @@ export function StayHero({ venue, venueParam, coverPhoto, roomsCount, myRoom = n
               {venue.self_checkin_enabled && (
                 <Link href={`/stay/${encodeURIComponent(venueParam)}/checkin`} className={stayButton.ghost}><KeyRound className="h-4 w-4" aria-hidden /> I have a booking</Link>
               )}
+              {/* Already checked in, but not signed in on this phone: room number + mobile digits open the room page. */}
+              <StayFindRoom venueId={venue.id} />
             </>
           )}
         </div>

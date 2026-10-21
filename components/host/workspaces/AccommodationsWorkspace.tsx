@@ -15,6 +15,7 @@ import { useCategoryActions } from './accommodations/hooks/useCategoryActions';
 import { StayBookingsPanel } from './accommodations/bookings/StayBookingsPanel';
 import type { StayBooking } from './accommodations/bookings/useStayBookings';
 import { StaySettingsCard } from './accommodations/bookings/StaySettingsCard';
+import { OPEN_ROOM_EVENT, takeOpenRoomRequest } from '@/lib/host/open-room-request';
 
 /** Front desk, room setup and stay history for a venue's rooms. */
 export function AccommodationsWorkspace({ onNavigate }: { onNavigate?: (tab: string, meta?: any) => void }) {
@@ -28,6 +29,9 @@ export function AccommodationsWorkspace({ onNavigate }: { onNavigate?: (tab: str
   // The reservation being checked in: picked on the Bookings tab or from a vacant room's panel. Undefined means "follow the
   // room": a free room held by a booking opens with that booking; null means the desk chose to check in without one.
   const [checkInBooking, setCheckInBooking] = useState<StayBooking | null | undefined>(undefined);
+  // A check-in the desk chose to take payment for at once: the room stays selected, so its occupied box opens on the
+  // payment sheet, for the amount chosen before check-in (null: the whole stay).
+  const [payNow, setPayNow] = useState<{ roomId: string; amount: number | null } | null>(null);
   const [bookingsKey, setBookingsKey] = useState(0);
   const [editingRoomForModal, setEditingRoomForModal] = useState<PhysicalRoom | null>(null);
   const [editingCategory, setEditingCategory] = useState<RoomCategory | null>(null);
@@ -43,8 +47,26 @@ export function AccommodationsWorkspace({ onNavigate }: { onNavigate?: (tab: str
   };
   useEffect(() => () => { if (toastTimer.current) clearTimeout(toastTimer.current); }, []);
 
+  // A room named from the bell ("Room 204 wants to pay now") opens here, once the rooms are known.
+  const [wantedRoom, setWantedRoom] = useState<string | null>(() => takeOpenRoomRequest());
+  useEffect(() => {
+    const onOpen = (e: Event) => { takeOpenRoomRequest(); setWantedRoom(String((e as CustomEvent).detail || '')); };
+    window.addEventListener(OPEN_ROOM_EVENT, onOpen);
+    return () => window.removeEventListener(OPEN_ROOM_EVENT, onOpen);
+  }, []);
+  useEffect(() => {
+    if (!wantedRoom || rooms.length === 0) return;
+    const room = rooms.find((r) => r.room_number.trim().toLowerCase() === wantedRoom.trim().toLowerCase());
+    setWantedRoom(null);
+    if (room) { setActiveMainTab('front-desk'); setCheckInBooking(undefined); setSelectedRoomId(room.id); }
+  }, [wantedRoom, rooms]);
+
   const reload = () => { setBookingsKey((k) => k + 1); return data.loadData(true); };
-  const closeRoomPanel = () => { setSelectedRoomId(null); setCheckInBooking(undefined); };
+  const closeRoomPanel = () => { setSelectedRoomId(null); setCheckInBooking(undefined); setPayNow(null); };
+  const checkedIn = (roomId: string, p: { payNow: boolean; amount: number | null }) => {
+    setCheckInBooking(undefined);
+    if (p.payNow) setPayNow({ roomId, amount: p.amount }); else { setSelectedRoomId(null); showToast('Checked in. The stay is paid at checkout.'); }
+  };
   const actions = useCategoryActions(reload, showToast, () => setActiveMainTab('front-desk'));
 
   // The open room follows live data, so a change made elsewhere (or just now) shows in its panel.
@@ -131,6 +153,8 @@ export function AccommodationsWorkspace({ onNavigate }: { onNavigate?: (tab: str
         onDataRefresh={() => void reload()}
         onShowToast={showToast}
         onNavigate={onNavigate}
+        payNow={payNow}
+        onCheckedIn={checkedIn}
       />
     </div>
   );

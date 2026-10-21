@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Bell, Check, ChefHat, ConciergeBell, Receipt, Sparkles, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
+import { Bell, BedDouble, Check, ChefHat, ConciergeBell, Receipt, Sparkles, AlertTriangle, ChevronDown, ChevronUp, ArrowUpRight } from 'lucide-react';
 import type { StaffAlert } from './useStaffAlerts';
+import { alertTarget, type AlertTarget } from '@/lib/host/alert-routing';
 
 const TYPE_META: Record<string, { label: string; icon: React.FC<{ className?: string }>; tone: string }> = {
   WAITER: { label: 'Wants the waiter', icon: ConciergeBell, tone: 'bg-sky-50 text-sky-700 border-sky-200' },
@@ -13,6 +14,7 @@ const TYPE_META: Record<string, { label: string; icon: React.FC<{ className?: st
   LOW_STOCK_ALERT: { label: 'Low stock', icon: AlertTriangle, tone: 'bg-rose-50 text-rose-700 border-rose-200' },
   WALLET_SUSPENDED_LOW_BALANCE: { label: 'Wallet balance low', icon: AlertTriangle, tone: 'bg-rose-50 text-rose-700 border-rose-200' },
 };
+const TAB_NAME: Record<AlertTarget['tab'], string> = { accommodations: 'Accommodations', billing: 'Billing', tables: 'Live Tables', kitchen: 'Kitchen', inventory: 'Inventory', wallet: 'Wallet', reservations: 'Reservations' };
 
 function timeAgo(iso: string, now: number) {
   const s = Math.max(0, Math.round((now - new Date(iso).getTime()) / 1000));
@@ -25,10 +27,12 @@ interface Props {
   alerts: StaffAlert[];
   freshIds: Set<string>;
   onResolve: (id?: string) => void;
+  /** Opens where the call came from: the room in Accommodations, the table at the till or on Live Tables, the kitchen. */
+  onOpen?: (target: AlertTarget) => void;
 }
 
-/** Floating tray of pending guest calls, visible on every host tab. */
-export function StaffAlertsTray({ alerts, freshIds, onResolve }: Props) {
+/** Floating tray of pending guest calls, visible on every host tab. Every call is a bold link to where it came from. */
+export function StaffAlertsTray({ alerts, freshIds, onResolve, onOpen }: Props) {
   const [collapsed, setCollapsed] = useState(false);
   const [now, setNow] = useState(() => Date.now());
 
@@ -51,27 +55,31 @@ export function StaffAlertsTray({ alerts, freshIds, onResolve }: Props) {
           {collapsed ? <ChevronUp className="w-3.5 h-3.5 text-neutral-400" /> : <ChevronDown className="w-3.5 h-3.5 text-neutral-400" />}
         </button>
         {alerts.length > 1 && (
-          <button type="button" onClick={() => onResolve()} className="text-[11px] text-neutral-300 hover:text-white cursor-pointer">
-            Clear all
-          </button>
+          <button type="button" onClick={() => onResolve()} className="text-[11px] text-neutral-300 hover:text-white cursor-pointer">Clear all</button>
         )}
       </div>
       {!collapsed && (
         <ul className="max-h-72 overflow-y-auto divide-y divide-neutral-100">
           {alerts.map((a) => {
             const meta = TYPE_META[a.notification_type] || { label: a.notification_type, icon: Bell, tone: 'bg-neutral-50 text-neutral-700 border-neutral-200' };
-            const Icon = meta.icon;
+            const target = alertTarget(a);
+            const room = Boolean(target.room);
+            const Icon = room ? BedDouble : meta.icon;
+            const open = onOpen ? () => onOpen(target) : undefined;
             return (
-              <li key={a.id} className={`flex items-start gap-3 px-4 py-3 ${freshIds.has(a.id) ? 'bg-amber-50/60' : ''}`}>
-                <span className={`mt-0.5 h-8 w-8 shrink-0 rounded-xl border flex items-center justify-center ${meta.tone}`}>
+              <li key={a.id} className={`flex items-start gap-3 px-4 py-3 ${room ? 'bg-emerald-50/70' : freshIds.has(a.id) ? 'bg-amber-50/60' : ''}`}>
+                <button type="button" onClick={open} aria-label={`Open ${target.place}`} className={`mt-0.5 h-8 w-8 shrink-0 cursor-pointer rounded-xl border flex items-center justify-center ${room ? 'bg-emerald-600 text-white border-emerald-600' : meta.tone}`}>
                   <Icon className="w-4 h-4" />
-                </span>
+                </button>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-neutral-900">
-                    {a.table_number ? `Table ${a.table_number}` : 'Venue'} <span className="font-normal text-neutral-500">· {meta.label}</span>
+                  <button type="button" onClick={open} className="cursor-pointer text-left text-sm font-bold text-neutral-950 underline-offset-2 hover:underline">
+                    {target.place} <span className="font-normal text-neutral-600">· {meta.label}</span>
+                  </button>
+                  {a.message && <p className={`mt-0.5 break-words rounded-lg px-2 py-1 text-[13px] leading-snug text-neutral-900 ${room ? 'bg-white font-semibold' : 'bg-neutral-50 font-medium'}`}>“{a.message}”</p>}
+                  <p className="text-[11px] text-neutral-400">
+                    {timeAgo(a.created_at, now)}
+                    {open && <> · <button type="button" onClick={open} className="inline-flex cursor-pointer items-center gap-0.5 font-semibold text-emerald-800 hover:underline">Open in {TAB_NAME[target.tab]} <ArrowUpRight className="h-3 w-3" /></button></>}
                   </p>
-                  {a.message && <p className="mt-0.5 break-words rounded-lg bg-neutral-50 px-2 py-1 text-[13px] font-medium leading-snug text-neutral-900">“{a.message}”</p>}
-                  <p className="text-[11px] text-neutral-400">{timeAgo(a.created_at, now)}</p>
                 </div>
                 <button type="button" onClick={() => onResolve(a.id)} aria-label="Mark as handled"
                   className="shrink-0 inline-flex h-10 items-center gap-1 rounded-xl border border-neutral-200 px-3 text-[12px] font-semibold text-neutral-700 hover:bg-neutral-100 active:scale-95 cursor-pointer">

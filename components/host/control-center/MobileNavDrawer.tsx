@@ -24,6 +24,7 @@ interface MobileNavDrawerProps {
   venueName: string;
   venueId: string;
   onOpenCopilot?: () => void;
+  alertCounts?: Partial<Record<string, number>>;
 }
 
 export function MobileNavDrawer({
@@ -40,6 +41,7 @@ export function MobileNavDrawer({
   venueName,
   venueId,
   onOpenCopilot,
+  alertCounts = {},
 }: MobileNavDrawerProps) {
   const { tabs } = useVisibleTabs();
 
@@ -97,6 +99,7 @@ export function MobileNavDrawer({
                   isProtected={isTabProtected(item.id)}
                   isMasterUnlocked={isMasterUnlocked}
                   badgeCount={item.id === 'billing' ? billRequests.length : 0}
+                  alertCount={alertCounts[item.id] || 0}
                   onClick={() => {
                     onTabChange(item.id);
                     setMobileDrawerOpen(false);

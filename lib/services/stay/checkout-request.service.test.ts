@@ -13,7 +13,7 @@ describe('the guest asks to check out from the room page', () => {
   it('records the request on the room and rings the desk once', async () => {
     const db = makeDb();
     const first = await requestRoomCheckout(db, { room: room(), business: { id: BIZ } }, 'request', 'Taxi at 11 please', NOW);
-    expect(first).toMatchObject({ ok: true, request: { status: 'pending', requested_at: NOW.toISOString(), note: 'Taxi at 11 please' } });
+    expect(first).toMatchObject({ ok: true, request: { kind: 'checkout', status: 'pending', requested_at: NOW.toISOString(), note: 'Taxi at 11 please' } });
     const { data: saved } = await db.from('rooms').select('checkout_request').eq('id', ROOM).maybeSingle();
     expect(saved.checkout_request).toMatchObject({ status: 'pending', note: 'Taxi at 11 please' });
     const { data: calls } = await db.from('staff_notifications').select('*');
@@ -36,7 +36,11 @@ describe('the guest asks to check out from the room page', () => {
   it('is taken back by the guest, or cleared by the desk', async () => {
     const pending = room({ checkout_request: { status: 'pending', requested_at: NOW.toISOString(), note: null } });
     const db = makeDb(pending);
-    expect(checkoutRequestView(pending)).toEqual({ status: 'pending', requested_at: NOW.toISOString(), note: null });
+    expect(checkoutRequestView(pending)).toEqual({ kind: 'checkout', status: 'pending', requested_at: NOW.toISOString(), note: null });
+    // Asking to pay now replaces a check-out request, and reads as its own kind.
+    const pay = await requestRoomCheckout(db, { room: pending, business: { id: BIZ } }, 'request', 'UPI please', NOW, 'bill');
+    expect(pay).toMatchObject({ ok: true, request: { kind: 'bill', note: 'UPI please' } });
+    expect(db.tables.staff_notifications.at(-1)?.message).toContain('pay the running bill');
 
     const back = await requestRoomCheckout(db, { room: pending, business: { id: BIZ } }, 'cancel', undefined, NOW);
     expect(back).toEqual({ ok: true, request: null });

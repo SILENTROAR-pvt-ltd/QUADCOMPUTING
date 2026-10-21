@@ -15,6 +15,7 @@ import { CartBillSummary } from './cart/CartBillSummary';
 import { CartReviewFooter } from './cart/CartReviewFooter';
 import { CartReviewHeader } from './cart/CartReviewHeader';
 import { CartAuthGate, type AuthReason } from './cart/CartAuthGate';
+import { SendingOverlay } from './cart/SendingOverlay';
 import type { MenuItem } from './types';
 import { cashbackFor } from '@/lib/guest/cashback';
 import { DeliveryCheckoutSheet } from '@/components/guest/delivery/DeliveryCheckoutSheet';
@@ -86,6 +87,7 @@ export const CartReviewModal: React.FC<CartReviewModalProps> = (p) => {
           <motion.div role="dialog" aria-modal="true" aria-labelledby="cart-review-title"
             initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'spring', stiffness: 380, damping: 38 }}
             className="relative flex max-h-[90dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-[28px] border-t border-zinc-200 bg-white p-5 pb-[calc(env(safe-area-inset-bottom,16px)+1.25rem)] shadow-2xl will-change-transform sm:rounded-3xl sm:border sm:p-7">
+            <SendingOverlay show={p.isSendingToKitchen} roomMode={room} />
             <CartReviewHeader tableNumber={tableNumber} itemCount={itemCount} hasActiveOrder={hasActiveOrder} onClose={onClose} />
 
             {/* Everything between the header and Place order scrolls together, so a short phone never squeezes the dishes. */}

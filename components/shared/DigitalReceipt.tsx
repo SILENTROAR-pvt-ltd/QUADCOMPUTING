@@ -39,6 +39,10 @@ export function DigitalReceiptModal({
     setPaymentMethod,
     upiConfirmed,
     setUpiConfirmed,
+    roomMode,
+    setRoomMode,
+    roomAmount,
+    setRoomAmount,
     isSaving,
     saveError,
     isOnline,
@@ -90,6 +94,10 @@ export function DigitalReceiptModal({
           upiConfirmed={upiConfirmed}
           isSaving={isSaving}
           saveError={saveError}
+          roomMode={roomMode}
+          roomAmount={roomAmount}
+          onSetRoomMode={setRoomMode}
+          onSetRoomAmount={setRoomAmount}
           onSetPaymentMethod={setPaymentMethod}
           onSetUpiConfirmed={setUpiConfirmed}
           onPrint={handlePrint}

@@ -7,6 +7,7 @@ import { RoomCard } from './RoomCard';
 import { FrontDeskMetricsRibbon } from './components/FrontDeskMetricsRibbon';
 import { FrontDeskToolbar } from './components/FrontDeskToolbar';
 import { ArrivalsStrip } from './components/ArrivalsStrip';
+import { RoomRequestsStrip } from './components/RoomRequestsStrip';
 import { displayStatus, inr, type DisplayStatus } from './room-status-style';
 import type { Reservation } from './hooks/useAccommodationsData';
 
@@ -63,6 +64,7 @@ export function FrontDeskGrid(p: Props) {
         totalKOTs={rooms.reduce((a, r) => a + (r.activeOrdersCount || 0), 0)}
       />
 
+      {!p.isLoading && <RoomRequestsStrip rooms={rooms} onOpenRoom={p.onSelectRoom} />}
       {!p.isLoading && <ArrivalsStrip reservations={p.reservations} rooms={rooms} onOpenRoom={p.onSelectRoom} onOpenBookings={p.onOpenBookings} />}
 
       <FrontDeskToolbar

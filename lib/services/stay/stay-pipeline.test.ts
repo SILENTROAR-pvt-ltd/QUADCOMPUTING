@@ -34,7 +34,7 @@ const codeParams = (code: string) => ({ params: Promise.resolve({ code }) });
 
 const seed = (rooms = 4) => createFakeSupabase({
   businesses: [business], room_categories: [category], rooms: Array.from({ length: rooms }, (_, i) => room(i + 1)),
-  stay_booking_requests: [], stay_passes: [], orders: [], room_stay_logs: [], venue_operating_hours: [],
+  stay_booking_requests: [], stay_passes: [], orders: [], kitchen_tickets: [], room_stay_logs: [], venue_operating_hours: [],
   guest_accounts: [], guest_auth_sessions: [], guest_wallets: [], wallet_transactions: [], order_items: [],
 }, { unique: { stay_passes: [['booking_id']].map(() => ({ cols: ['booking_id'], where: (r: any) => r.status !== 'void' })) as any } });
 
@@ -216,8 +216,8 @@ describe('the stay, to the final invoice', () => {
     const { GET: roomGet } = await import('@/app/api/guest/room/[code]/route');
     const page = await json(await roomGet(req(`/api/guest/room/${code}`, { cookie }), codeParams(code)));
     expect(page.body).toMatchObject({ occupied: true, verified: true });
-    // Day one of two: one night is used, so 3,500 of the 7,000 paid offsets it; the guest is shown that they paid 7,000 in all.
-    expect(page.body.folio).toMatchObject({ advance_paid: 3500, advance_total: 7000, balance: 0 });
+    // Day one of two: the stay is billed for the two nights booked, so the whole 7,000 paid offsets it and nothing is owed.
+    expect(page.body.folio).toMatchObject({ nights: 2, nights_stayed: 1, nights_booked: 2, advance_paid: 7000, advance_total: 7000, balance: 0 });
     // The bill page carries the desk's tax invoice for the room: its number, lines and tender, never the phone or the UTR.
     expect(page.body.invoice).toMatchObject({ amount: 7000, nights: 2, invoice_id: expect.any(String), lines: expect.arrayContaining([expect.objectContaining({ id: 'tariff' })]) });
     expect(page.body.invoice).not.toHaveProperty('guest_phone');
@@ -275,16 +275,111 @@ describe('the stay, to the final invoice', () => {
     expect((await json(await checkout(req('/api/host/accommodations/rooms/room-1/checkout', { method: 'POST', body: { payment_method: 'UPI' } }), idParams(roomId)))).status).toBe(409);
   });
 
-  it('a guest who leaves early is owed the unused advance, and told so', async () => {
+  it('a guest who booked two nights and leaves after one is billed the two nights, with nothing owed back', async () => {
     await reserve();
     const stay = await checkIn(tokenOf((await bill(bookingId())).body.pass.link));
     expect(stay.status).toBe(200);
-    vi.setSystemTime(D('2026-10-21T15:00:00Z')); // the same night: one night used of two paid
+    vi.setSystemTime(D('2026-10-21T15:00:00Z')); // the same night: one night used of two booked and paid
+    const { GET: dossier } = await import('@/app/api/host/accommodations/rooms/[id]/dossier/route');
+    const d = await json(await dossier(req('/api/host/accommodations/rooms/room-1/dossier'), idParams('room-1')));
+    expect(d.body.billingSummary).toMatchObject({ nights: 2, bookedNights: 2, nightsStayed: 1, roomTariffSubtotal: 7000, advancePaid: 7000, refundDue: 0, grandTotalPayable: 0 });
     const { POST: checkout } = await import('@/app/api/host/accommodations/rooms/[id]/checkout/route');
     const out = await json(await checkout(req('/api/host/accommodations/rooms/room-1/checkout', { method: 'POST', body: {} }), idParams('room-1')));
     expect(out.body.invoice.grandTotal).toBe(0);
-    expect(out.body.checkoutSummary).toMatchObject({ grossAmount: 3500, advanceCredited: 3500, refundDue: 3500 });
-    expect(out.body.warnings.join(' ')).toMatch(/Refund ₹3,500/);
+    expect(out.body.checkoutSummary).toMatchObject({ grossAmount: 7000, advanceCredited: 7000, refundDue: 0, nights: 2 });
+    expect(out.body.invoice.items.find((i: any) => i.id.startsWith('tariff-'))).toMatchObject({ qty: 2 });
+    expect(out.body.warnings || []).toEqual([]);
+  });
+
+  it('a guest who stays a third night on a two-night booking is billed three', async () => {
+    await reserve();
+    await checkIn(tokenOf((await bill(bookingId())).body.pass.link));
+    vi.setSystemTime(D('2026-10-24T04:00:00Z')); // three calendar nights after check-in
+    const { POST: checkout } = await import('@/app/api/host/accommodations/rooms/[id]/checkout/route');
+    const out = await json(await checkout(req('/api/host/accommodations/rooms/room-1/checkout', { method: 'POST', body: {} }), idParams('room-1')));
+    expect(out.body.checkoutSummary).toMatchObject({ nights: 3, grossAmount: 10500, advanceCredited: 7000 });
+    expect(out.body.invoice.grandTotal).toBe(3500);
+  });
+
+  it('a payment taken during the stay shows as paid for the guest and the desk, and checkout bills only the rest', async () => {
+    await reserve();
+    const stay = await checkIn(tokenOf((await bill(bookingId())).body.pass.link));
+    const code = stay.body.room_code as string;
+    const cookie = String(stay.headers.get('set-cookie')).split(';')[0];
+    db.tables.orders.push({ id: 'o1', business_id: BIZ, room_id: 'room-1', order_type: 'room_service', status: 'pending', grand_total: 660, items: [{ id: 'pav', name: 'Pav Bhaji', price: 220, qty: 3 }], created_at: '2026-10-21T10:00:00Z' });
+
+    // The guest asks to pay now from the bill tab; the desk sees the request and takes it.
+    const { POST: askPay } = await import('@/app/api/guest/room/[code]/checkout-request/route');
+    expect((await json(await askPay(req(`/api/guest/room/${code}/checkout-request`, { method: 'POST', cookie, body: { action: 'request', kind: 'bill' } }), codeParams(code)))).status).toBe(200);
+    expect(db.tables.rooms[0].checkout_request).toMatchObject({ kind: 'bill', status: 'pending' });
+    const { POST: pay } = await import('@/app/api/host/accommodations/rooms/[id]/payment/route');
+    const quote = await json(await pay(req('/api/host/accommodations/rooms/room-1/payment', { method: 'POST', body: { action: 'preview' } }), idParams('room-1')));
+    expect(quote.body).toMatchObject({ quote: { amount: 660 }, paid_so_far: 7000 });
+    const taken = await json(await pay(req('/api/host/accommodations/rooms/room-1/payment', { method: 'POST', body: { action: 'record', payment_method: 'CASH', purpose: 'balance', idempotency_key: 'pay-1' } }), idParams('room-1')));
+    expect(taken.body).toMatchObject({ success: true, amount: 660, paidSoFar: 7660, balance: 0 });
+    expect(db.tables.rooms[0]).toMatchObject({ advance_paid: 7660, checkout_request: null });
+
+    // The guest's bill now reads paid; a second tap on the same sheet records nothing more.
+    const { GET: roomGet } = await import('@/app/api/guest/room/[code]/route');
+    const page = await json(await roomGet(req(`/api/guest/room/${code}`, { cookie }), codeParams(code)));
+    expect(page.body.folio).toMatchObject({ advance_total: 7660, balance: 0, dining_total: 660 });
+    expect((await json(await pay(req('/api/host/accommodations/rooms/room-1/payment', { method: 'POST', body: { action: 'record', payment_method: 'CASH', idempotency_key: 'pay-1' } }), idParams('room-1')))).body.amount).toBe(660);
+    expect(db.tables.orders.filter((o: any) => o.order_type === 'room_advance')).toHaveLength(2);
+
+    // Checkout two days on: everything was paid, the invoice is for nothing, the food is settled and no refund is owed.
+    vi.setSystemTime(D('2026-10-23T04:00:00Z'));
+    const { POST: checkout } = await import('@/app/api/host/accommodations/rooms/[id]/checkout/route');
+    const out = await json(await checkout(req('/api/host/accommodations/rooms/room-1/checkout', { method: 'POST', body: {} }), idParams('room-1')));
+    expect(out.body.checkoutSummary).toMatchObject({ grossAmount: 7660, advanceCredited: 7660, refundDue: 0 });
+    expect(out.body.invoice.grandTotal).toBe(0);
+  });
+
+  it('a part payment from the till is adjusted in the stay: the guest stays checked in and the room page shows it paid', async () => {
+    await reserve();
+    const stay = await checkIn(tokenOf((await bill(bookingId())).body.pass.link)); // ₹7,000 paid for two nights
+    const code = stay.body.room_code as string;
+    const cookie = String(stay.headers.get('set-cookie')).split(';')[0];
+    db.tables.orders.push({ id: 'o1', business_id: BIZ, room_id: 'room-1', order_type: 'room_service', status: 'pending', grand_total: 3650, items: [{ id: 'thali', name: 'Thali', price: 3650, qty: 1 }], created_at: '2026-10-21T10:00:00Z' });
+    db.tables.kitchen_tickets.push({ id: 'kt1', business_id: BIZ, order_id: 'o1', status: 'PREPARING', ticket_number: 'KOT-7', table_or_room: 'RS-suite1' });
+
+    // The till loads the folio (₹3,650 owed) and the host takes ₹2,000 with "adjust in the stay": no checkout happens.
+    const { POST: createOrder } = await import('@/app/api/host/orders/create/route');
+    const part = await json(await createOrder(req('/api/host/orders/create', { method: 'POST', body: { id: 'bill-1', roomId: 'room-1', tableNumber: 'ROOM suite1', paymentMethod: 'UPI', grandTotal: 3650, settlement: { session_id: null, mode: 'payment', amount: 2000 } } })));
+    expect(part.status).toBe(200);
+    expect(part.body).toMatchObject({ success: true, settled: true, payment: { amount: 2000, balance: 1650, paidSoFar: 9000 } });
+    expect(db.tables.rooms[0]).toMatchObject({ status: 'OCCUPIED', advance_paid: 9000 });
+    expect(db.tables.orders.find((o: any) => o.id === 'o1')?.status).toBe('pending'); // the food is still open on the room
+    // A retried save of the same receipt takes nothing more; more than is owed is refused.
+    expect((await json(await createOrder(req('/api/host/orders/create', { method: 'POST', body: { id: 'bill-1', roomId: 'room-1', paymentMethod: 'UPI', grandTotal: 3650, settlement: { mode: 'payment', amount: 2000 } } })))).body.payment.paidSoFar).toBe(9000);
+    expect((await json(await createOrder(req('/api/host/orders/create', { method: 'POST', body: { id: 'bill-2', roomId: 'room-1', paymentMethod: 'CASH', grandTotal: 9999, settlement: { mode: 'payment' } } })))).status).toBe(400);
+    expect(db.tables.rooms[0].advance_paid).toBe(9000);
+
+    // The guest's room page: ₹2,000 more paid, ₹1,650 pending, and the kitchen's status on the order for the tracker.
+    const { GET: roomGet } = await import('@/app/api/guest/room/[code]/route');
+    const page = await json(await roomGet(req(`/api/guest/room/${code}`, { cookie }), codeParams(code)));
+    expect(page.body.occupied).toBe(true);
+    expect(page.body.folio).toMatchObject({ advance_total: 9000, balance: 1650, dining_total: 3650 });
+    expect(page.body.folio.orders[0]).toMatchObject({ id: 'o1', kot_status: 'PREPARING', ticket_number: 'KOT-7' });
+
+    // Checkout later bills only the rest.
+    vi.setSystemTime(D('2026-10-23T04:00:00Z'));
+    const out = await json(await createOrder(req('/api/host/orders/create', { method: 'POST', body: { roomId: 'room-1', paymentMethod: 'CASH', settlement: { mode: 'checkout' } } })));
+    expect(out.body).toMatchObject({ success: true, settled: true, checkoutSummary: { grossAmount: 10650, advanceCredited: 9000, finalBilledAmount: 1650 } });
+    expect(db.tables.rooms[0].status).toBe('CLEANING');
+  });
+
+  it('the desk checks in a walk-in and takes the room payment at once; the guest then owes nothing', async () => {
+    const { PATCH } = await import('@/app/api/host/accommodations/rooms/[id]/status/route');
+    const res = await json(await PATCH(req('/api/host/accommodations/rooms/room-3/status', { method: 'PATCH', body: { action: 'check-in', guest_name: 'Walk In', guest_phone: '9000000009', id_type: 'Aadhaar', id_number: '9', total_guests: 1, check_in_time: '2026-10-21T08:00:00.000Z', check_out_time: '2026-10-23T05:30:00.000Z' } }), idParams('room-3')));
+    expect(res.status).toBe(200);
+    const { POST: pay } = await import('@/app/api/host/accommodations/rooms/[id]/payment/route');
+    const quote = await json(await pay(req('/api/host/accommodations/rooms/room-3/payment', { method: 'POST', body: { action: 'preview' } }), idParams('room-3')));
+    expect(quote.body.quote.amount).toBe(7000); // two nights booked, billed as booked
+    const taken = await json(await pay(req('/api/host/accommodations/rooms/room-3/payment', { method: 'POST', body: { action: 'record', payment_method: 'UPI', payment_reference: '412345678901', purpose: 'stay' } }), idParams('room-3')));
+    expect(taken.body).toMatchObject({ success: true, amount: 7000, balance: 0 });
+    expect(db.tables.orders.find((o: any) => o.order_type === 'room_advance')).toMatchObject({ room_id: 'room-3', payment_method: 'UPI', status: 'SETTLED' });
+    const { GET: dossier } = await import('@/app/api/host/accommodations/rooms/[id]/dossier/route');
+    expect((await json(await dossier(req('/api/host/accommodations/rooms/room-3/dossier'), idParams('room-3')))).body.billingSummary).toMatchObject({ advancePaid: 7000, grandTotalPayable: 0 });
   });
 });
 
@@ -321,10 +416,10 @@ describe('one Vibers ID, end to end', () => {
     db.tables.orders.push({ id: 'o1', business_id: BIZ, room_id: 'room-1', order_type: 'room_service', status: 'pending', subtotal: 150, grand_total: 150, items: [{ id: 'burger', name: 'Veg Cheese Burger', price: 150, qty: 1 }], created_at: '2026-10-21T13:00:00Z' });
     db.tables.order_items.push({ id: 'oi1', order_id: 'o1', guest_handle: '@asha', item_name: 'Veg Cheese Burger', price: 150, quantity: 1 });
 
-    // 5. Two days on, the till settles the room bill: it is the checkout.
+    // 5. Two days on, the till settles the room bill with "check out & settle" chosen on the receipt: it is the checkout.
     vi.setSystemTime(D('2026-10-23T04:00:00Z'));
     const { POST: createOrder } = await import('@/app/api/host/orders/create/route');
-    const settled = await json(await createOrder(req('/api/host/orders/create', { method: 'POST', body: { roomId: 'room-1', tableNumber: 'ROOM suite1', paymentMethod: 'UPI', items: [], subtotal: 150, grandTotal: 150, settlement: { session_id: null, credit_cashback: true } } })));
+    const settled = await json(await createOrder(req('/api/host/orders/create', { method: 'POST', body: { roomId: 'room-1', tableNumber: 'ROOM suite1', paymentMethod: 'UPI', items: [], subtotal: 150, grandTotal: 150, settlement: { session_id: null, credit_cashback: true, mode: 'checkout' } } })));
     expect(settled.status).toBe(200);
     expect(settled.body).toMatchObject({ success: true, settled: true, checkoutSummary: { ordersTotal: 150, cashbackCredited: 10.5 } });
     const invoiceId = settled.body.order.id as string;
@@ -333,8 +428,9 @@ describe('one Vibers ID, end to end', () => {
     expect(db.tables.orders.find((o: any) => o.id === invoiceId)).toMatchObject({ status: 'SETTLED', guest_handle: '@asha', payment_method: 'UPI' });
     expect(db.tables.guest_wallets[0]).toMatchObject({ guest_id: '@asha', balance: 10.5 });
     expect(db.tables.wallet_transactions[0]).toMatchObject({ order_id: invoiceId, amount: 10.5, table_number: 'ROOM suite1' });
-    // Settling again does nothing twice.
-    expect((await json(await createOrder(req('/api/host/orders/create', { method: 'POST', body: { roomId: 'room-1', paymentMethod: 'UPI', settlement: {} } })))).status).toBe(409);
+    // Settling again does nothing twice, whichever the receipt asks for: the room has no guest in it.
+    expect((await json(await createOrder(req('/api/host/orders/create', { method: 'POST', body: { roomId: 'room-1', paymentMethod: 'UPI', settlement: { mode: 'checkout' } } })))).status).toBe(409);
+    expect((await json(await createOrder(req('/api/host/orders/create', { method: 'POST', body: { roomId: 'room-1', paymentMethod: 'UPI', grandTotal: 150, settlement: {} } })))).status).toBe(409);
     expect(db.tables.wallet_transactions).toHaveLength(1);
 
     // 6. On the account: the stay reads "Stayed", and the room bill is among the guest's invoices with its cashback.

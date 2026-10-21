@@ -14,6 +14,7 @@ import { withApiErrorBoundary, handleApiError } from '@/lib/middleware/error-han
 import { applyRequestIdentity } from '@/lib/services/guest-auth/request-identity';
 import { newDeliveryTableNumber } from '@/lib/services/delivery/delivery-input';
 import { isRoomTable } from '@/lib/guest/room-mode';
+import { assertVenueBillingAllowed } from '@/lib/services/billing/venue-guard.service';
 
 /**
  * GET /api/guest/order
@@ -69,29 +70,23 @@ export const POST = withApiErrorBoundary(async function POST(request: Request) {
       return apiError('Order to your room from your room page, so it goes on your room bill.', 'ROOM_ORDER_MISROUTED', 400);
     }
 
-    // Rate Limiting: Apply sliding window rate limit per IP & venue
-    const ip = getClientIp(request);
-    const orderRateLimit = await checkGuestOrderRateLimit(ip, businessId);
-    if (!orderRateLimit.allowed) {
-      return rateLimitResponse(
-        orderRateLimit,
-        'Too many order requests. Please wait a moment before submitting again.'
-      );
-    }
-
     const supabase = adminDb();
-
-    // Venue Credit & Subscription Guard: Zero orders if venue balance < 0 or inactive
-    const { assertVenueBillingAllowed } = await import('@/lib/services/billing/venue-guard.service');
-    const billingGuardError = await assertVenueBillingAllowed(businessId, supabase);
-    if (billingGuardError) return billingGuardError;
-
     body.business_id = businessId;
     body.cafe_id = businessId;
     body.table_number = tableNumber;
 
-    // Identity only from the guest's own sign-in session; a handle sent by the browser is dropped.
-    await applyRequestIdentity(supabase, request, businessId, body, { name: 'guest_name', phone: 'guest_phone' });
+    // The three checks before the order need nothing from one another, so they run at once: the limit per address and
+    // venue, the venue's standing (wallet and subscription), and who is ordering (identity only from the guest's own
+    // sign-in session; a handle sent by the browser is dropped).
+    const [orderRateLimit, billingGuardError] = await Promise.all([
+      checkGuestOrderRateLimit(getClientIp(request), businessId),
+      assertVenueBillingAllowed(businessId, supabase),
+      applyRequestIdentity(supabase, request, businessId, body, { name: 'guest_name', phone: 'guest_phone' }),
+    ]);
+    if (!orderRateLimit.allowed) {
+      return rateLimitResponse(orderRateLimit, 'Too many order requests. Please wait a moment before submitting again.');
+    }
+    if (billingGuardError) return billingGuardError;
 
     const key = generateIdempotencyKey('guest_order', `${businessId}:${tableNumber}`, body);
 

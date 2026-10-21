@@ -24,6 +24,8 @@ interface DesktopSidebarProps {
   pendingKotCount?: number;
   /** Opens the Vibey co-pilot; absent while the venue does not have it. */
   onOpenCopilot?: () => void;
+  /** Guest calls waiting, per workspace (lib/host/alert-routing). */
+  alertCounts?: Partial<Record<string, number>>;
 }
 
 export function DesktopSidebar({
@@ -39,6 +41,7 @@ export function DesktopSidebar({
   venueId,
   pendingKotCount = 0,
   onOpenCopilot,
+  alertCounts = {},
 }: DesktopSidebarProps) {
   const { tabs } = useVisibleTabs();
 
@@ -67,6 +70,7 @@ export function DesktopSidebar({
               isMasterUnlocked={isMasterUnlocked}
               badgeCount={item.id === 'billing' ? billRequests.length : 0}
               glowDot={item.id === 'kitchen' && pendingKotCount > 0}
+              alertCount={alertCounts[item.id] || 0}
               onClick={() => onTabChange(item.id)}
             />
           ))}

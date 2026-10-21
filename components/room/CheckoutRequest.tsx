@@ -16,7 +16,8 @@ export function CheckoutRequest({ data, onRequest, onOpenBill }: Props) {
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState('');
   const [status, setStatus] = useState<string | null>(null);
-  const req = data.checkout_request;
+  // A "pay now" request lives on the bill tab; here only the check-out itself counts as pending.
+  const req = data.checkout_request?.kind === 'checkout' ? data.checkout_request : null;
   const balance = data.folio?.balance || 0;
 
   const act = async (action: 'request' | 'cancel') => {

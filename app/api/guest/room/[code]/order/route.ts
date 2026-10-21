@@ -5,9 +5,11 @@ import { withIdempotency, generateIdempotencyKey } from '@/lib/services/api-idem
 import { apiError } from '@/lib/utils/api-response';
 import { isOccupied } from '@/lib/services/stay/room-access.service';
 import { diningMessage, loadDiningWindow } from '@/lib/services/stay/room-dining-hours';
+import { assertDishesOnly } from '@/lib/services/stay/room-dining';
 import { placeRoomOrder } from '@/lib/services/stay/room-order.service';
 import { noStay, notVerified, roomContext } from '@/lib/services/stay/room-route.util';
 import { applyRequestIdentity } from '@/lib/services/guest-auth/request-identity';
+import { assertVenueBillingAllowed } from '@/lib/services/billing/venue-guard.service';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,42 +17,37 @@ export const dynamic = 'force-dynamic';
  * POST /api/guest/room/[code]/order { items, note?, idempotency_key? }
  * Charge to room: the dishes go to the kitchen under the room's name and onto the stay's bill, settled at checkout.
  * Refused outside kitchen hours, when the venue has switched in-room dining off, or before the guest is confirmed.
+ * Every check that needs nothing from another runs at once: the limit, the kitchen hours, the venue's standing, who
+ * is ordering, and that each line is a dish. The order itself is one atomic write after them.
  */
 export const POST = withApiErrorBoundary(async function POST(request: Request, { params }: { params: Promise<{ code: string }> }) {
   try {
     const { code } = await params;
-    const ctx = await roomContext(request, code);
+    const [ctx, body] = await Promise.all([roomContext(request, code), request.json().catch(() => ({}))]);
     if (!ctx.ok) return ctx.response;
     const { db, stay, verified } = ctx;
     if (!isOccupied(stay.room)) return noStay();
     if (!verified) return notVerified();
-    if (stay.business.in_room_dining_enabled === false) {
-      return apiError('In-room dining is not offered at this venue.', 'ROOM_DINING_OFF', 403);
-    }
-
-    const rate = await checkGuestOrderRateLimit(getClientIp(request), stay.business.id);
-    if (!rate.allowed) return rateLimitResponse(rate, 'Too many orders. Please wait a moment.');
-
-    const window = await loadDiningWindow(db, stay.business.id);
-    if (!window.open) return apiError(diningMessage(window), 'KITCHEN_CLOSED', 409);
-
-    const { assertVenueBillingAllowed } = await import('@/lib/services/billing/venue-guard.service');
-    const billingGuardError = await assertVenueBillingAllowed(stay.business.id, db);
-    if (billingGuardError) return billingGuardError;
-
-    const body = await request.json().catch(() => ({}));
+    if (stay.business.in_room_dining_enabled === false) return apiError('In-room dining is not offered at this venue.', 'ROOM_DINING_OFF', 403);
     const items = Array.isArray(body?.items) ? body.items : [];
     if (items.length === 0) return apiError('Add a dish first.', 'INVALID_PAYLOAD', 400);
 
-    // Who is ordering, from their sign-in session only: the dishes are theirs, as at a table, so their cashback and
-    // their invoices follow. The order itself still goes out under the room's registered guest.
     const identity: Record<string, any> = {};
-    await applyRequestIdentity(db, request, stay.business.id, identity, { name: 'guest_name', phone: 'guest_phone' });
+    const [rate, window, billingGuardError] = await Promise.all([
+      checkGuestOrderRateLimit(getClientIp(request), stay.business.id),
+      loadDiningWindow(db, stay.business.id),
+      assertVenueBillingAllowed(stay.business.id, db),
+      applyRequestIdentity(db, request, stay.business.id, identity, { name: 'guest_name', phone: 'guest_phone' }),
+      assertDishesOnly(db, stay.business.id, items),
+    ]);
+    if (!rate.allowed) return rateLimitResponse(rate, 'Too many orders. Please wait a moment.');
+    if (!window.open) return apiError(diningMessage(window), 'KITCHEN_CLOSED', 409);
+    if (billingGuardError) return billingGuardError;
 
     const key = generateIdempotencyKey('room_order', `${stay.business.id}:${stay.room.id}`, { items, note: body?.note, idempotency_key: body?.idempotency_key });
     const { response, status } = await withIdempotency(key, async () => {
       const result = await placeRoomOrder(db, {
-        business: stay.business, room: stay.room, items, note: body?.note,
+        business: stay.business, room: stay.room, items, note: body?.note, dishesChecked: true,
         idempotencyKey: typeof body?.idempotency_key === 'string' ? body.idempotency_key : null,
         guestHandle: identity.guest_handle || null,
       });

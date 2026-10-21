@@ -22,11 +22,12 @@ export type Tender = (typeof TENDERS)[number];
  * How the guest paid, as the desk confirms it. UPI and card must carry the reference from the bank or the slip, so every
  * advance bill can be matched to a real receipt later; cash needs none.
  */
-export function readTender(method: unknown, ref: unknown): { tender: Tender; reference: string } {
+export function readTender(method: unknown, ref: unknown, opts: { referenceOptional?: boolean } = {}): { tender: Tender; reference: string } {
   const tender = String(method || '').toUpperCase() as Tender;
   if (!TENDERS.includes(tender)) throw new StayPassError('INVALID', 'Choose how the guest paid: UPI, cash or card.');
   const reference = typeof ref === 'string' ? ref.replace(/\s+/g, ' ').trim().slice(0, 40) : '';
-  if (tender !== 'CASH' && reference.length < 4) {
+  // The till's receipt confirms a UPI payment with a tick rather than a reference, as every table bill is.
+  if (tender !== 'CASH' && reference.length < 4 && !opts.referenceOptional) {
     throw new StayPassError('INVALID', tender === 'UPI' ? 'Enter the UPI reference (UTR) shown in your bank or UPI app.' : 'Enter the card approval code from the slip.');
   }
   return { tender, reference };

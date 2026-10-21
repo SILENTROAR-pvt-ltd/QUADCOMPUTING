@@ -25,6 +25,19 @@ export function stayNights(checkIn?: string | null, checkOut?: string | number |
   return Math.max(1, days);
 }
 
+/**
+ * The nights a stay is billed for: the nights booked (check-in to the expected check-out), or the nights actually
+ * stayed when the guest stays longer. A guest who booked two nights and leaves after one pays for two; a guest who
+ * stays a third night pays for three. Without an expected check-out, the nights stayed.
+ */
+export function billableNights(room: { check_in_time?: string | null; check_in_date?: string | null; check_out_time?: string | null; check_out_date?: string | null }, now: Date | string = new Date()) {
+  const checkIn = room.check_in_time || room.check_in_date;
+  const stayed = stayNights(checkIn, now);
+  const expected = room.check_out_time || room.check_out_date;
+  const booked = expected ? stayNights(checkIn, expected) : null;
+  return { stayed, booked, billed: Math.max(stayed, booked || 0) };
+}
+
 /** How many units of an add-on a stay uses: nights, nights × persons, or once. */
 export function addonUnits(addon: StayAddon, nights: number): number {
   if (addon.billingType === 'per_night') return nights;

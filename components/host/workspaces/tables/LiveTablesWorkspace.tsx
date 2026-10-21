@@ -13,6 +13,7 @@ import { LiveTableSheet } from './LiveTableSheet';
 import { useSettledAt } from './useSettledAt';
 import { useBoardRows } from './useBoardRows';
 import { useWaiterCanSettle } from './useWaiterCanSettle';
+import { useOpenTableRequest } from '@/lib/host/useOpenTableRequest';
 
 interface LiveTablesWorkspaceProps {
   venueId: string;
@@ -49,6 +50,8 @@ export function LiveTablesWorkspace({ venueId, onNavigate, pollMs }: LiveTablesW
   const chosen = board.rows.find((r) => r.number === selected) ?? null;
   const select = useCallback((number: string) => setSelected(number), []);
   const close = useCallback(() => setSelected(null), []);
+  // A table named from the bell ("Table T-03 wants the waiter") opens here as soon as the tables are known.
+  useOpenTableRequest(tables as RestaurantTable[], useCallback((t: RestaurantTable) => { setView('tables'); setSelected(t.table_number); }, []));
   // The kitchen feed shows a served order as served at once and rolls it back if it could not be saved.
   const serve = useCallback((id: string) => updateTicketStatus(id, 'SERVED'), [updateTicketStatus]);
 

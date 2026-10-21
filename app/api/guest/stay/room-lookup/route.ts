@@ -14,9 +14,9 @@ const NO_MATCH = () => NextResponse.json({ success: false, error: 'We could not 
 
 /**
  * POST /api/guest/stay/room-lookup { venue, room_number, phone_last4 }
- * A hotel guest on the venue's ordinary menu chooses "Room delivery": the room number and the last four digits of the
- * phone given at check-in find their room and confirm them, exactly as the room's own page does. A few tries per
- * quarter hour per address, and one answer for every kind of mismatch, so room numbers cannot be probed.
+ * A hotel guest on the venue's menu ("Room delivery") or on its stay page ("My room"): the room number and the last four
+ * digits of the phone given at check-in find their room and confirm this phone, exactly as the room's own page does. A
+ * few tries per quarter hour per address, and one answer for every kind of mismatch, so room numbers cannot be probed.
  */
 export const POST = withApiErrorBoundary(async function POST(request: Request) {
   try {
@@ -29,10 +29,10 @@ export const POST = withApiErrorBoundary(async function POST(request: Request) {
     if (limited) return limited;
 
     const db = adminDb();
+    // The venue must exist and offer stays; whether it delivers food to rooms is the room page's and the menu's
+    // business (the guest still needs their bill, services and the desk when dining is off).
     const business = await loadStayBusiness(db, businessId);
-    if (business?.in_room_dining_enabled === false) {
-      return NextResponse.json({ success: false, error: 'Room delivery is not offered at this venue.', code: 'ROOM_DINING_OFF' }, { status: 403 });
-    }
+    if (!business) return NextResponse.json({ success: false, error: 'This venue was not found.', code: 'NOT_FOUND' }, { status: 404 });
 
     const { data: rooms, error } = await db.from('rooms').select('id, business_id, category_id, room_number, guest_phone, check_in_time, check_in_date, qr_code_hash')
       .eq('business_id', businessId).eq('status', 'OCCUPIED');

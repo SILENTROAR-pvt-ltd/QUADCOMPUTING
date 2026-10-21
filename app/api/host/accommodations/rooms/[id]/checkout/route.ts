@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireHost } from '@/lib/auth/guards';
 import { withApiErrorBoundary } from '@/lib/middleware/error-handler';
-import { buildStayFolio, CLOSED_ORDER_STATUSES, stayNights } from '@/lib/services/accommodation/stay-folio.util';
+import { billableNights, buildStayFolio, CLOSED_ORDER_STATUSES } from '@/lib/services/accommodation/stay-folio.util';
 import { creditLine, readExtras, settleLedger } from '@/lib/services/stay/stay-ledger';
 import { belongsToStay, mergeBillLines, stayStartMs } from '@/lib/services/stay/stay-scope';
 import { creditRoomDiningCashback, stampBillOwner } from '@/lib/services/stay/room-cashback.service';
@@ -141,9 +141,10 @@ export const POST = withApiErrorBoundary(async function POST(
     const fAndBOrders = (activeOrders || []).filter((o: any) => o.order_type !== 'room_stay' && belongsToStay(o, stayStartMs(room)));
     const ordersTotal = fAndBOrders.reduce((acc: number, o: any) => acc + (Number(o.grand_total) || 0), 0);
 
-    // 3. Tariff and add-ons for the nights actually stayed, by the same rules as the check-in quote.
+    // 3. Tariff and add-ons for the nights booked (a guest who leaves early still pays for the stay they booked), or
+    // the nights stayed when that is more, by the same rules as the check-in quote.
     const nowIso = new Date().toISOString();
-    const nights = stayNights(room.check_in_time || room.check_in_date, nowIso);
+    const { billed: nights } = billableNights(room, nowIso);
     const folio = buildStayFolio({
       roomId,
       roomNumber: room.room_number,

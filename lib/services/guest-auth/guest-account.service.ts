@@ -250,14 +250,17 @@ export async function signIn(args: {  db: any;
 export async function accountForRequest(db: any, request: Request, businessId: string): Promise<GuestAccount | null> {
   const token = readSessionCookie(request.headers.get('cookie'));
   if (!token) return null;
+  // The session and its account in one round trip (this runs on every order and every stay read). A client that cannot
+  // embed the account (the test double) answers with the session alone, and the account is then read on its own.
   const { data: session, error } = await db
     .from('guest_auth_sessions')
-    .select('account_id, expires_at')
+    .select(`account_id, expires_at, account:guest_accounts(${ACCOUNT_COLUMNS})`)
     .eq('token_hash', hashSessionToken(token))
     .eq('business_id', businessId)
     .maybeSingle();
   if (error) throw error;
   if (!session || new Date(session.expires_at).getTime() <= Date.now()) return null;
+  if (session.account && typeof session.account === 'object' && session.account.id) return session.account as GuestAccount;
 
   const { data: account, error: accErr } = await db
     .from('guest_accounts')

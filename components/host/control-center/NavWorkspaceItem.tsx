@@ -13,6 +13,8 @@ interface NavWorkspaceItemProps {
   isMasterUnlocked: boolean;
   badgeCount: number;
   glowDot?: boolean;
+  /** Guest calls waiting in this workspace: a green pulse on the icon and the count beside the name. */
+  alertCount?: number;
   onClick: () => void;
 }
 
@@ -24,6 +26,7 @@ export function NavWorkspaceItem({
   isMasterUnlocked,
   badgeCount,
   glowDot = false,
+  alertCount = 0,
   onClick,
 }: NavWorkspaceItemProps) {
   return (
@@ -41,15 +44,15 @@ export function NavWorkspaceItem({
         <div className="relative shrink-0">
           <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-neutral-400'}`} />
           {/* 🔴 Glow dot: NEW ORDER notification */}
-          {glowDot && (
+          {(glowDot || alertCount > 0) && (
             <span
               className="absolute -top-1 -right-1 flex h-2.5 w-2.5"
-              aria-label="New order received"
+              aria-label={alertCount > 0 ? `${alertCount} guest request${alertCount === 1 ? '' : 's'} waiting` : 'New order received'}
             >
               {/* Ping ring */}
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75" />
+              <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${alertCount > 0 ? 'bg-emerald-400' : 'bg-orange-400'}`} />
               {/* Solid core */}
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-orange-500 shadow-[0_0_6px_2px_rgba(249,115,22,0.7)]" />
+              <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${alertCount > 0 ? 'bg-emerald-500 shadow-[0_0_6px_2px_rgba(16,185,129,0.7)]' : 'bg-orange-500 shadow-[0_0_6px_2px_rgba(249,115,22,0.7)]'}`} />
             </span>
           )}
         </div>
@@ -64,6 +67,11 @@ export function NavWorkspaceItem({
             title={isMasterUnlocked ? 'Master Access Unlocked' : 'Protected by Master PIN'}
           >
             <Lock className="w-3.5 h-3.5" />
+          </span>
+        )}
+        {alertCount > 0 && (
+          <span className={`ml-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${isActive ? 'bg-emerald-400 text-neutral-950' : 'bg-emerald-600 text-white shadow-[0_0_10px_rgba(16,185,129,0.6)]'}`} title="Guest requests waiting">
+            {alertCount}
           </span>
         )}
         {badgeCount > 0 && (

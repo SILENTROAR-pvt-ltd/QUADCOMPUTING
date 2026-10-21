@@ -17,6 +17,7 @@ import { useBillingSession } from './billing/hooks/useBillingSession';
 import { BillingHeader } from './billing/components/BillingHeader';
 import { BillRequestsModal } from './billing/BillRequestsModal';
 import { usePOSCatalog } from './billing/hooks/usePOSCatalog';
+import { useOpenTableRequest } from '@/lib/host/useOpenTableRequest';
 
 export function BillingWorkspace({ onNavigate }: { onNavigate?: (tab: string) => void }) {
   const storeBusinessId = useHostWorkspace((state) => state.businessId);
@@ -64,6 +65,9 @@ export function BillingWorkspace({ onNavigate }: { onNavigate?: (tab: string) =>
     fetchTables,
     businessId,
   });
+
+  // A table named from the bell ("Table T-03 requested the bill") is selected here as soon as the tables are known.
+  useOpenTableRequest(tables, (table) => { void handleSelectActiveTable(table); setActiveTab('pos'); });
 
   const unreadBillRequestCount = billRequestedTables.filter((table) =>
     !seenBillRequestIds.includes(table.activeSession?.sessionId || table.id)

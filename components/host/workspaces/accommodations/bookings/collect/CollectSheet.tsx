@@ -17,6 +17,7 @@ interface Props {
 }
 
 const TITLE: Record<Step, string> = { details: 'New stay', review: 'Room payment', pay: 'Take payment', done: 'Bill & check-in link' };
+const ROOM_TITLE: Record<Step, string> = { details: 'Payment', review: 'What is owed now', pay: 'Take payment', done: 'Payment recorded' };
 const ORDER: Step[] = ['details', 'review', 'pay', 'done'];
 
 /** The desk takes a room payment: review what is owed, take it direct (UPI, cash, card), confirm, and hand the guest their check-in link. */
@@ -26,6 +27,7 @@ export function CollectSheet({ spec, categories, settings, onClose, onToast, onR
   const name = settings?.business_name || 'the venue';
   const code = c.booking?.confirmation_code || '';
   const steps = ORDER.filter((s) => (isPass && !c.booking ? true : s !== 'details'));
+  const title = (spec.kind === 'room' ? ROOM_TITLE : TITLE)[c.step];
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && !c.busy) onClose(); };
@@ -37,11 +39,11 @@ export function CollectSheet({ spec, categories, settings, onClose, onToast, onR
   return (
     <div className="fixed inset-0 z-[60] flex items-end justify-center bg-neutral-950/40 p-0 backdrop-blur-sm animate-in fade-in duration-200 sm:items-center sm:p-6">
       <div className="fixed inset-0" onClick={() => { if (!c.busy) onClose(); }} />
-      <div role="dialog" aria-modal="true" aria-label={TITLE[c.step]}
+      <div role="dialog" aria-modal="true" aria-label={title}
         className={`relative z-10 flex max-h-[94vh] w-full ${c.step === 'done' ? 'max-w-2xl' : 'max-w-lg'} flex-col overflow-hidden rounded-t-3xl border border-neutral-200 bg-neutral-50 text-neutral-900 shadow-2xl sm:rounded-3xl`}>
         <header className="flex items-start justify-between gap-4 border-b border-neutral-200 bg-white px-6 py-4">
           <div>
-            <h2 className="font-serif text-xl text-neutral-950">{TITLE[c.step]}</h2>
+            <h2 className="font-serif text-xl text-neutral-950">{title}</h2>
             <ol className="mt-1.5 flex items-center gap-1.5" aria-label="Progress">
               {steps.map((s) => <li key={s} aria-current={s === c.step ? 'step' : undefined} className={`h-1.5 w-8 rounded-full ${steps.indexOf(s) <= steps.indexOf(c.step) ? 'bg-neutral-950' : 'bg-neutral-200'}`} />)}
             </ol>

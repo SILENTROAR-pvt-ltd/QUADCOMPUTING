@@ -5,10 +5,11 @@ import { CheckInGuestSection } from './CheckInGuestSection';
 import { CheckInScheduleSection } from './CheckInScheduleSection';
 import { CheckInOccasionSection } from './CheckInOccasionSection';
 import { CheckInAddonsSection } from './CheckInAddonsSection';
+import { CheckInPaymentSection } from './CheckInPaymentSection';
 
 export const CHECK_IN_FORM_ID = 'room-checkin-form';
 
-/** The desk's check-in, top to bottom: the guest, the stay, the visit, the extras. Submitted from the panel's footer. */
+/** The desk's check-in, top to bottom: the guest, the stay, the visit, the extras, and when they pay. Submitted from the panel's footer. */
 export function RoomCheckInForm({ checkInState: s }: { checkInState: any }) {
   return (
     <form id={CHECK_IN_FORM_ID} onSubmit={s.handleCheckIn} className="space-y-3">
@@ -27,6 +28,7 @@ export function RoomCheckInForm({ checkInState: s }: { checkInState: any }) {
       />
       <CheckInAddonsSection availableAddons={s.availableAddons} chosenAddonIds={s.chosenAddonIds} toggleChosenAddon={s.toggleChosenAddon} onAddCustomAddon={s.handleAddCustomAddon}
         numNights={s.numNights} adultsCount={parseInt(s.adultsCount, 10) || 1} />
+      <CheckInPaymentSection stayTotal={s.stayTotal} payNow={s.payNow} setPayNow={s.setPayNow} advance={s.advance} setAdvance={s.setAdvance} />
     </form>
   );
 }

@@ -2,6 +2,8 @@
 export interface BillingSummary {
   nights: number;
   bookedNights?: number | null;
+  /** Calendar nights from check-in to now; `nights` is what is billed (the booked nights, or more if stayed longer). */
+  nightsStayed?: number;
   roomRate: number;
   roomTariffSubtotal: number;
   addonsSubtotal: number;

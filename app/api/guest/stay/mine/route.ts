@@ -23,14 +23,15 @@ export const GET = withApiErrorBoundary(async function GET(request: Request) {
     const validation = await validateGuestAccess(searchParams.get('venue_id') || searchParams.get('cafe_id'));
     if (validation.error) return validation.error;
     const businessId = validation.businessId;
-    const limited = await enforceRateLimit(request, 'stay_mine', 120, 60_000, businessId);
-    if (limited) return limited;
 
+    // The limit check runs beside the reads (all read-only and cheap); an answer over the limit is simply not sent.
     const db = adminDb();
     const cookie = request.headers.get('cookie');
-    const [business, summary, myRoom, account] = await Promise.all([
+    const [limited, business, summary, myRoom, account] = await Promise.all([
+      enforceRateLimit(request, 'stay_mine', 120, 60_000, businessId),
       loadStayBusiness(db, businessId), venueStaySummary(db, businessId), findMyRoom(db, businessId, cookie), accountForRequest(db, request, businessId),
     ]);
+    if (limited) return limited;
     const everywhere = searchParams.get('scope') === 'all';
     const stays = account ? await staysForAccount(db, account, { businessId: everywhere ? null : businessId, limit: everywhere ? 40 : 10 }, todayIst()) : [];
 
