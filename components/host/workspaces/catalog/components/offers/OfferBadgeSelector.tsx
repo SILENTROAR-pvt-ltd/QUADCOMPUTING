@@ -1,15 +1,7 @@
 'use client';
 
 import React from 'react';
-
-const BADGE_PRESETS = [
-  '20% OFF',
-  '1+1 Free',
-  'Happy Hour',
-  'Free Breakfast',
-  'Chef Special',
-  'Complimentary Drink',
-];
+import { BADGE_PRESETS } from './offer-templates';
 
 interface OfferBadgeSelectorProps {
   discountBadge: string;
@@ -18,43 +10,29 @@ interface OfferBadgeSelectorProps {
   onChangeCustom: (value: string) => void;
 }
 
-export function OfferBadgeSelector({
-  discountBadge,
-  customBadge,
-  onSelectPreset,
-  onChangeCustom,
-}: OfferBadgeSelectorProps) {
+/** The tag guests see first ("20% OFF", "Buffet"): one tap on a preset, or typed. Scrolls sideways on a phone. */
+export function OfferBadgeSelector({ discountBadge, customBadge, onSelectPreset, onChangeCustom }: OfferBadgeSelectorProps) {
   return (
     <div>
-      <label className="block text-[11px] font-bold uppercase tracking-wider text-neutral-500 mb-1.5">
-        Discount Tag / Badge *
+      <label htmlFor="offer-custom-tag" className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-neutral-500">
+        Tag guests see *
       </label>
-      <div className="flex flex-wrap items-center gap-1.5 mb-2">
+      <div className="-mx-1 mb-2 flex gap-1.5 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {BADGE_PRESETS.map((preset) => {
           const isSelected = discountBadge === preset && !customBadge;
           return (
-            <button
-              key={preset}
-              type="button"
-              onClick={() => onSelectPreset(preset)}
-              className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer border ${
-                isSelected
-                  ? 'bg-neutral-900 text-white border-neutral-900 shadow-xs'
-                  : 'bg-white border-neutral-200 text-neutral-600 hover:text-neutral-900'
-              }`}
-            >
+            <button key={preset} type="button" onClick={() => onSelectPreset(preset)} aria-pressed={isSelected}
+              className={`h-9 shrink-0 cursor-pointer rounded-full border px-3.5 text-[13px] font-semibold transition-colors ${
+                isSelected ? 'border-neutral-900 bg-neutral-900 text-white' : 'border-neutral-200 bg-white text-neutral-700 hover:text-neutral-900'
+              }`}>
               {preset}
             </button>
           );
         })}
       </div>
-      <input
-        type="text"
-        placeholder="Or type custom tag: e.g. 50% Off Second Bottle"
-        value={customBadge}
-        onChange={(e) => onChangeCustom(e.target.value)}
-        className="w-full h-9 px-3.5 rounded-xl border border-neutral-200/90 bg-white text-xs text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:border-neutral-900 shadow-2xs"
-      />
+      <input id="offer-custom-tag" type="text" maxLength={40} placeholder="Or type your own tag: e.g. 50% Off Second Bottle"
+        value={customBadge} onChange={(e) => onChangeCustom(e.target.value)}
+        className="h-11 w-full rounded-xl border border-neutral-200 bg-white px-3.5 text-base text-neutral-900 placeholder:text-neutral-400 focus:border-neutral-900 focus:outline-none sm:text-sm" />
     </div>
   );
 }

@@ -21,7 +21,7 @@ export function LiveOffersHeader({
   onToggleForm,
 }: LiveOffersHeaderProps) {
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-6 py-3.5 bg-neutral-50/70 border-b border-neutral-100">
+    <div className="flex items-center justify-between gap-3 border-b border-neutral-100 bg-neutral-50/70 px-4 py-3 sm:px-6">
       <div className="flex items-center gap-2 text-xs text-neutral-600">
         <span className="font-semibold text-neutral-900">{totalOffers}</span> Total Offers
         <span>·</span>
@@ -33,16 +33,17 @@ export function LiveOffersHeader({
           type="button"
           onClick={onRefresh}
           disabled={isRefreshing}
-          className="p-2 rounded-xl text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 transition-colors cursor-pointer"
+          className="grid h-10 w-10 cursor-pointer place-items-center rounded-xl text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900"
           title="Refresh offers"
+          aria-label="Refresh offers"
         >
-          <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
         </button>
 
         <button
           type="button"
           onClick={onToggleForm}
-          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold text-white bg-neutral-900 hover:bg-black transition-all cursor-pointer shadow-xs active:scale-95"
+          className="inline-flex h-10 cursor-pointer items-center gap-1.5 rounded-xl bg-neutral-900 px-3.5 text-[13px] font-semibold text-white shadow-sm transition-all hover:bg-black active:scale-95"
         >
           <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
           <span>{showCreateForm ? 'Cancel Form' : 'Publish Offer'}</span>

@@ -4,7 +4,11 @@ export type Parsed<T> = { ok: true; value: T } | { ok: false; error: string };
 
 export type EventStatus = 'DRAFT' | 'LIVE' | 'CANCELLED';
 export const EVENT_STATUSES: readonly EventStatus[] = ['DRAFT', 'LIVE', 'CANCELLED'];
-export const EVENT_CATEGORIES = ['Live Music', 'DJ Night', 'Acoustic Lounge', 'Comedy', 'Festival', 'Workshop', 'Live Event'] as const;
+/** Ready categories; a host can also type their own (any text up to 40 characters, see `category` below). */
+export const EVENT_CATEGORIES = [
+  'Live Music', 'DJ Night', 'Acoustic Lounge', 'Comedy', 'Karaoke', 'Buffet Night', 'Brunch', 'Theme Night',
+  'Sports Screening', 'Festival', 'Workshop', 'Live Event',
+] as const;
 
 export interface EventFields {
   title: string;

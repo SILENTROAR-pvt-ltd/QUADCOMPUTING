@@ -13,6 +13,8 @@ import { normalizeTableNumber, tableVisualState, type TableVisualState } from '@
  */
 export function useBoardRows(tables: RestaurantTable[], settledAt: Map<string, number>, tickets: KitchenTicket[]) {
   const [turnedOver, setTurnedOver] = useState<Map<string, TableVisualState>>(new Map());
+  // When the waiter marked a table vacant here: a "Settled" from before that is done with, so the table shows vacant.
+  const [freedAt, setFreedAt] = useState<Map<string, number>>(new Map());
 
   const rows = useMemo(() => {
     const now = Date.now();
@@ -20,10 +22,12 @@ export function useBoardRows(tables: RestaurantTable[], settledAt: Map<string, n
       .map((t) => {
         const number = t.table_number || '';
         const key = normalizeTableNumber(number);
-        return { table: t, number, state: turnedOver.get(key) ?? tableVisualState(t, settledAt.get(key) ?? null, now) };
+        const paid = settledAt.get(key) ?? null;
+        const stillSettled = paid !== null && paid > (freedAt.get(key) ?? 0) ? paid : null;
+        return { table: t, number, state: turnedOver.get(key) ?? tableVisualState(t, stillSettled, now) };
       })
       .sort((a, b) => a.number.localeCompare(b.number, undefined, { numeric: true, sensitivity: 'base' }));
-  }, [tables, settledAt, turnedOver]);
+  }, [tables, settledAt, turnedOver, freedAt]);
 
   const readyByTable = useMemo(() => {
     const map = new Map<string, number>();
@@ -42,7 +46,11 @@ export function useBoardRows(tables: RestaurantTable[], settledAt: Map<string, n
 
   return {
     rows, readyByTable, counts,
-    turnOver: (number: string, state: TableVisualState) => setTurnedOver((m) => new Map(m).set(normalizeTableNumber(number), state)),
+    turnOver: (number: string, state: TableVisualState) => {
+      const key = normalizeTableNumber(number);
+      if (state === 'vacant') setFreedAt((m) => new Map(m).set(key, Date.now()));
+      setTurnedOver((m) => new Map(m).set(key, state));
+    },
     clearTurnOver: (number: string) => setTurnedOver((m) => { const next = new Map(m); next.delete(normalizeTableNumber(number)); return next; }),
   };
 }

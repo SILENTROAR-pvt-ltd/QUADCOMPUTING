@@ -22,11 +22,22 @@ export async function releaseTable(body: any, supabase: any, businessId: string)
   if (!rawTable) return { ok: false, status: 400, error: 'Choose a table to free.' };
   const tableOr = buildTableOrFilter(rawTable);
 
-  // Every order of this table that was never settled, including one a KOT cancel already marked 'cancelled':
-  // its served lines still count, so a cancelled order cannot hide food that was cooked.
-  const { data: orders, error: ordersErr } = await supabase.from('orders').select('id, status').eq('business_id', businessId).or(tableOr);
+  // Every order of the party at this table that was never settled, including one a KOT cancel already marked
+  // 'cancelled': its served lines still count, so a cancelled order cannot hide food that was cooked. Only the party now
+  // seated counts: a cancelled order from an earlier party (its session long closed) used to block freeing the table
+  // for good, so a table could never be marked vacant again after one voided bill.
+  const [{ data: orders, error: ordersErr }, { data: liveSessions, error: liveErr }] = await Promise.all([
+    supabase.from('orders').select('id, status, session_id').eq('business_id', businessId).or(tableOr),
+    supabase.from('dine_in_sessions').select('id').eq('business_id', businessId).in('status', LIVE_SESSION).or(tableOr),
+  ]);
   if (ordersErr) throw ordersErr;
-  const unsettled = (orders || []).filter((o: any) => !SETTLED_LIKE.has(String(o.status ?? '').toLowerCase()));
+  if (liveErr) throw liveErr;
+  const seated = new Set((liveSessions || []).map((s: any) => s.id));
+  const unsettled = (orders || []).filter((o: any) => {
+    const status = String(o.status ?? '').toLowerCase();
+    if (status === 'cancelled') return Boolean(o.session_id) && seated.has(o.session_id);
+    return !SETTLED_LIKE.has(status);
+  });
   const liveIds: string[] = unsettled.map((o: any) => o.id);
   const orderIds: string[] = unsettled.filter((o: any) => !CLOSED_LOWER.has(String(o.status ?? '').toLowerCase())).map((o: any) => o.id);
 

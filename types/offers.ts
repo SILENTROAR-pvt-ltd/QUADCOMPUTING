@@ -11,4 +11,6 @@ export interface VenueLiveOffer {
   is_active: boolean;
   created_at: string;
   updated_at?: string;
+  /** The offer's photo in the venue's own storage; absent for a text-only offer. */
+  image_url?: string | null;
 }

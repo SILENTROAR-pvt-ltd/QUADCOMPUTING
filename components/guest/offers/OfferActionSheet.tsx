@@ -24,6 +24,10 @@ export function OfferActionSheet({ venueId, tableNumber, offer, onClose }: Offer
       className="fixed inset-0 z-[120] flex items-end justify-center bg-neutral-950/40 p-0 backdrop-blur-sm sm:items-center sm:p-4">
       <motion.div onClick={(e) => e.stopPropagation()} initial={{ y: 56, opacity: 0.6 }} animate={{ y: 0, opacity: 1 }} transition={SPRING}
         className="max-h-[92dvh] w-full max-w-md space-y-5 overflow-y-auto overscroll-contain rounded-t-3xl border border-neutral-200 bg-white p-6 shadow-2xl sm:rounded-3xl">
+        {offer.image_url && (
+          // eslint-disable-next-line @next/next/no-img-element -- the offer's photo, stored by the venue
+          <img src={offer.image_url} alt={offer.title} className="-mx-6 -mt-6 aspect-[16/9] w-[calc(100%+3rem)] max-w-none rounded-t-3xl object-cover" />
+        )}
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <span className="inline-block rounded-full border border-amber-300/80 bg-amber-50 px-3 py-0.5 font-mono text-xs font-bold text-amber-900">{offer.discount_badge}</span>

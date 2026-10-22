@@ -6,7 +6,12 @@ export interface TableStateInput {
   activeSession?: { status?: string | null; grandTotal?: number | null; subtotal?: number | null; itemsCount?: number | null } | null;
 }
 
-export const SETTLED_WINDOW_MS = 3 * 60 * 60 * 1000;
+/**
+ * How long a free table shows "Settled" after its last bill was paid: long enough for the waiter to see it was paid and
+ * clear it, short enough not to contradict billing (where it is free). It was 3 hours, so a table showed "Settled" on the
+ * waiter's board long after billing showed it vacant. Marking it vacant on the board clears it at once (useBoardRows).
+ */
+export const SETTLED_WINDOW_MS = 15 * 60 * 1000;
 
 /** "T-01", "Table 1", "t-01" all name the same table. */
 export function normalizeTableNumber(raw: string | null | undefined): string {

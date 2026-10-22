@@ -35,7 +35,7 @@ export function LiveOffersManager({ venueId, onOffersUpdated }: LiveOffersManage
         onToggleForm={() => setShowCreateForm((prev) => !prev)}
       />
 
-      <div className="px-6 pb-6 space-y-6">
+      <div className="space-y-6 px-4 pb-6 sm:px-6">
         {actionError && (
           <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">{actionError}</p>
         )}

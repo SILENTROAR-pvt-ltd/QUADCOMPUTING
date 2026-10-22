@@ -105,4 +105,24 @@ describe('Freeing a table from the live board', () => {
     const r = await releaseTable({}, seeded(), BIZ);
     expect(r).toMatchObject({ ok: false, status: 400 });
   });
+
+  it('still refuses when the seated party\'s own order was cancelled after the kitchen cooked it', async () => {
+    const db = seeded();
+    db.tables.orders[0].status = 'cancelled';
+    db.tables.order_items[0].kot_status = 'served';
+    const r = await releaseTable({ table_number: 'T-04' }, db, BIZ);
+    expect(r).toMatchObject({ ok: false, status: 409 });
+  });
+
+  it('frees the table when the only cooked food was on an earlier party\'s cancelled order', async () => {
+    const db = createFakeSupabase({
+      orders: [{ id: 'old', business_id: BIZ, table_number: 'T-04', session_id: 'gone', status: 'cancelled' }],
+      order_items: [{ id: 'iold', order_id: 'old', kot_status: 'served' }],
+      dine_in_sessions: [{ id: 'gone', business_id: BIZ, table_number: 'T-04', status: 'closed' }],
+      restaurant_tables: [{ id: 'rt4', business_id: BIZ, table_number: 'T-04', status: 'OCCUPIED' }],
+    });
+    const r = await releaseTable({ table_number: 'T-04' }, db, BIZ);
+    expect(r).toMatchObject({ ok: true, status: 'VACANT' });
+    expect(db.tables.restaurant_tables[0].status).toBe('VACANT');
+  });
 });

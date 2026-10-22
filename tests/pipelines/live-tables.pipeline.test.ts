@@ -13,7 +13,7 @@ describe('Live tables: what each table is doing', () => {
 
   it('shows an occupied table with no order yet as occupied, and a recently paid table as settled', () => {
     expect(tableVisualState({ status: 'OCCUPIED', activeSession: null }, null, NOW)).toBe('occupied');
-    expect(tableVisualState({ status: 'VACANT' }, NOW - 20 * 60_000, NOW)).toBe('settled');
+    expect(tableVisualState({ status: 'VACANT' }, NOW - 5 * 60_000, NOW)).toBe('settled');
   });
 
   it('turns a settled table back to vacant once the window has passed, or when nothing was settled', () => {

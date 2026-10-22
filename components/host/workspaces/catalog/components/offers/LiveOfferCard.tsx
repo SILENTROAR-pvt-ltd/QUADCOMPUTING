@@ -16,13 +16,17 @@ export function LiveOfferCard({ offer, onToggleActive, onDelete }: LiveOfferCard
 
   return (
     <div
-      className={`rounded-2xl border p-4 transition-all duration-200 flex flex-col justify-between shadow-2xs ${
+      className={`flex flex-col justify-between overflow-hidden rounded-2xl border shadow-sm transition-all duration-200 ${
         offer.is_active
           ? 'bg-white border-neutral-200/90 hover:border-neutral-300'
           : 'bg-neutral-50/70 border-neutral-200/60 opacity-60'
       }`}
     >
-      <div className="space-y-2">
+      {offer.image_url && (
+        // eslint-disable-next-line @next/next/no-img-element -- the offer's stored photo
+        <img src={offer.image_url} alt="" loading="lazy" className="aspect-[16/9] w-full object-cover" />
+      )}
+      <div className="space-y-2 px-4 pt-4">
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-1.5 flex-wrap">
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-neutral-100 text-neutral-700 border border-neutral-200/70">
@@ -38,7 +42,7 @@ export function LiveOfferCard({ offer, onToggleActive, onDelete }: LiveOfferCard
           <button
             type="button"
             onClick={() => onToggleActive(offer)}
-            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold transition-all cursor-pointer ${
+            className={`inline-flex min-h-8 items-center gap-1 rounded-full px-2.5 text-[11px] font-semibold transition-all cursor-pointer ${
               offer.is_active ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/70' : 'bg-neutral-200 text-neutral-500'
             }`}
             title={offer.is_active ? 'Click to deactivate' : 'Click to activate'}
@@ -58,7 +62,7 @@ export function LiveOfferCard({ offer, onToggleActive, onDelete }: LiveOfferCard
         </div>
       </div>
 
-      <div className="flex items-center justify-between pt-3 mt-3 border-t border-neutral-100 text-[11px] text-neutral-400">
+      <div className="mx-4 mb-3 mt-3 flex items-center justify-between border-t border-neutral-100 pt-2 text-[11px] text-neutral-400">
         <span className="flex items-center gap-1">
           <Clock className="w-3 h-3" />
           {offer.valid_until
@@ -68,10 +72,11 @@ export function LiveOfferCard({ offer, onToggleActive, onDelete }: LiveOfferCard
         <button
           type="button"
           onClick={() => onDelete(offer.id, offer.title)}
-          className="p-1 rounded-lg text-neutral-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-          title="Delete Offer"
+          className="grid h-10 w-10 cursor-pointer place-items-center rounded-lg text-neutral-400 transition-colors hover:bg-rose-50 hover:text-rose-600"
+          title="Delete offer"
+          aria-label={`Delete offer ${offer.title}`}
         >
-          <Trash2 className="w-3.5 h-3.5" />
+          <Trash2 className="h-4 w-4" />
         </button>
       </div>
     </div>

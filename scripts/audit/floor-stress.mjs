@@ -212,7 +212,11 @@ try {
   const ids = (ords || []).map((o) => o.id);
   if (ids.length) await admin.from('orders').update({ status: 'cancelled', updated_at: at }).in('id', ids).eq('business_id', biz);
   await admin.from('dine_in_sessions').update({ status: 'closed', updated_at: at }).eq('business_id', biz).in('table_number', ALL_VARIANTS).in('status', ['open', 'bill_requested']).gte('created_at', startedAt);
-  // Sessions that were open before the run go back to exactly the status they had.
+  // Sessions that were open before the run go back to exactly what they were: the test orders placed on them are unlinked
+  // first (a cancelled order with cooked dishes on the seated party's session stops the table being marked vacant), then
+  // each session gets its old status back.
+  const keptIds = keptSessions.map((s) => s.id);
+  if (keptIds.length && ids.length) await admin.from('orders').update({ session_id: null }).in('id', ids).in('session_id', keptIds).eq('business_id', biz);
   for (const s of keptSessions) await admin.from('dine_in_sessions').update({ status: s.status }).eq('id', s.id).eq('business_id', biz);
   await admin.from('restaurant_tables').update({ status: 'VACANT' }).eq('business_id', biz).in('table_number', TABLES);
   await admin.from('bill_request_events').update({ settled_at: at }).eq('business_id', biz).in('table_number', ALL_VARIANTS).is('settled_at', null);

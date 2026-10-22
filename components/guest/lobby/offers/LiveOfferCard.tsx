@@ -21,8 +21,12 @@ export function LiveOfferCard({ offer, tableNumber, onClaim }: LiveOfferCardProp
   const isFood = offer.category === 'food';
   const Kind = isRoom ? Bed : isFood ? Utensils : Layers;
   return (
-    <div className="group relative flex flex-col justify-between overflow-hidden rounded-3xl border border-neutral-200/90 bg-white p-5 shadow-2xs transition-shadow duration-300 hover:shadow-md sm:p-6">
+    <div className="group relative flex flex-col justify-between overflow-hidden rounded-3xl border border-neutral-200/90 bg-white p-5 shadow-sm transition-shadow duration-300 hover:shadow-md sm:p-6">
       <div className="pointer-events-none absolute -right-12 -top-12 h-32 w-32 rounded-full bg-gradient-to-br from-amber-200/30 to-rose-200/20 blur-2xl transition-transform duration-500 group-hover:scale-125" />
+      {offer.image_url && (
+        // eslint-disable-next-line @next/next/no-img-element -- the offer's photo, stored by the venue
+        <img src={offer.image_url} alt={offer.title} loading="lazy" className="relative -mx-5 -mt-5 mb-4 aspect-[16/9] w-[calc(100%+2.5rem)] max-w-none object-cover sm:-mx-6 sm:-mt-6 sm:w-[calc(100%+3rem)]" />
+      )}
       <div className="relative space-y-3">
         <div className="flex items-center justify-between gap-2">
           <span className="inline-flex items-center gap-1 rounded-full border border-neutral-200/70 bg-neutral-100 px-2.5 py-0.5 text-[10px] font-semibold text-neutral-700">

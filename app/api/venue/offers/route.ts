@@ -2,10 +2,13 @@ import { safeMessage } from '@/lib/utils/safe-message';
 import { NextResponse } from 'next/server';
 import { requireHost, adminDb } from '@/lib/auth/guards';
 import { withApiErrorBoundary } from '@/lib/middleware/error-handler';
+import { withOfferImage } from '@/lib/services/offers/offer-columns';
+import { readOfferImage } from '@/lib/services/offers/offer-photo';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const OFFER_COLUMNS = 'id, venue_id, title, description, category, discount_badge, valid_until, is_active, created_at, updated_at';
 const OFFER_CATEGORIES = ['room', 'food', 'general'];
+const STORAGE_BASE = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const BAD_PHOTO = 'Add the photo through the offer form (upload it or paste its link) so it is kept on your own storage.';
 
 // venue_live_offers is the only source of truth. A per-instance in-memory fallback
 // made offers appear saved to the host while other instances (and guests) never saw them.
@@ -33,18 +36,16 @@ export const GET = withApiErrorBoundary(async function GET(request: Request) {
       }
     }
 
-    let query = adminDb()
-      .from('venue_live_offers')
-      .select(OFFER_COLUMNS)
-      .eq('venue_id', venueId)
-      .order('created_at', { ascending: false });
-    if (activeOnly) query = query.eq('is_active', true);
-
-    if (category && category !== 'all') {
-      query = query.eq('category', category);
-    }
-
-    const { data, error } = await query;
+    const { data, error } = await withOfferImage((columns) => {
+      let query = adminDb()
+        .from('venue_live_offers')
+        .select(columns)
+        .eq('venue_id', venueId)
+        .order('created_at', { ascending: false });
+      if (activeOnly) query = query.eq('is_active', true);
+      if (category && category !== 'all') query = query.eq('category', category);
+      return query;
+    });
     if (error) throw error;
 
     return NextResponse.json({ success: true, source: 'supabase', offers: data || [] });
@@ -63,9 +64,10 @@ export const POST = withApiErrorBoundary(async function POST(request: Request) {
     const body = await request.json().catch(() => ({}));
     const { title, description, category, discount_badge, valid_until, is_active } = body;
 
-    const resolvedTitle = (title || '').trim();
-    const resolvedBadge = (discount_badge || '').trim();
-    const resolvedCategory = (category || 'general').toLowerCase();
+    const resolvedTitle = String(title || '').trim().slice(0, 120);
+    const resolvedBadge = String(discount_badge || '').trim().slice(0, 40);
+    const resolvedCategory = String(category || 'general').toLowerCase();
+    const image = readOfferImage(body.image_url, businessId, STORAGE_BASE);
 
     if (!resolvedTitle) {
       return NextResponse.json({ error: 'Offer title is required' }, { status: 400 });
@@ -73,20 +75,22 @@ export const POST = withApiErrorBoundary(async function POST(request: Request) {
     if (!resolvedBadge) {
       return NextResponse.json({ error: 'Discount badge is required' }, { status: 400 });
     }
+    if (image.invalid) return NextResponse.json({ error: BAD_PHOTO }, { status: 400 });
 
-    const { data, error } = await adminDb()
+    const row: Record<string, unknown> = {
+      venue_id: businessId,
+      title: resolvedTitle,
+      description: String(description || '').trim().slice(0, 400) || null,
+      category: OFFER_CATEGORIES.includes(resolvedCategory) ? resolvedCategory : 'general',
+      discount_badge: resolvedBadge,
+      valid_until: valid_until || null,
+      is_active: is_active !== false,
+    };
+    const { data, error } = await withOfferImage((columns, hasImage) => adminDb()
       .from('venue_live_offers')
-      .insert({
-        venue_id: businessId,
-        title: resolvedTitle,
-        description: (description || '').trim() || null,
-        category: OFFER_CATEGORIES.includes(resolvedCategory) ? resolvedCategory : 'general',
-        discount_badge: resolvedBadge,
-        valid_until: valid_until || null,
-        is_active: is_active !== false,
-      })
-      .select(OFFER_COLUMNS)
-      .single();
+      .insert(hasImage && image.value ? { ...row, image_url: image.value } : row)
+      .select(columns)
+      .single());
 
     if (error) throw error;
 
@@ -118,14 +122,16 @@ export const PATCH = withApiErrorBoundary(async function PATCH(request: Request)
     if (discount_badge) updates.discount_badge = discount_badge.trim();
     if (valid_until !== undefined) updates.valid_until = valid_until;
     updates.updated_at = new Date().toISOString();
+    const image = readOfferImage(body.image_url, businessId, STORAGE_BASE);
+    if (image.invalid) return NextResponse.json({ error: BAD_PHOTO }, { status: 400 });
 
-    const { data, error } = await adminDb()
+    const { data, error } = await withOfferImage((columns, hasImage) => adminDb()
       .from('venue_live_offers')
-      .update(updates)
+      .update(hasImage && image.value !== undefined ? { ...updates, image_url: image.value } : updates)
       .eq('id', id)
       .eq('venue_id', businessId)
-      .select(OFFER_COLUMNS)
-      .maybeSingle();
+      .select(columns)
+      .maybeSingle());
 
     if (error) throw error;
     if (!data) {

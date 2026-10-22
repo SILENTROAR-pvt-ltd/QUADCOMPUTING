@@ -12,6 +12,7 @@ import { MobileNavDrawer } from './control-center/MobileNavDrawer';
 import { WorkspaceViewRouter } from './control-center/WorkspaceViewRouter';
 import { useStaffAlerts } from './control-center/useStaffAlerts';
 import { useRoomRequests } from './control-center/useRoomRequests';
+import { useReservationsUnread } from './control-center/useReservationsUnread';
 import { StaffAlertsTray } from './control-center/StaffAlertsTray';
 import { requestOpenRoom, requestOpenTable } from '@/lib/host/open-room-request';
 import { alertCountsByTab } from '@/lib/host/alert-routing';
@@ -87,8 +88,11 @@ export default function ControlCenterWorkspace({
   // Each waiting call lights the workspace it belongs to, so the desk sees where it is wanted without opening the tray.
   // A room's own pending request (check-out, pay now) keeps Accommodations lit even after the bell's call was cleared.
   const roomRequests = useRoomRequests(venueId);
+  // New table and room bookings, event guest-list joins and offer requests since Reservations was last opened.
+  const reservations = useReservationsUnread(venueId, activeTab === 'reservations');
   const alertCounts = alertCountsByTab(staffAlerts.alerts);
   alertCounts.accommodations = Math.max(alertCounts.accommodations || 0, roomRequests);
+  alertCounts.reservations = Math.max(alertCounts.reservations || 0, reservations.unread);
   const navProps = {
     activeTab, onTabChange: handleTabChange, securityStatus, isMasterUnlocked, isTabProtected,
     onLockSession: handleLockSession, onUnlockRequest: handleUnlockRequest, billRequests, venueName, venueId,
