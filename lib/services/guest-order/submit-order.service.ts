@@ -20,15 +20,22 @@ const MAX_ATTEMPTS = 6;
  * Places an order. Requests for the same table run one after another here, and if the database finds the table changed
  * between this request's read and its write (another instance's order landed in between) the whole order is read again.
  */
-export async function submitGuestOrder(body: any, supabase: any) {
+/** Where an order's server time went, filled in when the caller passes it (the route reports it as Server-Timing). */
+export interface OrderTiming { wait?: number; reads?: number; rpc?: number; attempts?: number }
+
+export async function submitGuestOrder(body: any, supabase: any, timing: OrderTiming = {}) {
   const venue = String(body?.business_id || body?.cafe_id || '');
   const table = String(body?.table_number || '');
-  if (!venue || !table) return submitGuestOrderOnce(body, supabase);
+  if (!venue || !table) return submitGuestOrderOnce(body, supabase, timing);
 
+  const queued = performance.now();
   return withTableLock(tableLockKey(venue, table), async () => {
+    // Time spent queued behind other orders for the same table on this instance.
+    timing.wait = performance.now() - queued;
     for (let attempt = 1; ; attempt++) {
+      timing.attempts = attempt;
       try {
-        return await submitGuestOrderOnce(body, supabase);
+        return await submitGuestOrderOnce(body, supabase, timing);
       } catch (err: any) {
         if (err?.code !== 'TABLE_STATE_CHANGED') throw err;
         if (attempt >= MAX_ATTEMPTS) {
@@ -53,7 +60,7 @@ export function isReplayOfSameOrder(existing: { table_number?: unknown; created_
   return Number.isFinite(placedAt) && now - placedAt >= 0 && now - placedAt < REPLAY_WINDOW_MS;
 }
 
-async function submitGuestOrderOnce(body: any, supabase: any) {
+async function submitGuestOrderOnce(body: any, supabase: any, timing: OrderTiming = {}) {
   const { business_id, cafe_id, table_number, guest_name, guest_phone, guest_handle, items: incomingItems = [] } = body;
   // One note for the whole table ("Table note for kitchen"). It goes on the kitchen ticket once, never on each dish.
   const tableNote = typeof body.table_note === 'string' ? body.table_note.trim().slice(0, 200) : '';
@@ -77,6 +84,7 @@ async function submitGuestOrderOnce(body: any, supabase: any) {
 
   // Every read that does not depend on another runs at once: the venue check, the duplicate check, the table's open
   // order, the verified prices, the venue's stations and its GST status. This used to be one round trip after another.
+  const tReads = performance.now();
   const [bizRes, dupRes, lookup, catalogRes, stationRes, gst] = await Promise.all([
     supabase.from('businesses').select('id').eq('id', resolvedBizId).maybeSingle(),
     // DB-Backed Idempotency Guard (P0 #1): a duplicate returns the original order below. The atomic RPC re-checks the same
@@ -91,6 +99,7 @@ async function submitGuestOrderOnce(body: any, supabase: any) {
     supabase.from('businesses').select('kitchen_stations').eq('id', resolvedBizId).maybeSingle(),
     loadGstStatus(supabase, resolvedBizId),
   ]);
+  timing.reads = performance.now() - tReads;
 
   // Verify business exists in database
   const { data: bizCheck, error: bizCheckErr } = bizRes;
@@ -282,10 +291,12 @@ async function submitGuestOrderOnce(body: any, supabase: any) {
       ticket_note: [`Deliver to: ${deliveryRequest.address} · ${deliveryRequest.phone}`, tableNote].filter(Boolean).join('\n'),
     };
   }
+  const tRpc = performance.now();
   let { data: rpcResult, error: rpcErr } = await supabase.rpc('submit_guest_order_atomic', { ...rpcArgs, p_expected_item_rows: isAddonOrder ? previousItemRows : null });
   if (rpcErr && (rpcErr.code === 'PGRST202' || /p_expected_item_rows/.test(String(rpcErr.message)))) {
     ({ data: rpcResult, error: rpcErr } = await supabase.rpc('submit_guest_order_atomic', rpcArgs));
   }
+  timing.rpc = performance.now() - tRpc;
   if (rpcErr && /TABLE_STATE_CHANGED/.test(String(rpcErr.message))) {
     throw Object.assign(new Error('The table changed while this order was being placed.'), { code: 'TABLE_STATE_CHANGED' });
   }

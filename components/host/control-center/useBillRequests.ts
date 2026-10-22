@@ -1,8 +1,6 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { createClient } from '@/lib/supabase/client';
-import { businessFilter } from '@/lib/realtime/channels';
 import { useFloorPing } from '@/lib/hooks/use-floor-ping';
 import { sharedGet } from '@/lib/utils/shared-get';
 import { usePoll } from '@/lib/utils/use-poll';
@@ -53,21 +51,16 @@ export function useBillRequests(venueId?: string) {
     timer.current = setTimeout(() => { timer.current = null; void check(); }, COALESCE_MS);
   }, [check]);
 
+  // The venue's floor ping covers every session change (a table asking, a bill settled): one push per change, no
+  // separate row-change subscription.
   useFloorPing(venueId || null, schedule);
 
   useEffect(() => {
     void check();
-    if (!venueId) return;
-    const sb = createClient();
-    const filter = businessFilter(venueId);
-    const channel = sb.channel(`bill_requests_${venueId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'dine_in_sessions', ...(filter ? { filter } : {}) }, schedule)
-      .subscribe();
     return () => {
       if (timer.current) { clearTimeout(timer.current); timer.current = null; }
-      void sb.removeChannel(channel);
     };
-  }, [venueId, check, schedule]);
+  }, [venueId, check]);
   usePoll(() => { void check(); }, POLL_MS);
 
   return { billRequests };

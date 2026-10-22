@@ -48,7 +48,8 @@ export const GET = withApiErrorBoundary(async function GET(request: Request) {
 
     const validation = await validateGuestAccess(cafeParamRaw, tableParamRaw);
     if (validation.error) return validation.error;
-    const limited = await enforceRateLimit(request, 'guest_session_get', 1500, 60_000, validation.businessId);
+    // A read every phone makes on every push: counted on this instance only (see enforceRateLimit's localOnly).
+    const limited = await enforceRateLimit(request, 'guest_session_get', 1500, 60_000, validation.businessId, { localOnly: true });
     if (limited) return limited;
 
     const supabase = adminDb();

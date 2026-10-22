@@ -21,6 +21,12 @@ describe('merging what a kitchen screen hears', () => {
     expect(mergeTicket(undefined, t('a', 'PENDING')).status).toBe('PENDING');
   });
 
+  it('keeps the very object shown for a ticket that has not changed, so its card does not redraw', () => {
+    const shown = t('a', 'READY', [{ name: 'Dal', qty: 1 }]);
+    expect(mergeTicket(shown, t('a', 'READY', [{ name: 'Dal', qty: 1 }]))).toBe(shown);
+    expect(mergeTicket(shown, t('a', 'READY', [{ name: 'Dal', qty: 2 }]))).not.toBe(shown);
+  });
+
   it('lets the server list decide which tickets exist, and keeps new ones', () => {
     const merged = mergeTickets([t('a', 'READY'), t('gone', 'PENDING')], [t('a', 'PREPARING'), t('new', 'PENDING')]);
     expect(merged.map((x) => [x.id, x.status])).toEqual([['a', 'READY'], ['new', 'PENDING']]);

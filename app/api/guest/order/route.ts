@@ -15,6 +15,7 @@ import { applyRequestIdentity } from '@/lib/services/guest-auth/request-identity
 import { newDeliveryTableNumber } from '@/lib/services/delivery/delivery-input';
 import { isRoomTable } from '@/lib/guest/room-mode';
 import { assertVenueBillingAllowed } from '@/lib/services/billing/venue-guard.service';
+import { afterResponse } from '@/lib/utils/after-response';
 
 /**
  * GET /api/guest/order
@@ -28,8 +29,9 @@ export const GET = withApiErrorBoundary(async function GET(request: Request) {
 
     const validation = await validateGuestAccess(cafeParamRaw, tableParamRaw);
     if (validation.error) return validation.error;
-    // Venue-sized: every phone at the table polls this. Sets a ceiling against a runaway script, not a per-guest quota.
-    const limited = await enforceRateLimit(request, 'guest_order_get', 1500, 60_000, validation.businessId);
+    // Venue-sized: every phone at the table reads this on every push. A ceiling against a runaway script, not a per-guest
+    // quota, so it is counted on this instance only: a shared count added a network write to every guest read.
+    const limited = await enforceRateLimit(request, 'guest_order_get', 1500, 60_000, validation.businessId, { localOnly: true });
     if (limited) return limited;
 
     const supabase = adminDb();
@@ -96,18 +98,25 @@ export const POST = withApiErrorBoundary(async function POST(request: Request) {
 
     const tOrder = performance.now();
     let placeMs = 0;
+    const steps: { wait?: number; reads?: number; rpc?: number; attempts?: number } = {};
+    // The guard shares the answer with other instances just after the guest has it (a retry in between waits for it).
     const { response, status } = await withIdempotency(key, async () => {
       const tPlace = performance.now();
-      const result = await placeGuestOrder(body, supabase);
+      const result = await placeGuestOrder(body, supabase, steps);
       placeMs = performance.now() - tPlace;
       return { response: result, status: 200 };
-    });
+    }, { defer: (work) => afterResponse('guest-order-guard', work) });
     const tEnd = performance.now();
     const timing = [
       `venue;dur=${(tChecks - t0).toFixed(1)}`,
       `checks;dur=${(tOrder - tChecks).toFixed(1)}`,
       `guard;dur=${Math.max(0, tEnd - tOrder - placeMs).toFixed(1)}`,
       `place;dur=${placeMs.toFixed(1)}`,
+      // Inside "place": queued behind the same table's orders, the parallel reads, and the order function (with its retries).
+      `wait;dur=${(steps.wait ?? 0).toFixed(1)}`,
+      `reads;dur=${(steps.reads ?? 0).toFixed(1)}`,
+      `rpc;dur=${(steps.rpc ?? 0).toFixed(1)}`,
+      `attempts;dur=${steps.attempts ?? 1}`,
       `total;dur=${(tEnd - t0).toFixed(1)}`,
     ].join(', ');
 

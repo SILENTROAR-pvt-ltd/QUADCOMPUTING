@@ -120,8 +120,8 @@ export function KitchenBoard({ businessId, stationFilter = 'ALL', className = ''
               ticket={ticket}
               station={resolveStation(ticket)}
               nowMs={nowMs}
-              onStatus={(to) => updateTicketStatus(ticket.id, to)}
-              onToggleItem={(idx) => toggleItemDone(ticket.id, idx)}
+              onStatus={updateTicketStatus}
+              onToggleItem={toggleItemDone}
             />
           ))}
         </div>

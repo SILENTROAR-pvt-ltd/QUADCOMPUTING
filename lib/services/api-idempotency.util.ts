@@ -1,5 +1,5 @@
 // lib/services/api-idempotency.util.ts
-import { IdempotencyStoreUnavailable, sharedStoreFromEnv, withSharedIdempotency } from './api-idempotency-redis.util';
+import { IdempotencyStoreUnavailable, sharedStoreFromEnv, withSharedIdempotency, type Defer } from './api-idempotency-redis.util';
 
 interface CachedResponse {
   timestamp: number;
@@ -61,12 +61,14 @@ export function recordIdempotentResponse(key: string, response: any, status: num
  */
 export async function withIdempotency<T>(
   key: string,
-  fn: () => Promise<{ response: T; status?: number }>
+  fn: () => Promise<{ response: T; status?: number }>,
+  /** Share the answer with other instances after responding (pass afterResponse); see runHeld. */
+  options: { defer?: Defer } = {}
 ): Promise<{ response: T; status: number; duplicate?: boolean }> {
   const shared = sharedStoreFromEnv();
   if (shared) {
     try {
-      return await withSharedIdempotency(shared, key, fn);
+      return await withSharedIdempotency(shared, key, fn, options.defer);
     } catch (err) {
       if (!(err instanceof IdempotencyStoreUnavailable)) throw err;
       console.warn('[idempotency] shared store unreachable, using this instance only:', err.message);

@@ -68,12 +68,16 @@ async function lockAndRead(cfg: SharedStoreConfig, lockKey: string, resultKey: s
 const asDuplicate = <T>(stored: Stored): Outcome<T> => ({ response: stored.response as T, status: stored.status, duplicate: true });
 const release = (cfg: SharedStoreConfig, lockKey: string) => command(cfg, ['DEL', lockKey]).catch(() => undefined);
 
+/** Runs follow-up work after the response has gone out (the route passes afterResponse). */
+export type Defer = (work: () => Promise<unknown>) => void;
+
 /** Holds the lock, and no answer is stored: runs the work once and shares its answer. */
 async function runHeld<T>(
   cfg: SharedStoreConfig,
   lockKey: string,
   resultKey: string,
   work: () => Promise<{ response: T; status?: number }>,
+  defer?: Defer,
 ): Promise<Outcome<T>> {
   let result: { response: T; status?: number };
   try {
@@ -85,16 +89,21 @@ async function runHeld<T>(
   }
   const status = result.status || 200;
   // The answer is stored, then the lock goes, in one pipelined round trip (the store runs them in order), so no instance
-  // sees a moment when the key is free but the answer is missing. The order waits for this, so it is one trip, not two.
-  try {
-    await pipeline(cfg, [
-      ['SET', resultKey, JSON.stringify({ response: result.response, status }), 'PX', IDEMPOTENCY_WINDOW_MS],
-      ['DEL', lockKey],
-    ]);
-  } catch (err) {
-    console.error('[idempotency] could not store the answer; this request is not shared with other instances', err);
-    await release(cfg, lockKey);
-  }
+  // sees a moment when the key is free but the answer is missing.
+  const share = async () => {
+    try {
+      await pipeline(cfg, [
+        ['SET', resultKey, JSON.stringify({ response: result.response, status }), 'PX', IDEMPOTENCY_WINDOW_MS],
+        ['DEL', lockKey],
+      ]);
+    } catch (err) {
+      console.error('[idempotency] could not store the answer; this request is not shared with other instances', err);
+      await release(cfg, lockKey);
+    }
+  };
+  // With `defer`, the caller answers first and the answer is shared just after. Still safe: until it is stored the lock is
+  // held, so a duplicate arriving in between waits for the stored answer instead of running the work again.
+  if (defer) defer(share); else await share();
   return { response: result.response, status };
 }
 
@@ -107,6 +116,7 @@ export async function withSharedIdempotency<T>(
   cfg: SharedStoreConfig,
   key: string,
   work: () => Promise<{ response: T; status?: number }>,
+  defer?: Defer,
 ): Promise<Outcome<T>> {
   const lockKey = `idemp:lock:${key}`;
   const resultKey = `idemp:result:${key}`;
@@ -123,7 +133,7 @@ export async function withSharedIdempotency<T>(
     if (first.acquired) await release(cfg, lockKey);
     return asDuplicate<T>(first.stored);
   }
-  if (first.acquired) return runHeld(cfg, lockKey, resultKey, work);
+  if (first.acquired) return runHeld(cfg, lockKey, resultKey, work, defer);
 
   // Another request holds the key: wait for its answer, or take the key if that run failed and released it.
   const deadline = Date.now() + WAIT_MS;
@@ -134,7 +144,7 @@ export async function withSharedIdempotency<T>(
       if (next.acquired) await release(cfg, lockKey);
       return asDuplicate<T>(next.stored);
     }
-    if (next.acquired) return runHeld(cfg, lockKey, resultKey, work);
+    if (next.acquired) return runHeld(cfg, lockKey, resultKey, work, defer);
     if (Date.now() >= deadline) {
       throw Object.assign(new Error('This request is already being processed. Try again in a moment.'), { status: 409 });
     }

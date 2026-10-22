@@ -5,6 +5,7 @@ const ctx = vi.hoisted(() => ({ db: null as any }));
 vi.mock('@/lib/supabase/admin', () => ({ adminDb: () => ctx.db, getAdminClient: () => ctx.db }));
 
 import { POST } from '@/app/api/guest/order/route';
+import { GUEST_ORDER_LIMIT } from '@/lib/middleware/rate-limiter';
 
 // The order, order_items, kitchen ticket and table-session writes happen inside the Postgres
 // function submit_guest_order_atomic. That function's SQL cannot run here, so it is stubbed and
@@ -129,13 +130,13 @@ describe('Guest order pipeline (guards in front of the atomic order function)', 
     expect(ctx.db.calls.rpc).toHaveLength(0);
   });
 
-  it('rate-limits a flood from one address at one venue (40 per minute), without blocking others', async () => {
+  it('rate-limits a flood from one address at one venue (the per-minute venue ceiling), without blocking others', async () => {
     const ip = freshIp();
     const statuses: number[] = [];
-    for (let i = 0; i < 41; i++) statuses.push((await order({}, ip)).status);
+    for (let i = 0; i <= GUEST_ORDER_LIMIT; i++) statuses.push((await order({}, ip)).status);
 
-    expect(statuses.slice(0, 40).every((s) => s === 200)).toBe(true);
-    expect(statuses[40]).toBe(429);
+    expect(statuses.slice(0, GUEST_ORDER_LIMIT).every((s) => s === 200)).toBe(true);
+    expect(statuses[GUEST_ORDER_LIMIT]).toBe(429);
 
     expect((await order({}, freshIp())).status).toBe(200);
   });

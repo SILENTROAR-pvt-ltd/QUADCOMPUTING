@@ -113,6 +113,23 @@ describe('shared idempotency window (Upstash REST)', () => {
     expect(store.data.has('idemp:result:guest_order:trips-1')).toBe(true);
   });
 
+  it('answers first and shares just after; a retry in between waits for the shared answer instead of running again', async () => {
+    const store = fakeSharedStore();
+    vi.stubGlobal('fetch', store.fetchMock);
+    const counter = { runs: 0 };
+    const deferred: Array<() => Promise<unknown>> = [];
+    const first = await withIdempotency('guest_order:defer-1', work(counter, { order: 'one' }), { defer: (w) => { deferred.push(w); } });
+    expect(first.response).toEqual({ order: 'one' });
+    expect(store.data.has('idemp:result:guest_order:defer-1')).toBe(false);
+
+    const retry = withIdempotency('guest_order:defer-1', work(counter, { order: 'two' }));
+    await new Promise((r) => setTimeout(r, 120));
+    await Promise.all(deferred.map((w) => w()));
+    expect(await retry).toMatchObject({ duplicate: true, response: { order: 'one' } });
+    expect(counter.runs).toBe(1);
+    expect(store.data.has('idemp:lock:guest_order:defer-1')).toBe(false);
+  });
+
   it('answers a retry that takes the lock just after the run finished with the stored answer, and frees the lock', async () => {
     const store = fakeSharedStore();
     vi.stubGlobal('fetch', store.fetchMock);

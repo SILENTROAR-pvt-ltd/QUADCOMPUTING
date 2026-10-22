@@ -40,7 +40,6 @@ export function useKitchenRealtime({
   pollMs,
 }: UseKitchenRealtimeOptions = {}) {
   const [tickets, setTickets] = useState<KitchenTicket[]>([]);
-  const [orderItems, setOrderItems] = useState<OrderItemRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -180,31 +179,8 @@ export function useKitchenRealtime({
           }
         }
       )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'order_items',
-          filter: `business_id=eq.${businessId}`,
-        },
-        (payload) => {
-          const { eventType, new: newRec, old: oldRec } = payload;
-
-          if (eventType === 'INSERT') {
-            setOrderItems((prev) => [...prev, newRec as OrderItemRecord]);
-          } else if (eventType === 'UPDATE') {
-            setOrderItems((prev) =>
-              prev.map((item) => (item.id === (newRec as any).id ? (newRec as OrderItemRecord) : item))
-            );
-          } else if (eventType === 'DELETE') {
-            const deletedId = (oldRec as any)?.id;
-            if (deletedId) {
-              setOrderItems((prev) => prev.filter((item) => item.id !== deletedId));
-            }
-          }
-        }
-      )
+      // (The order lines were subscribed here too and kept in state that no screen read: every dish of every order sent a
+      // realtime message and redrew the whole board for nothing. The tickets carry the dishes the kitchen shows.)
       .subscribe((status) => {
         setIsSubscribed(status === 'SUBSCRIBED');
         if (status === 'CHANNEL_ERROR') {
@@ -381,7 +357,6 @@ export function useKitchenRealtime({
 
   return {
     tickets,
-    orderItems,
     isLoading,
     isSubscribed,
     error,

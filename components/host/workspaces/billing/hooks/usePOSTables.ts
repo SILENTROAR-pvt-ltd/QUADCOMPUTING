@@ -2,8 +2,6 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useHostWorkspace } from '@/lib/store/host-workspace.store';
-import { createClient } from '@/lib/supabase/client';
-import { businessFilter } from '@/lib/realtime/channels';
 import { sharedGet } from '@/lib/utils/shared-get';
 import { useFloorPing, PUSH_HEARTBEAT_MS } from '@/lib/hooks/use-floor-ping';
 import type { TableLiveSessionInfo } from '@/types/qr-session';
@@ -195,48 +193,27 @@ export function usePOSTables(propsBusinessId?: string | null, options: { pollMs?
     await fetchTables();
   }, [businessId, fetchTables]);
 
-  // A staff phone (pollMs given) listens to the venue's floor ping and only keeps a slow safety read while it is up.
+  // Every screen, the owner's and a staff phone's alike, listens to the venue's floor ping: one push per change to the
+  // orders, lines, sessions, tables or tickets (migration 20261022000004). The owner's screens used to hold four row-change
+  // subscriptions here instead, so one order sent about eight realtime messages, each checked against the database's
+  // rules per screen; at hundreds of venues that is what Realtime runs out of first. While the push is up only a slow
+  // safety read runs; while it is down the screen reads often.
   const fetchLatest = useRef(fetchTables);
   fetchLatest.current = fetchTables;
-  const pushUp = useFloorPing(options.pollMs ? businessId : null, useCallback(() => { void fetchLatest.current(); }, []));
-  const readEveryMs = options.pollMs && pushUp ? PUSH_HEARTBEAT_MS : pollMs;
+  const pushUp = useFloorPing(businessId, useCallback(() => { void fetchLatest.current(); }, []));
+  const readEveryMs = pushUp ? PUSH_HEARTBEAT_MS : pollMs;
 
-  // Supabase Realtime Subscription on dine_in_sessions & orders + periodic fallback
   useEffect(() => {
     fetchTables();
-
-    // One order touches orders + order_items + dine_in_sessions + restaurant_tables in one commit, so their events land
-    // within milliseconds: the first one starts a short window and the read goes out when it closes (it is not pushed back
-    // by each later event, which used to hold the read until the burst went quiet).
-    let debounceId: ReturnType<typeof setTimeout> | null = null;
-    const scheduleFetch = () => {
-      if (debounceId) return;
-      debounceId = setTimeout(() => { debounceId = null; fetchTables(); }, 80);
-    };
-
-    // Fallback poll in case the socket drops; realtime is the primary signal.
     // Skipped while the tab is hidden, and caught up as soon as it is visible again.
     const intervalId = setInterval(() => {
       if (typeof document === 'undefined' || !document.hidden) fetchTables();
     }, readEveryMs);
-    const onVisible = () => { if (!document.hidden) scheduleFetch(); };
+    const onVisible = () => { if (!document.hidden) void fetchLatest.current(); };
     document.addEventListener('visibilitychange', onVisible);
-
-    const supabase = createClient();
-    const filter = businessFilter(businessId);
-    const channel = supabase
-      .channel(`realtime_pos_sessions_${businessId || 'default'}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'dine_in_sessions', filter }, scheduleFetch)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter }, scheduleFetch)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'order_items', filter }, scheduleFetch)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'restaurant_tables', filter }, scheduleFetch)
-      .subscribe();
-
     return () => {
-      if (debounceId) clearTimeout(debounceId);
       clearInterval(intervalId);
       document.removeEventListener('visibilitychange', onVisible);
-      supabase.removeChannel(channel);
     };
   }, [fetchTables, businessId, readEveryMs]);
 

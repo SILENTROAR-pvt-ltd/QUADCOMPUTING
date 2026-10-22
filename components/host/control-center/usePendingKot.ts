@@ -6,6 +6,8 @@ import { businessFilter } from '@/lib/realtime/channels';
 import { sharedGet } from '@/lib/utils/shared-get';
 
 const POLL_MS = 8000;
+/** Ticket changes inside this window share one read of the list. */
+const COALESCE_MS = 150;
 
 /** The ids in `next` that were not in `before`: the tickets that have just arrived. */
 export const arrivedTickets = (before: Set<string>, next: string[]) => next.filter((id) => !before.has(id));
@@ -47,15 +49,25 @@ export function usePendingKot(cafeId?: string) {
 
   useEffect(() => {
     void fetchPending();
+    // A rush inserts many tickets in a second, and each row change used to start a full read of the ticket list (and redraw
+    // the whole console). Changes inside a short window now share one read.
+    let pending: ReturnType<typeof setTimeout> | null = null;
+    const readSoon = () => {
+      if (pending) return;
+      pending = setTimeout(() => { pending = null; void fetchPending(); }, COALESCE_MS);
+    };
     const sb = createClient();
     const ch = sb
       .channel(`global_kot_dot_${cafeId || 'default'}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'kitchen_tickets', filter: businessFilter(cafeId) }, () => { void fetchPending(); })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'kitchen_tickets', filter: businessFilter(cafeId) }, readSoon)
       .subscribe();
     const timer = window.setInterval(() => { void fetchPending(); }, POLL_MS);
     const onVisible = () => { if (!document.hidden) void fetchPending(); };
     document.addEventListener('visibilitychange', onVisible);
-    return () => { sb.removeChannel(ch); window.clearInterval(timer); document.removeEventListener('visibilitychange', onVisible); };
+    return () => {
+      if (pending) clearTimeout(pending);
+      sb.removeChannel(ch); window.clearInterval(timer); document.removeEventListener('visibilitychange', onVisible);
+    };
   }, [cafeId, fetchPending]);
 
   return { pendingKotCount, kotArrivals: arrivals };

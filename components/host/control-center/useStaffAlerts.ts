@@ -1,8 +1,6 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { createClient } from '@/lib/supabase/client';
-import { businessFilter } from '@/lib/realtime/channels';
 import { useFloorPing } from '@/lib/hooks/use-floor-ping';
 
 export interface StaffAlert {
@@ -67,25 +65,19 @@ export function useStaffAlerts(venueId?: string) {
     if (!venueId) return;
     void fetchAlerts();
 
-    // Realtime is the primary signal (RLS lets the host read its venue's rows); the poll covers a dropped socket. It keeps
-    // running in a background tab (the browser slows it there) so a guest's call still rings on a screen nobody is looking at.
+    // The floor ping above is the signal (guest calls ping it since migration 20261022000003); this poll covers a dropped
+    // socket. It keeps running in a background tab (the browser slows it there) so a guest's call still rings on a screen
+    // nobody is looking at.
     const interval = setInterval(() => { void fetchAlerts(); }, 15000);
     const onVisible = () => { if (!document.hidden) void fetchAlerts(); };
     document.addEventListener('visibilitychange', onVisible);
-
-    const sb = createClient();
-    const channel = sb
-      .channel(`staff_alerts_${venueId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'staff_notifications', filter: businessFilter(venueId) }, scheduleFetch)
-      .subscribe();
 
     return () => {
       clearInterval(interval);
       if (timer.current) { clearTimeout(timer.current); timer.current = null; }
       document.removeEventListener('visibilitychange', onVisible);
-      void sb.removeChannel(channel);
     };
-  }, [venueId, fetchAlerts, scheduleFetch]);
+  }, [venueId, fetchAlerts]);
 
   return { alerts, freshIds, resolve };
 }

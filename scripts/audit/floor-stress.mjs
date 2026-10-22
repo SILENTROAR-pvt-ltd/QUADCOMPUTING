@@ -54,14 +54,28 @@ await Promise.all([subscribe(floor), ...tableChannels.map(subscribe)]);
 const firstPingAfter = (t, since) => (tablePings.get(t) || []).find((x) => x >= since);
 
 // ── Safety: every listed table must be free ─────────────────────────────────────────────────────────────────────────
+// An open session with nothing on it (a table left open) is allowed: it is recorded here and put back as it was at the end.
 const CLOSED = '("settled","SETTLED","completed","COMPLETED","cancelled","CANCELLED","billed","closed","CLOSED")';
 const [{ data: openOrders }, { data: openSessions }] = await Promise.all([
   admin.from('orders').select('table_number').eq('business_id', biz).in('table_number', ALL_VARIANTS).not('status', 'in', CLOSED),
-  admin.from('dine_in_sessions').select('table_number').eq('business_id', biz).in('table_number', ALL_VARIANTS).in('status', ['open', 'bill_requested']),
+  admin.from('dine_in_sessions').select('id, table_number, status').eq('business_id', biz).in('table_number', ALL_VARIANTS).in('status', ['open', 'bill_requested']),
 ]);
-if ((openOrders || []).length || (openSessions || []).length) {
-  console.log('refusing to start: these tables already have an open order or session:', [...new Set([...(openOrders || []), ...(openSessions || [])].map((r) => r.table_number))].join(', '));
+if ((openOrders || []).length) {
+  console.log('refusing to start: these tables already have an open order:', [...new Set(openOrders.map((r) => r.table_number))].join(', '));
   process.exit(1);
+}
+const keptSessions = openSessions || [];
+if (keptSessions.length) console.log(`tables with an open session (put back at the end): ${keptSessions.map((s) => s.table_number).join(' ')}`);
+// The guest order limit per address and venue, per minute. A wave that would pass it waits for the window to clear.
+const ORDER_LIMIT = Number(process.env.ORDER_LIMIT || 40);
+let windowStart = 0;
+let windowCount = 0;
+async function roomFor(n) {
+  if (windowStart && windowCount + n <= ORDER_LIMIT - 1) { windowCount += n; return; }
+  const wait = windowStart ? Math.max(0, windowStart + 61_000 - now()) : 0;
+  if (wait) { console.log(`  (waiting ${Math.round(wait / 1000)} s for the per-minute order limit of ${ORDER_LIMIT} to clear)`); await new Promise((r) => setTimeout(r, wait)); }
+  windowStart = now();
+  windowCount = n;
 }
 const { data: menu } = await admin.from('catalog_items').select('id, name').eq('business_id', biz).neq('is_available', false).limit(10);
 if (!menu?.length) { console.log('no menu item to order'); process.exit(1); }
@@ -80,7 +94,9 @@ const order = async (table, i) => {
 };
 const serverSplit = (runs) => {
   if (!runs.some((r) => r.timing?.total)) return;
-  for (const k of ['venue', 'checks', 'guard', 'place', 'total']) console.log(`  server ${k.padEnd(11)} ${stats(runs.map((r) => r.timing?.[k]))}`);
+  for (const k of ['venue', 'checks', 'guard', 'place', 'wait', 'reads', 'rpc', 'total']) {
+    if (runs.some((r) => r.timing?.[k] !== undefined)) console.log(`  server ${k.padEnd(11)} ${stats(runs.map((r) => r.timing?.[k]))}`);
+  }
 };
 
 try {
@@ -88,7 +104,11 @@ try {
 
   // ── 1. Every table orders at the same moment ──────────────────────────────────────────────────────────────────────
   console.log('\n1. every table orders at once (new bills)');
+  await roomFor(TABLES.length);
+  let pingsBefore = floorPings;
   const first = await Promise.all(TABLES.map((t, i) => order(t, i)));
+  await new Promise((r) => setTimeout(r, 1200));
+  console.log(`  floor pushes       ${floorPings - pingsBefore} for ${TABLES.length} orders (${((floorPings - pingsBefore) / TABLES.length).toFixed(1)} per order)`);
   console.log(`  served from ${first.find((r) => r.region)?.region?.split('::')[1] || '?'}`);
   console.log(`  order call         ${stats(first.map((r) => r.ms))}`);
   console.log(`  table screen told  ${stats(first.map((r) => (firstPingAfter(r.table, r.start) ?? NaN) - r.start))}`);
@@ -98,7 +118,11 @@ try {
 
   // ── 2. A rush of add-ons: several guests per table at the same moment ─────────────────────────────────────────────
   console.log(`\n2. rush: ${ADDONS_PER_TABLE} add-ons per table, all at once (${TABLES.length * ADDONS_PER_TABLE} orders in parallel)`);
+  await roomFor(TABLES.length * ADDONS_PER_TABLE);
+  pingsBefore = floorPings;
   const rush = await Promise.all(TABLES.flatMap((t, i) => Array.from({ length: ADDONS_PER_TABLE }, (_, k) => order(t, i + k + 1))));
+  await new Promise((r) => setTimeout(r, 1200));
+  console.log(`  floor pushes       ${floorPings - pingsBefore} for ${rush.length} orders (${((floorPings - pingsBefore) / rush.length).toFixed(1)} per order)`);
   console.log(`  order call         ${stats(rush.map((r) => r.ms))}`);
   console.log(`  table screen told  ${stats(rush.map((r) => (firstPingAfter(r.table, r.start) ?? NaN) - r.start))}`);
   serverSplit(rush);
@@ -167,6 +191,17 @@ try {
   }));
   console.log(`  guest read         ${stats(reads.map((r) => r.ms))}`);
   check(reads.every((r) => r.items > 0), 'every guest sees their bill with its dishes');
+
+  // ── 7. Read storm: four phones per table all reading their bill at the same moment ──────────────────────────────────
+  const phones = TABLES.length * 4;
+  console.log(`\n7. read storm: ${phones} guest phones read their bill at the same moment`);
+  const storm = await Promise.all(Array.from({ length: phones }, async (_, i) => {
+    const t = now();
+    const res = await fetch(`${base}/api/guest/order?cafe_id=${biz}&table=${encodeURIComponent(TABLES[i % TABLES.length])}`, { cache: 'no-store' }).catch(() => null);
+    return { ms: now() - t, ok: Boolean(res?.ok) };
+  }));
+  console.log(`  guest read         ${stats(storm.map((r) => r.ms))}`);
+  check(storm.every((r) => r.ok), `all ${phones} reads answered (${storm.filter((r) => r.ok).length})`);
   console.log(`\nfloor pings received: ${floorPings}`);
 } finally {
   // ── Clean-up: every test row is cancelled or closed; nothing is settled, so no bill or fee is recorded ────────────
@@ -177,6 +212,8 @@ try {
   const ids = (ords || []).map((o) => o.id);
   if (ids.length) await admin.from('orders').update({ status: 'cancelled', updated_at: at }).in('id', ids).eq('business_id', biz);
   await admin.from('dine_in_sessions').update({ status: 'closed', updated_at: at }).eq('business_id', biz).in('table_number', ALL_VARIANTS).in('status', ['open', 'bill_requested']).gte('created_at', startedAt);
+  // Sessions that were open before the run go back to exactly the status they had.
+  for (const s of keptSessions) await admin.from('dine_in_sessions').update({ status: s.status }).eq('id', s.id).eq('business_id', biz);
   await admin.from('restaurant_tables').update({ status: 'VACANT' }).eq('business_id', biz).in('table_number', TABLES);
   await admin.from('bill_request_events').update({ settled_at: at }).eq('business_id', biz).in('table_number', ALL_VARIANTS).is('settled_at', null);
   await admin.from('staff_notifications').update({ status: 'RESOLVED' }).eq('business_id', biz).in('table_number', ALL_VARIANTS).eq('status', 'PENDING');

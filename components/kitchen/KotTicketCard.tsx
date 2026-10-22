@@ -14,8 +14,9 @@ interface KotTicketCardProps {
   ticket: KitchenTicket;
   station: KitchenStation;
   nowMs: number;
-  onStatus: (to: KitchenTicket['status']) => Promise<boolean>;
-  onToggleItem: (idx: number) => Promise<boolean>;
+  /** Stable handlers that take the ticket's id, so a card redraws only when its own ticket changes. */
+  onStatus: (ticketId: string, to: KitchenTicket['status']) => Promise<boolean>;
+  onToggleItem: (ticketId: string, idx: number) => Promise<boolean>;
 }
 
 const STATION_ICON: Record<KitchenStation, React.ReactNode> = {
@@ -25,7 +26,7 @@ const STATION_ICON: Record<KitchenStation, React.ReactNode> = {
 };
 
 /** One kitchen ticket: where it goes, every dish with its add-ons and notes, its timeline, and the next step. */
-export function KotTicketCard({ ticket, station, nowMs, onStatus, onToggleItem }: KotTicketCardProps) {
+function KotTicketCardBase({ ticket, station, nowMs, onStatus, onToggleItem }: KotTicketCardProps) {
   const [busy, setBusy] = useState(false);
   const style = KOT_STATUS[ticket.status] ?? KOT_STATUS.PENDING;
   const timeline = kotTimeline(ticket, nowMs);
@@ -39,7 +40,7 @@ export function KotTicketCard({ ticket, station, nowMs, onStatus, onToggleItem }
     if (!style.next) return;
     setBusy(true);
     try {
-      await onStatus(style.next.to);
+      await onStatus(ticket.id, style.next.to);
     } finally {
       setBusy(false);
     }
@@ -48,7 +49,9 @@ export function KotTicketCard({ ticket, station, nowMs, onStatus, onToggleItem }
   return (
     <article
       aria-label={`Ticket ${ticket.ticket_number}, ${place}, ${style.label}`}
-      className="flex min-h-[20rem] flex-col overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
+      // content-visibility: the browser skips laying out and painting cards that are off screen, so a board of 50+ tickets
+      // stays smooth to scroll and to update; the intrinsic size keeps the scrollbar steady.
+      className="flex min-h-[20rem] flex-col overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)] [content-visibility:auto] [contain-intrinsic-size:auto_22rem]"
     >
       <div className={`h-1.5 ${style.band}`} />
       <header className="flex items-start justify-between gap-3 px-4 pt-3">
@@ -73,7 +76,7 @@ export function KotTicketCard({ ticket, station, nowMs, onStatus, onToggleItem }
         <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400">
           {items.length} {items.length === 1 ? 'dish' : 'dishes'} · {qtyTotal} qty{doneCount ? ` · ${doneCount} done` : ''}
         </p>
-        <KotItems items={items} onToggle={(idx) => void onToggleItem(idx)} />
+        <KotItems items={items} onToggle={(idx) => void onToggleItem(ticket.id, idx)} />
       </div>
 
       <div className="border-t border-neutral-100 px-4 py-3">
@@ -110,5 +113,8 @@ export function KotTicketCard({ ticket, station, nowMs, onStatus, onToggleItem }
     </article>
   );
 }
+
+/** Redraws only when its own ticket, its station or the minute clock changes. */
+export const KotTicketCard = React.memo(KotTicketCardBase);
 
 export default KotTicketCard;

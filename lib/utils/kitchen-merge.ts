@@ -7,9 +7,21 @@ import type { KitchenTicket } from './kitchen';
 const RANK: Record<string, number> = { PENDING: 0, PREPARING: 1, READY: 2, SERVED: 3, CANCELLED: 4 };
 const rank = (status?: string) => RANK[String(status || '').toUpperCase()] ?? -1;
 
-/** The incoming ticket, except that its stage (and when stages happened) never goes behind the one already shown. */
+/** Nothing a screen draws has changed: same stage, same last change, same dishes and note. */
+function sameTicket(a: KitchenTicket, b: KitchenTicket): boolean {
+  return a.status === b.status && a.updated_at === b.updated_at && (a.notes ?? null) === (b.notes ?? null)
+    && a.table_or_room === b.table_or_room && JSON.stringify(a.items) === JSON.stringify(b.items);
+}
+
+/**
+ * The incoming ticket, except that its stage (and when stages happened) never goes behind the one already shown. A
+ * ticket that has not changed keeps the very object already shown, so a board re-reading 100 tickets redraws only the
+ * cards that moved.
+ */
 export function mergeTicket(shown: KitchenTicket | undefined, incoming: KitchenTicket): KitchenTicket {
-  if (!shown || rank(incoming.status) >= rank(shown.status)) return incoming;
+  if (!shown) return incoming;
+  if (sameTicket(shown, incoming)) return shown;
+  if (rank(incoming.status) >= rank(shown.status)) return incoming;
   return { ...incoming, status: shown.status, status_history: shown.status_history, updated_at: shown.updated_at };
 }
 

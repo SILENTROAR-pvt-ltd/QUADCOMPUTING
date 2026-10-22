@@ -6,6 +6,12 @@ export interface RateLimitConfig {
   limit: number;
   windowMs: number;
   increment?: boolean;
+  /**
+   * Count on this server instance only, with no call to the shared store. For high, anti-runaway ceilings on reads that
+   * every guest phone makes on every push (1,500 a minute): a shared count there cost a ~70 ms network write on every read
+   * and grew with every venue, while a per-instance count still stops a runaway script.
+   */
+  localOnly?: boolean;
 }
 
 export interface RateLimitResult {
@@ -153,15 +159,16 @@ function assertDistributedStoreAvailable(): void {
  * Sliding window rate limit check.
  */
 export async function checkRateLimit(config: RateLimitConfig): Promise<RateLimitResult> {
-  const { key, limit, windowMs, increment = true } = config;
+  const { key, limit, windowMs, increment = true, localOnly = false } = config;
 
-  // Try Redis if configured
-  const redisResult = await checkRedisSlidingWindow(key, limit, windowMs, increment);
-  if (redisResult) {
-    return redisResult;
+  // Try Redis if configured (not for a local-only ceiling)
+  if (!localOnly) {
+    const redisResult = await checkRedisSlidingWindow(key, limit, windowMs, increment);
+    if (redisResult) {
+      return redisResult;
+    }
+    assertDistributedStoreAvailable();
   }
-
-  assertDistributedStoreAvailable();
 
   // Memory sliding window (dev/test, or degraded single-instance mode)
   const now = Date.now();
@@ -261,9 +268,10 @@ export async function resetPinFailures(ip: string, businessId: string): Promise<
 // ---------------------------------------------------------------------------
 // Guest Order Spam Protection
 // ---------------------------------------------------------------------------
-// Guests at one venue share one Wi-Fi address, so this is a whole-venue cap, not a per-person one: 40 submissions a minute is above
-// any real lunch rush and still stops a script.
-export const GUEST_ORDER_LIMIT = 40; // 40 submissions
+// Guests at one venue share its Wi-Fi, so this is a whole venue's ceiling, not one guest's: a full house ordering and
+// adding to their bills in a rush can pass 40 a minute. Each order still needs real dishes from this venue's menu and runs
+// one at a time per table, so 120 stays a firm bound against a runaway script.
+export const GUEST_ORDER_LIMIT = 120; // 120 submissions
 export const GUEST_ORDER_WINDOW_MS = 60 * 1000; // per 1 minute
 
 export function getGuestOrderRateLimitKey(ip: string, businessOrTableId: string): string {
@@ -295,13 +303,15 @@ export async function enforceRateLimit(
   scope: string,
   limit: number,
   windowMs: number,
-  subject = ''
+  subject = '',
+  options: { localOnly?: boolean } = {}
 ): Promise<NextResponse | null> {
   const clean = (v: string) => v.replace(/[^a-zA-Z0-9_.:-]/g, '_');
   const result = await checkRateLimit({
     key: `ratelimit:${clean(scope)}:${clean(getClientIp(request))}:${clean(subject || 'all')}`,
     limit,
     windowMs,
+    localOnly: options.localOnly,
   });
   return result.allowed ? null : rateLimitResponse(result);
 }

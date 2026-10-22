@@ -1,5 +1,72 @@
 # Floor stress audit: KOT, waiter and cashier under a rush
 
+## Round 2: every table booked (22 October, 18:15 IST, production `abee626`, migration `20261022000004` applied)
+
+All 17 Bombay Rasoi tables at once. The four tables with an open, empty session (T-01, T-02, T-04, T-05) were put
+back exactly as they were; every test order was cancelled; nothing was settled.
+
+| Phase | Call | Screens told | Checks |
+|---|---|---|---|
+| 17 tables order at once | p50 1,170 ms | table screens p50 1,169 ms, 17 of 17 | all accepted |
+| 34 add-ons at once (2 per table) | p50 1,309 ms, p95 1,599 ms | p50 1,199 ms, 34 of 34 | 1 bill per table, 51 of 51 dishes, 3 tickets per table |
+| 51 tickets to Preparing | write p50 349 ms | terminals p50 431 ms, 51 of 51 | read right after: all Preparing |
+| 51 tickets to Ready | write p50 306 ms | terminals p50 353 ms, 51 of 51 | read right after: all Ready |
+| 51 tickets Served | write p50 515 ms | terminals p50 430 ms, 51 of 51 | read right after: all Served |
+| 17 bill requests at once | p50 701 ms | table screens p50 570 ms | bell once per table (17), 17 bill requested |
+| 68 guest phones read at once | p50 679 ms, p95 1,726 ms | | all 68 answered |
+
+**Push volume fixed:** 1.0 floor push per order (it was about 5), and every table got its push.
+
+**Where an order's time goes, on the server** (new Server-Timing header, p50 during the rush):
+
+| Step | Time | Cause |
+|---|---|---|
+| Find the venue | 150 ms | a new server instance asked the shared store before the database |
+| Checks | 90–100 ms | the rate limit is a write to Upstash, which answers in about 70 ms from Singapore |
+| Duplicate guard | 140 ms | two more Upstash calls before the guest gets an answer |
+| Place the order | 380–440 ms | the reads and the order function |
+| Total | 740–910 ms | of 1.2–1.3 s seen by the phone |
+
+### Fixed in this round (in code; deploy to take effect)
+
+- **Guest reads no longer write to Upstash.** Every guest read (on every push) counted its rate limit in Upstash, about
+  70 ms each and growing with every venue. Those high ceilings are now counted on the server instance.
+- **A venue id goes straight to the database.** The shared miss check (about 70 ms) now applies only to names.
+- **The duplicate guard answers first.** It stores the answer just after the guest has it; a retry in between waits for
+  that answer, so an order still never runs twice (new test).
+- **The order route reports its inside steps:** time queued behind the same table, the reads, the order function, and
+  retries, so the next run shows exactly what "place" is made of.
+- **Owner screens use the floor push.** Billing and Live Tables held four row-change subscriptions (orders, lines,
+  sessions, tables), so one order sent about eight Realtime messages per owner screen, each checked against the
+  database's rules. They now use the venue's single floor push, like the staff phones. The unused order-lines
+  subscription in the kitchen feed and two duplicate subscriptions (bill requests, guest calls) are gone.
+- **The chef's board stays smooth in a rush.** Tickets that did not change keep their identity and each card redraws
+  only when its own ticket changes; cards off screen are skipped by the browser (content-visibility); the console's
+  new-order bell shares one read per burst instead of one read per ticket.
+- **The waiter's Ready bar shows the 12 oldest orders** and a "+N more" card, instead of animating every card.
+- **The guest order ceiling is 120 a minute per venue address** (was 40; a full house on one Wi-Fi shares it).
+
+### Capacity: what 1,000 venues needs
+
+Per order, after these fixes: about 10 database calls to place it, about 20 more for the screens that re-read on its
+push, 2 Realtime pushes delivered to about 6 devices, and 2 Upstash calls.
+
+| Resource | Today (Supabase Pro, Micro compute) | For 1,000 venues at peak (about 50 orders a second) |
+|---|---|---|
+| Database | comfortable for tens of busy venues; the 51-order rush ran without errors | about 1,800 queries a second: a Large or bigger compute, and a read replica for the screens' reads |
+| Realtime connections | 500 included on Pro | about 34,000 (4 staff screens and about 30 guest phones per venue): buy connection add-ons or move up a plan, and consider guests listening only while they have an open order |
+| Realtime messages | 5 million a month included | about 300 deliveries a second at peak: within paid limits, now that each order sends 2 pushes instead of about 10 |
+| Upstash | global database, about 70 ms from Singapore | create the database in Singapore (ap-southeast-1) to save about 140 ms per order |
+| Vercel | functions in Singapore | scales on its own; watch function concurrency on the plan |
+
+The code is now shaped for that scale (one push per change, no per-row subscriptions on owner screens, no shared
+store on reads). What remains for 1,000 venues is capacity you buy: database compute, Realtime connections, and an
+Upstash database in Singapore.
+
+---
+
+## Round 1
+
 Date: 22 October 2026, 17:55 IST. Target: production (`www.vibersconnect.com`, functions in Singapore, commit
 `c03cb70`). Venue: Bombay Rasoi, 12 tables at once (T-03 and T-06 to T-16). Your live T-01 bill and the tables with
 sessions left open from 15–18 October (T-02, T-04, T-05) were not touched. Every test order was cancelled afterwards;

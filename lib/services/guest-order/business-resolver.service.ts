@@ -114,8 +114,10 @@ export async function resolveBusinessId(
     if (hit && now - hit.at < VENUE_CACHE_MS) return { ...hit.value, business: { ...hit.value.business } };
     const missedAt = missCache.get(key);
     if (missedAt && now - missedAt < MISS_CACHE_MS) return notFound(identifier);
-    // A miss another instance has already paid for.
-    if ((await sharedGet<null>(`venue:miss:${key}`)) === null) {
+    // A miss another instance has already paid for. Only for a name: a venue id is one indexed lookup in the database,
+    // cheaper than asking the shared store first, which put a ~70 ms network call in front of every guest request a new
+    // server instance answered.
+    if (!isUuid && (await sharedGet<null>(`venue:miss:${key}`)) === null) {
       remember(missCache, key, now);
       return notFound(identifier);
     }
