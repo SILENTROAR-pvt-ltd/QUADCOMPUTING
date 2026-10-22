@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Camera, Tag, X } from 'lucide-react';
+import { CalendarHeart, Tag, X } from 'lucide-react';
 
 interface PhotoVaultModalHeaderProps {
   activeTab: 'moments' | 'offers';
@@ -17,10 +17,10 @@ export function PhotoVaultModalHeader({
   const isMoments = activeTab === 'moments';
 
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-6 py-4 border-b border-neutral-100 bg-neutral-50/50">
+    <div className="flex flex-col justify-between gap-3 border-b border-neutral-100 bg-neutral-50/50 px-4 py-4 sm:flex-row sm:items-center sm:px-6">
       <div className="flex items-center gap-3">
-        <div className="p-2.5 rounded-xl bg-neutral-900 text-white shadow-xs">
-          {isMoments ? <Camera className="w-4 h-4" /> : <Tag className="w-4 h-4" />}
+        <div className="shrink-0 rounded-xl bg-neutral-900 p-2.5 text-white shadow-sm">
+          {isMoments ? <CalendarHeart className="w-4 h-4" /> : <Tag className="w-4 h-4" />}
         </div>
         <div>
           <h3 className="font-serif text-lg font-medium text-neutral-900">
@@ -39,21 +39,21 @@ export function PhotoVaultModalHeader({
           <button
             type="button"
             onClick={() => onTabChange('moments')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-              isMoments ? 'bg-white text-neutral-900 shadow-2xs' : 'text-neutral-600 hover:text-neutral-900'
+            className={`flex h-10 items-center gap-1.5 rounded-lg px-3 text-[13px] font-semibold transition-all cursor-pointer ${
+              isMoments ? 'bg-white text-neutral-900 shadow-sm' : 'text-neutral-600 hover:text-neutral-900'
             }`}
           >
-            <Camera className="w-3.5 h-3.5" />
-            <span>Events</span>
+            <CalendarHeart className="w-4 h-4" />
+            <span>Live Events</span>
           </button>
           <button
             type="button"
             onClick={() => onTabChange('offers')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-              !isMoments ? 'bg-white text-neutral-900 shadow-2xs' : 'text-neutral-600 hover:text-neutral-900'
+            className={`flex h-10 items-center gap-1.5 rounded-lg px-3 text-[13px] font-semibold transition-all cursor-pointer ${
+              !isMoments ? 'bg-white text-neutral-900 shadow-sm' : 'text-neutral-600 hover:text-neutral-900'
             }`}
           >
-            <Tag className="w-3.5 h-3.5" />
+            <Tag className="w-4 h-4" />
             <span>Live Offers</span>
           </button>
         </div>
@@ -61,8 +61,8 @@ export function PhotoVaultModalHeader({
         <button
           type="button"
           onClick={onClose}
-          className="p-2 rounded-xl text-neutral-400 hover:text-neutral-900 hover:bg-neutral-100 transition-colors cursor-pointer"
-          aria-label="Close modal"
+          className="grid h-10 w-10 cursor-pointer place-items-center rounded-xl text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-900"
+          aria-label="Close"
         >
           <X className="w-4 h-4" />
         </button>

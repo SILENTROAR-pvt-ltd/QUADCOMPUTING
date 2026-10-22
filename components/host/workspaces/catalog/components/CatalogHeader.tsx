@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Sparkles, Plus, Camera } from 'lucide-react';
+import { Sparkles, Plus, Camera, CalendarHeart } from 'lucide-react';
 
 interface Props {
   isBulkPricingOpen: boolean;
@@ -53,10 +53,10 @@ export function CatalogHeader({
         <button
           type="button"
           onClick={onOpenPhotoVaultModal}
-          className="inline-flex items-center gap-2 rounded-xl border border-neutral-200/90 bg-white px-4 py-2 text-xs font-semibold text-neutral-700 shadow-2xs hover:bg-neutral-50 hover:text-neutral-900 hover:border-neutral-300 transition-all cursor-pointer whitespace-nowrap"
+          className="inline-flex items-center gap-2 rounded-xl border border-neutral-200/90 bg-white px-4 py-2 text-xs font-semibold text-neutral-700 shadow-sm hover:bg-neutral-50 hover:text-neutral-900 hover:border-neutral-300 transition-all cursor-pointer whitespace-nowrap"
         >
-          <Camera className="h-3.5 w-3.5 text-neutral-500" />
-          <span>Photo Vault & Live Offers</span>
+          <CalendarHeart className="h-3.5 w-3.5 text-neutral-500" />
+          <span>Live Events & Offers</span>
         </button>
 
         <button

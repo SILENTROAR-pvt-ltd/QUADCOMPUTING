@@ -20,6 +20,9 @@ export interface OrderItemRecord {
   created_at?: string;
 }
 
+/** How often an owner's screen reads the tickets while both its row-change channel and the floor push are down. */
+const OWNER_FALLBACK_MS = 5000;
+
 export interface UseKitchenRealtimeOptions {
   businessId?: string | null;
   onNewTicket?: (ticket: KitchenTicket) => void;
@@ -42,6 +45,8 @@ export function useKitchenRealtime({
   const [tickets, setTickets] = useState<KitchenTicket[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubscribed, setIsSubscribed] = useState(false);
+  /** The row-change channel failed (owner screens): the floor push and a short timed read take over until it is back. */
+  const [channelDown, setChannelDown] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Keep ref of latest tickets state for instantaneous snapshot rollbacks
@@ -182,10 +187,11 @@ export function useKitchenRealtime({
       // (The order lines were subscribed here too and kept in state that no screen read: every dish of every order sent a
       // realtime message and redrew the whole board for nothing. The tickets carry the dishes the kitchen shows.)
       .subscribe((status) => {
-        setIsSubscribed(status === 'SUBSCRIBED');
-        if (status === 'CHANNEL_ERROR') {
-          setError('Realtime subscription encountered an error');
-        }
+        // A dropped row-change channel is not an error for the cook: the board switches to the venue's floor push and a
+        // short timed read (below) until supabase-js reconnects, and shows "reconnecting" in its header meanwhile. It used
+        // to show a red error and stop updating.
+        if (status === 'SUBSCRIBED') { setIsSubscribed(true); setChannelDown(false); }
+        else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') { setIsSubscribed(false); setChannelDown(true); }
       });
 
     return () => {
@@ -236,9 +242,11 @@ export function useKitchenRealtime({
     onTicketUpdatedRef.current?.(moved);
   }, []);
 
-  // The venue's floor ping reads at once; while it is up the timer below is only a slow safety net.
-  const pushUp = useFloorPing(pollMs ? businessId : null, readAndRing, applyStage);
-  const readEveryMs = pollMs && pushUp ? PUSH_HEARTBEAT_MS : pollMs;
+  // The venue's floor ping reads at once; while it is up the timer below is only a slow safety net. A staff phone always
+  // uses it; an owner's screen uses it whenever its own row-change channel is down.
+  const pushUp = useFloorPing(pollMs || channelDown ? businessId : null, readAndRing, applyStage);
+  const fallbackMs = pollMs ?? (channelDown ? OWNER_FALLBACK_MS : undefined);
+  const readEveryMs = fallbackMs && pushUp ? PUSH_HEARTBEAT_MS : fallbackMs;
 
   useEffect(() => {
     if (!readEveryMs || !businessId) return;
@@ -358,7 +366,8 @@ export function useKitchenRealtime({
   return {
     tickets,
     isLoading,
-    isSubscribed,
+    // Live when either live path works: the row-change channel (owner) or the venue's floor push (staff, or a fallback).
+    isSubscribed: isSubscribed || pushUp,
     error,
     refetch: fetchTickets,
     updateTicketStatus,

@@ -7,8 +7,7 @@ import { ReservationRow } from './ReservationRow';
 import { useRoomReservations } from './useRoomReservations';
 import { RoomReservationRow } from './RoomReservationRow';
 import { RoomReservationSheet } from './RoomReservationSheet';
-import { EventLeadsTab } from '../guests/EventLeadsTab';
-import { OfferRequestsPanel } from '../catalog/components/offers/OfferRequestsPanel';
+import { ReservationEventsPanel, ReservationOffersPanel } from './ReservationPanels';
 import type { ReservationSummary } from '@/lib/services/reservations/reservation-summary.service';
 
 const FILTERS: Array<{ id: ReservationFilter; label: string }> = [
@@ -34,7 +33,7 @@ function useWaiting() {
  * guest list, and live-offer redemptions and questions. Each kind has its own list and actions; rooms open a full-detail
  * sheet whose button goes to the Accommodations desk.
  */
-export function ReservationsWorkspace({ onNavigate }: { onNavigate?: (tab: string) => void } = {}) {
+export function ReservationsWorkspace({ onNavigate, venueId = '' }: { onNavigate?: (tab: string) => void; venueId?: string } = {}) {
   const [filter, setFilter] = useState<ReservationFilter>('upcoming');
   const [kind, setKind] = useState<Kind>('tables');
   const [openId, setOpenId] = useState<string | null>(null);
@@ -84,7 +83,7 @@ export function ReservationsWorkspace({ onNavigate }: { onNavigate?: (tab: strin
       {kind === 'tables' && tables.error && <p role="alert" className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{tables.error}</p>}
       {kind === 'rooms' && rooms.error && <p role="alert" className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{rooms.error}</p>}
 
-      {kind === 'events' ? <EventLeadsTab /> : kind === 'offers' ? <OfferRequestsPanel /> : (
+      {kind === 'events' ? <ReservationEventsPanel /> : kind === 'offers' ? <ReservationOffersPanel venueId={venueId} /> : (
         <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white">
           {kind === 'tables' ? (
             tables.loading ? <div className="shimmer m-4 h-24 rounded-xl" /> : tables.items.length === 0 ? (

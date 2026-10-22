@@ -24,7 +24,7 @@ export function KitchenBoardHeader(props: KitchenBoardHeaderProps) {
           <h2 className="truncate font-serif text-lg text-neutral-950 sm:text-xl">Live Kitchen</h2>
           <p className="flex items-center gap-1.5 text-[11px] text-neutral-500">
             <span className={`h-1.5 w-1.5 rounded-full ${isSubscribed ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
-            {isSubscribed ? 'Live · new orders ring the bell' : 'Connecting…'}
+            {isSubscribed ? 'Live · new orders ring the bell' : 'Reconnecting… reading new orders every few seconds'}
           </p>
         </div>
       </div>
