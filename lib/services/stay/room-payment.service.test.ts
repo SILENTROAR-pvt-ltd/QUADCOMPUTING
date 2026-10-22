@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createFakeSupabase } from '@/lib/testing/fake-supabase';
 import { quoteRoomPayment, recordRoomPayment } from './room-payment.service';
 
@@ -11,6 +11,11 @@ const room = (extra: Record<string, unknown> = {}) => ({
 const food = { id: 'o1', business_id: BIZ, room_id: ROOM, order_type: 'room_service', status: 'open', grand_total: 660, items: [{ name: 'Pav Bhaji', qty: 3, price: 220 }], created_at: '2026-10-21T12:00:00.000Z' };
 
 describe('a payment taken during the stay', () => {
+  // The stay is billed for the nights up to "now", so the clock is pinned to the stay's first day (one night so far).
+  // On the real clock the expected amounts changed the day after this test was written and failed a production build.
+  beforeEach(() => { vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(new Date('2026-10-22T10:00:00.000Z')); });
+  afterEach(() => { vi.useRealTimers(); });
+
   it('quotes the balance, records it as a settled bill, raises the advance, and clears a "pay now" request', async () => {
     const db = createFakeSupabase({ rooms: [room({ checkout_request: { kind: 'bill', status: 'pending', requested_at: 'x', note: null } })], orders: [food] });
     const q = await quoteRoomPayment(db, BIZ, ROOM);
