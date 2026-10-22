@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import type { KitchenTicket, KitchenItem } from '@/lib/utils/kitchen';
 import { normalizeKitchenTicket, normalizeKitchenTickets } from '@/lib/utils/kitchen-normalize';
+import { mergeTicket, mergeTickets } from '@/lib/utils/kitchen-merge';
 import { useFloorPing, PUSH_HEARTBEAT_MS } from './use-floor-ping';
 
 export interface OrderItemRecord {
@@ -61,6 +62,10 @@ export function useKitchenRealtime({
     onErrorRef.current = onError;
   }, [onNewTicket, onTicketUpdated, onError]);
 
+  // Reads of the whole list can come back out of order; an answer to a read sent before one already shown is dropped.
+  const readSeq = useRef(0);
+  const shownSeq = useRef(0);
+
   // 1. Initial Data Fetching (no polling)
   const fetchTickets = useCallback(async () => {
     if (!businessId) {
@@ -68,10 +73,11 @@ export function useKitchenRealtime({
       return;
     }
 
+    const seq = ++readSeq.current;
     try {
       setError(null);
       const url = `/api/host/kitchen/tickets?business_id=${encodeURIComponent(businessId)}`;
-      const res = await fetch(url);
+      const res = await fetch(url, { cache: 'no-store' });
       // Not signed in, or signed in without this venue (a host still in onboarding, an expired session): that is a
       // state to show, not a fault to report, so it does not reach the console or the error overlay.
       if (res.status === 401 || res.status === 403) {
@@ -83,8 +89,13 @@ export function useKitchenRealtime({
         throw new Error(`Failed to fetch kitchen tickets: HTTP ${res.status}`);
       }
       const data = await res.json();
-      // One malformed ticket (no dishes list, a broken row) must not blank the whole board.
-      setTickets(normalizeKitchenTickets(data.tickets));
+      if (seq < shownSeq.current) return;
+      shownSeq.current = seq;
+      // One malformed ticket (no dishes list, a broken row) must not blank the whole board. A ticket already shown at a later
+      // stage (the chef's own tap, a push) keeps that stage.
+      const next = mergeTickets(ticketsRef.current, normalizeKitchenTickets(data.tickets));
+      ticketsRef.current = next;
+      setTickets(next);
     } catch (err: any) {
       console.error('[useKitchenRealtime fetch error]:', err);
       setError(err.message || 'Error fetching kitchen tickets');
@@ -135,7 +146,7 @@ export function useKitchenRealtime({
 
             setTickets((prev) => {
               if (prev.some((t) => t.id === incoming.id)) {
-                return prev.map((t) => (t.id === incoming.id ? incoming : t));
+                return prev.map((t) => (t.id === incoming.id ? mergeTicket(t, incoming) : t));
               }
               return [incoming, ...prev];
             });
@@ -158,7 +169,8 @@ export function useKitchenRealtime({
               status_history: Array.isArray(raw.status_history) ? raw.status_history : [],
             };
 
-            setTickets((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+            // Row changes arrive in commit order, but one can still land just after the screen's own later tap.
+            setTickets((prev) => prev.map((t) => (t.id === updated.id ? mergeTicket(t, updated) : t)));
             onTicketUpdatedRef.current?.(updated);
           } else if (eventType === 'DELETE') {
             const deletedId = (oldRec as any)?.id;
@@ -211,11 +223,17 @@ export function useKitchenRealtime({
   useEffect(() => { if (!isLoading) loadedOnce.current = true; }, [isLoading]);
   const readAndRing = useCallback(async () => {
     if (!businessId) return;
+    const seq = ++readSeq.current;
     try {
       const res = await fetch(`/api/host/kitchen/tickets?business_id=${encodeURIComponent(businessId)}`, { cache: 'no-store' });
       if (!res.ok) return;
-      const next = normalizeKitchenTickets((await res.json()).tickets);
+      const fresh = normalizeKitchenTickets((await res.json()).tickets);
+      if (seq < shownSeq.current) return;
+      shownSeq.current = seq;
       const known = new Map(ticketsRef.current.map((t) => [t.id, t.status]));
+      // A ticket already moved on here (the chef's tap, the push naming its stage) is never moved back by this read.
+      const next = mergeTickets(ticketsRef.current, fresh);
+      ticketsRef.current = next;
       setTickets(next);
       if (loadedOnce.current) {
         for (const t of next) {
@@ -233,6 +251,8 @@ export function useKitchenRealtime({
   const applyStage = useCallback(({ id, status }: { id: string; status: string }) => {
     const current = ticketsRef.current.find((t) => t.id === id);
     if (!current || current.status === status) return;
+    // A late push for an earlier stage (the "preparing" ping landing after the chef's "ready" tap) changes nothing.
+    if (mergeTicket(current, { ...current, status: status as KitchenTicket['status'] }).status === current.status) return;
     const at = new Date().toISOString();
     const moved = { ...current, status: status as KitchenTicket['status'], updated_at: at, status_history: [...(current.status_history ?? []), { from: current.status, to: status as KitchenTicket['status'], at }] };
     ticketsRef.current = ticketsRef.current.map((t) => (t.id === id ? moved : t));

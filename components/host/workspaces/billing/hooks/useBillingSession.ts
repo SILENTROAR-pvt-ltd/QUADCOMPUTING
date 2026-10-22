@@ -151,6 +151,14 @@ export function useBillingSession({
 
   const handleGenerateBill = () => {
     if (cart.selectedItems.length === 0 && !cart.customAmount) return;
+    const isTableOrder = Boolean(cart.selectedRoomId || cart.selectedTableId || (cart.selectedTableNumber && cart.selectedTableNumber !== 'Takeaway / Counter'));
+    // A bill that still carries a table's order but has lost its table would be saved as a second, counter bill while the
+    // table's order stayed open. Refuse it and say how to put it right.
+    if (!isTableOrder && cart.linkedOrderId) {
+      setSuccessMessage('⚠️ This bill belongs to a table. Choose the table again to settle it, or Reset to start a counter bill.');
+      setTimeout(() => setSuccessMessage(''), 6000);
+      return;
+    }
 
     const invoice: InvoiceData = {
       business_id: businessId || undefined,
@@ -175,7 +183,6 @@ export function useBillingSession({
     if (cart.linkedGuestHandle) invoice.guest_handle = cart.linkedGuestHandle;
     // A table or room bill is saved and settled by one request; the receipt only has to carry what the POS knows. A
     // counter bill is never a settlement, whatever session id may linger from a table looked at earlier.
-    const isTableOrder = Boolean(cart.selectedRoomId || cart.selectedTableId || (cart.selectedTableNumber && cart.selectedTableNumber !== 'Takeaway / Counter'));
     if (isTableOrder) {
       invoice.settlement = {
         session_id: cart.activeSessionId || null,

@@ -29,13 +29,23 @@ export function useFloorPing(
   useEffect(() => {
     if (!businessId) { setConnected(false); return; }
     let timer: ReturnType<typeof setTimeout> | null = null;
+    let wasUp: boolean | null = null;
+    const readSoon = () => {
+      if (timer) return;
+      timer = setTimeout(() => { timer = null; latest.current(); }, COALESCE_MS);
+    };
     const off = subscribeFloor(businessId, {
       ping: (ticket) => {
         if (ticket) latestTicket.current?.(ticket);
-        if (timer) return;
-        timer = setTimeout(() => { timer = null; latest.current(); }, COALESCE_MS);
+        readSoon();
       },
-      status: setConnected,
+      // A channel that comes back after a drop reads at once: whatever changed while it was down is on screen straight away
+      // instead of at the next safety read.
+      status: (up) => {
+        if (up && wasUp === false) readSoon();
+        wasUp = up;
+        setConnected(up);
+      },
     });
     return () => {
       if (timer) clearTimeout(timer);
@@ -47,5 +57,8 @@ export function useFloorPing(
   return connected;
 }
 
-/** How often a screen re-reads as a safety net while the push channel is up. */
-export const PUSH_HEARTBEAT_MS = 30_000;
+/**
+ * How often a screen re-reads as a safety net while the push channel is up. A push lost in a rush (Realtime drops messages
+ * past its rate) is then on screen within this time. It was 30 s; one read per terminal every 10 s is still trivial.
+ */
+export const PUSH_HEARTBEAT_MS = 10_000;

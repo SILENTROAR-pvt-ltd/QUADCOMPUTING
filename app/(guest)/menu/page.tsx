@@ -94,7 +94,7 @@ function GuestMenuContent() {
   // overflow-x-clip, not hidden: hidden would make the root a scroll box and break the sticky filter bar.
   return (
     <div className="min-h-[100dvh] w-full max-w-full overflow-x-clip bg-[#faf9f6] pb-36 font-sans text-neutral-900 selection:bg-neutral-900 selection:text-white sm:pb-40">
-      <LuxuryToast message={state.toastMessage} />
+      <LuxuryToast />
       <MenuTop state={state} venueId={venueId} guestName={account?.display_name} tagline={menuInfo.tagline}
         onOpenBill={() => (roomParam ? roomPage() : goTab('live_order'))} requestBill={bill.requestBill}
         roomBar={room.info ? <RoomModeBar info={room.info} roomCode={roomParam} /> : undefined} />

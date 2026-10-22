@@ -9,7 +9,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 
-const [root, base, biz, table] = process.argv.slice(2);
+const [rootArg, base, biz, table] = process.argv.slice(2);
+const root = path.resolve(rootArg || '.');
 const env = Object.fromEntries(fs.readFileSync(path.join(root, '.env.local'), 'utf8').split(/\r?\n/).filter((l) => /^[A-Z0-9_]+=/.test(l)).map((l) => [l.slice(0, l.indexOf('=')), l.slice(l.indexOf('=') + 1).trim().replace(/^"|"$/g, '')]));
 const { createClient } = createRequire(path.join(root, 'package.json'))('@supabase/supabase-js');
 const admin = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });

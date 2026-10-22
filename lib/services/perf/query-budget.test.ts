@@ -46,12 +46,22 @@ describe('query budget per venue under a rush', () => {
     expect(calls).toHaveLength(2); // orders + dine_in_sessions, once
   });
 
-  it('kitchen tickets are read once per venue per window, for 40 venues in turn', async () => {
+  it('kitchen tickets are read fresh each time a terminal asks, one read per request in turn', async () => {
+    // Nothing is kept between reads: a cached list from before a change left a ready ticket showing "preparing" and a new
+    // order missing until the next safety read. One read per push per terminal is the budget.
     const { db, calls } = countingDb();
     for (let round = 0; round < 3; round++) {
       for (let v = 1; v <= 40; v++) await fetchKitchenTickets(db, venue(v), null);
     }
-    expect(calls).toHaveLength(40); // 120 reads before: one cache slot meant each venue evicted the next
+    expect(calls).toHaveLength(120);
+  });
+
+  it('a write starts the next ticket read fresh instead of joining one that began before it', async () => {
+    const { db, calls } = countingDb();
+    const before = fetchKitchenTickets(db, venue(1), null);
+    invalidateKitchenTicketsCache(venue(1));
+    await Promise.all([before, fetchKitchenTickets(db, venue(1), null)]);
+    expect(calls).toHaveLength(2);
   });
 
   it('a burst of terminals on one venue shares one ticket read', async () => {
@@ -60,12 +70,18 @@ describe('query budget per venue under a rush', () => {
     expect(calls).toHaveLength(1);
   });
 
-  it('tables are two reads per venue per window', async () => {
+  it('tables are two reads per request, read fresh each time', async () => {
     const { db, calls } = countingDb();
     for (let round = 0; round < 3; round++) {
       for (let v = 1; v <= 40; v++) await getHostTables(URL_FOR(venue(v)), db, venue(v));
     }
-    expect(calls).toHaveLength(80);
+    expect(calls).toHaveLength(240);
+  });
+
+  it('a burst of screens on one venue shares one tables read', async () => {
+    const { db, calls } = countingDb();
+    await Promise.all(Array.from({ length: 5 }, () => getHostTables(URL_FOR(venue(1)), db, venue(1))));
+    expect(calls).toHaveLength(2);
   });
 
   it('300 guests opening the menu cost three reads', async () => {

@@ -50,6 +50,9 @@ export const GET = withApiErrorBoundary(async function GET(request: Request) {
  * and generates an add-on KOT ticket. Otherwise, creates a fresh master order.
  */
 export const POST = withApiErrorBoundary(async function POST(request: Request) {
+  // Server time per step, in the standard Server-Timing header (durations only), so a load test can tell server time
+  // from network time.
+  const t0 = performance.now();
   try {
     const { searchParams } = new URL(request.url);
     const queryCafeId = searchParams.get('cafe_id') || searchParams.get('business_id');
@@ -78,6 +81,7 @@ export const POST = withApiErrorBoundary(async function POST(request: Request) {
     // The three checks before the order need nothing from one another, so they run at once: the limit per address and
     // venue, the venue's standing (wallet and subscription), and who is ordering (identity only from the guest's own
     // sign-in session; a handle sent by the browser is dropped).
+    const tChecks = performance.now();
     const [orderRateLimit, billingGuardError] = await Promise.all([
       checkGuestOrderRateLimit(getClientIp(request), businessId),
       assertVenueBillingAllowed(businessId, supabase),
@@ -90,12 +94,24 @@ export const POST = withApiErrorBoundary(async function POST(request: Request) {
 
     const key = generateIdempotencyKey('guest_order', `${businessId}:${tableNumber}`, body);
 
+    const tOrder = performance.now();
+    let placeMs = 0;
     const { response, status } = await withIdempotency(key, async () => {
+      const tPlace = performance.now();
       const result = await placeGuestOrder(body, supabase);
+      placeMs = performance.now() - tPlace;
       return { response: result, status: 200 };
     });
+    const tEnd = performance.now();
+    const timing = [
+      `venue;dur=${(tChecks - t0).toFixed(1)}`,
+      `checks;dur=${(tOrder - tChecks).toFixed(1)}`,
+      `guard;dur=${Math.max(0, tEnd - tOrder - placeMs).toFixed(1)}`,
+      `place;dur=${placeMs.toFixed(1)}`,
+      `total;dur=${(tEnd - t0).toFixed(1)}`,
+    ].join(', ');
 
-    return NextResponse.json(response, { status });
+    return NextResponse.json(response, { status, headers: { 'Server-Timing': timing } });
   } catch (error: any) {
     const msg: string = error.message || '';
     const isClientError =

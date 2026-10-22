@@ -2,9 +2,10 @@
 
 import { useCartStore } from '@/lib/store/cart.store';
 import type { MenuItem } from '@/components/guest/menu/types';
+import { QUICK_TOAST_MS } from '@/components/guest/menu/toast-store';
 
 interface CartHandlerProps {
-  showToast: (msg: string) => void;
+  showToast: (msg: string, durationMs?: number) => void;
   handleOpenCustomization: (item: MenuItem) => void;
 }
 
@@ -22,7 +23,7 @@ export function useGuestCartHandlers({ showToast, handleOpenCustomization }: Car
       image_url: item.image_url,
       category: item.category,
     });
-    showToast(`Added ${item.name} to order`);
+    showToast(`Added ${item.name} to order`, QUICK_TOAST_MS);
   };
 
   const getItemCartQuantity = (itemId: string) => {

@@ -1,15 +1,19 @@
 import { CLOSED_STATUSES } from '../session/session-entry.util';
 import { deriveTableOccupancy } from './table-occupancy.util';
 
-const tCache = new Map<string, { res: any; exp: number }>();
+// Nothing is kept between reads: a screen reads the tables once, the moment the venue's push says something changed, and a
+// cached answer from before that change (this used to keep 2.5 s) showed a new order or a settled table late, until the
+// next safety read. Reads that arrive at the same moment still share one database read.
+const tReads = new Map<string, Promise<any>>();
 
+/** A write for this venue: the next read starts fresh instead of joining one that began before the write. */
 export function invalidateTablesCache(businessId?: string) {
   if (businessId) {
-    tCache.forEach((_, k) => {
-      if (k.startsWith(businessId)) tCache.delete(k);
+    tReads.forEach((_, k) => {
+      if (k.startsWith(businessId)) tReads.delete(k);
     });
   } else {
-    tCache.clear();
+    tReads.clear();
   }
 }
 
@@ -47,10 +51,17 @@ export async function getHostTables(
 
   const cacheKey = `${businessId}_${locationId || ''}`;
   if (!skipCache) {
-    const hit = tCache.get(cacheKey);
-    if (hit && Date.now() < hit.exp) return hit.res;
+    const running = tReads.get(cacheKey);
+    if (running) return running;
   }
+  const read = loadTables(supabase, businessId, locationId).finally(() => {
+    if (tReads.get(cacheKey) === read) tReads.delete(cacheKey);
+  });
+  if (!skipCache) tReads.set(cacheKey, read);
+  return read;
+}
 
+async function loadTables(supabase: any, businessId: string, locationId: string | null) {
   let q = supabase
     .from('restaurant_tables')
     .select('*')
@@ -78,7 +89,5 @@ export async function getHostTables(
   let tablesData = tablesRes.data || [];
 
   const derivedTables = deriveTableOccupancy(tablesData, ordsRes?.data || [], supabase);
-  const res = { tables: derivedTables, businessId };
-  tCache.set(cacheKey, { res, exp: Date.now() + 2500 });
-  return res;
+  return { tables: derivedTables, businessId };
 }

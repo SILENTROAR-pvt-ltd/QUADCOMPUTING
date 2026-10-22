@@ -23,7 +23,8 @@ interface LiveTableActionsProps {
   onSettle: (tender: Tender) => void;
   onSendToBilling: () => void;
   onRelease: () => void;
-  onOpenBilling: () => void;
+  /** Only where this screen can open billing (the owner's console). A waiter's phone cannot, so it gets no such link. */
+  onOpenBilling?: () => void;
 }
 
 type Confirm = 'release' | null;
@@ -86,13 +87,15 @@ export function LiveTableActions({ tableNumber, hasBill, total, busy, locked = f
                 </div>
               </>
             )}
-            {!billRequested && (
+            {/* Without waiter billing, sending to billing is the waiter's way to close a bill, so it is always offered: once
+                billing has been asked it rings the cashier again. */}
+            {(!billRequested || !canSettle) && (
               <motion.button type="button" onClick={onSendToBilling} disabled={working || locked} {...press}
-                className={canSettle
-                  ? 'flex h-10 w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-neutral-200 bg-white text-[12.5px] font-semibold text-neutral-700 disabled:opacity-50'
+                className={canSettle || billRequested
+                  ? 'flex h-11 w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-neutral-200 bg-white text-[13px] font-semibold text-neutral-800 disabled:opacity-50'
                   : 'flex h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-neutral-950 text-[14px] font-semibold text-white disabled:bg-neutral-300'}>
                 {busy === 'request' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                {canSettle ? 'Send to billing instead' : locked ? 'Updating the bill…' : 'Send to billing'}
+                {canSettle ? 'Send to billing instead' : locked ? 'Updating the bill…' : billRequested ? 'Send to billing again' : 'Send to billing'}
               </motion.button>
             )}
           </>
@@ -104,7 +107,7 @@ export function LiveTableActions({ tableNumber, hasBill, total, busy, locked = f
         </button>
       )}
 
-      {hasBill && !confirm && !tender && (
+      {hasBill && !confirm && !tender && onOpenBilling && (
         <button type="button" onClick={onOpenBilling} className="block min-h-9 w-full cursor-pointer text-center text-[12px] font-medium text-neutral-500 hover:text-neutral-900">
           Open billing
         </button>

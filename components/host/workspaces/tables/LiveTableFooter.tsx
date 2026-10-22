@@ -21,7 +21,8 @@ interface LiveTableFooterProps {
   onSettle: (tender: Tender) => void;
   onSendToBilling: () => void;
   onRelease: () => void;
-  onOpenBilling: () => void;
+  /** Only where this screen can open billing; a waiter's phone gets none. */
+  onOpenBilling?: () => void;
 }
 
 /** The bill's totals, and what the waiter can do with the table from here. Pinned to the bottom of the panel, kept short. */

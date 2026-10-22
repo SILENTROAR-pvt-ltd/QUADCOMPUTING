@@ -1,16 +1,14 @@
 import type { KitchenTicket } from '@/lib/utils/kitchen';
 
-// One entry per venue. This used to be a single slot, so with two venues reading in turn each one evicted the other and
-// the cache never hit; with 20-40 venues on one server it did nothing at all.
-const TICKET_TTL_MS = 2000;
-const TICKET_CACHE_MAX = 300;
-const ticketCache = new Map<string, { tickets: KitchenTicket[]; expiry: number }>();
-// While one venue's read is in progress every other read for that venue joins it (a push to four terminals is four reads).
+// Terminals read the tickets the moment the venue's push says something changed, and once only. A read answered from a
+// cache made before that change (this used to keep each venue's list for 2 s) left the old state on screen until the next
+// safety read: a ticket marked ready flipped back to "preparing", a new order or add-on showed up late. So nothing is
+// kept between reads. Reads that arrive at the same moment (a push to four terminals) still share one database read.
 const ticketReads = new Map<string, Promise<KitchenTicket[]>>();
 
-/** Forget one venue's tickets (a write for that venue), or every venue's when none is named. */
+/** A write for this venue: the next read starts fresh instead of joining one that began before the write. */
 export function invalidateKitchenTicketsCache(businessId?: string) {
-  if (businessId) { ticketCache.delete(businessId); ticketReads.delete(businessId); } else { ticketCache.clear(); ticketReads.clear(); }
+  if (businessId) ticketReads.delete(businessId); else ticketReads.clear();
 }
 
 export async function fetchKitchenTickets(
@@ -18,24 +16,18 @@ export async function fetchKitchenTickets(
   businessId: string,
   statusFilter: string | null
 ): Promise<KitchenTicket[]> {
-  const now = Date.now();
   const only = (all: KitchenTicket[]) => (statusFilter && statusFilter !== 'ALL' ? all.filter((t) => t.status === statusFilter) : all);
 
   // The cancelled list is rare and not what a board shows: it is read directly, never shared.
   if (statusFilter === 'CANCELLED') return loadAllTickets(supabase, businessId, statusFilter);
 
-  const cached = ticketCache.get(businessId);
-  if (cached && now < cached.expiry) return only(cached.tickets);
-
   // The shared read always loads every non-cancelled ticket; the status filter is applied per caller.
   const running = ticketReads.get(businessId);
   if (running) return only(await running);
 
-  const read = loadAllTickets(supabase, businessId, null).then((tickets) => {
-    if (ticketCache.size >= TICKET_CACHE_MAX) ticketCache.delete(ticketCache.keys().next().value as string);
-    ticketCache.set(businessId, { tickets, expiry: Date.now() + TICKET_TTL_MS });
-    return tickets;
-  }).finally(() => { ticketReads.delete(businessId); });
+  const read = loadAllTickets(supabase, businessId, null).finally(() => {
+    if (ticketReads.get(businessId) === read) ticketReads.delete(businessId);
+  });
   ticketReads.set(businessId, read);
   return only(await read);
 }

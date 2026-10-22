@@ -3,6 +3,7 @@
 import React from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { AlertCircle, Check } from 'lucide-react';
+import { useGuestToast } from './toast-store';
 
 /** "Order dispatched to kitchen — Live tracker active" and "Request sent: Spa for Table T-01" read as a title and a line under it. */
 export function splitToast(message: string): { title: string; detail: string } {
@@ -13,31 +14,30 @@ export function splitToast(message: string): { title: string; detail: string } {
   return { title: message.trim(), detail: '' };
 }
 
-const isProblem = (message: string) => /^(failed|network error|couldn['’]t|could not|unable)/i.test(message.trim());
-
-interface LuxuryToastProps {
-  message: string | null;
-  /** How long the message stays, so the gold line under it can run down with it. */
-  durationMs?: number;
-}
+const isProblem = (message: string) => /^(failed|network error|couldn['’]t|could not|unable|no connection)/i.test(message.trim()) || /did not go through/i.test(message);
 
 /**
  * A confirmation that feels like the rest of the guest app: an ivory card with a fine gold edge, a forest-green seal,
  * the headline in the serif face and the detail beneath it. A thin gold line runs down while it is on screen.
+ * It reads its message from its own store (toast-store.ts), so it is the only thing that redraws when it shows or hides.
+ * Everything that moves is a transform or opacity (no blur behind it, no width animation), so it stays smooth on a phone.
  */
-export function LuxuryToast({ message, durationMs = 3600 }: LuxuryToastProps) {
+export function LuxuryToast() {
+  const message = useGuestToast((s) => s.message);
+  const seq = useGuestToast((s) => s.seq);
+  const durationMs = useGuestToast((s) => s.durationMs);
   return (
-    <AnimatePresence>
+    <AnimatePresence initial={false}>
       {message && (
         <motion.div
-          key={message}
+          key={seq}
           role="status"
           aria-live="polite"
-          initial={{ opacity: 0, y: -18, scale: 0.97 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: -12, scale: 0.98 }}
-          transition={{ type: 'spring', damping: 26, stiffness: 320 }}
-          className="pointer-events-none fixed inset-x-0 top-5 z-[200] flex justify-center px-4"
+          initial={{ opacity: 0, y: -14 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10, transition: { duration: 0.14 } }}
+          transition={{ type: 'spring', damping: 30, stiffness: 520, mass: 0.6 }}
+          className="pointer-events-none fixed inset-x-0 top-5 z-[200] flex justify-center px-4 will-change-transform"
         >
           <ToastCard message={message} durationMs={durationMs} />
         </motion.div>
@@ -50,7 +50,7 @@ function ToastCard({ message, durationMs }: { message: string; durationMs: numbe
   const { title, detail } = splitToast(message);
   const problem = isProblem(message);
   return (
-    <div className="relative w-full max-w-[380px] overflow-hidden rounded-[22px] border border-[#e6d9b8]/90 bg-[#fcfaf4]/95 shadow-[0_18px_44px_-18px_rgba(10,50,34,0.45),0_2px_6px_rgba(10,50,34,0.06)] backdrop-blur-xl">
+    <div className="relative w-full max-w-[380px] overflow-hidden rounded-[22px] border border-[#e6d9b8] bg-[#fcfaf4] shadow-[0_14px_34px_-16px_rgba(10,50,34,0.45)]">
       <div className="flex items-center gap-3.5 py-3.5 pl-3.5 pr-5">
         <span
           aria-hidden
@@ -65,9 +65,9 @@ function ToastCard({ message, durationMs }: { message: string; durationMs: numbe
       </div>
       <motion.span
         aria-hidden
-        className="absolute bottom-0 left-0 h-[2px] bg-gradient-to-r from-[#c9a24a] via-[#e2c785] to-[#c9a24a]"
-        initial={{ width: '100%' }}
-        animate={{ width: '0%' }}
+        className="absolute bottom-0 left-0 h-[2px] w-full origin-left bg-gradient-to-r from-[#c9a24a] via-[#e2c785] to-[#c9a24a]"
+        initial={{ scaleX: 1 }}
+        animate={{ scaleX: 0 }}
         transition={{ duration: durationMs / 1000, ease: 'linear' }}
       />
     </div>

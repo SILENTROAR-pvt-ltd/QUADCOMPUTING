@@ -28,7 +28,8 @@ interface LiveTableControlPanelProps {
   onChanged: () => void;
   /** A table was settled or freed: the board updates at once and the panel closes. */
   onFinished: (kind: 'release' | 'settle') => void;
-  onOpenBilling: () => void;
+  /** Only where this screen can open billing (the owner's console); a waiter's phone gets none. */
+  onOpenBilling?: () => void;
   onClose: () => void;
   /** The owner lets waiters settle bills from here. */
   canSettle: boolean;

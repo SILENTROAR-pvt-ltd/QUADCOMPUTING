@@ -66,8 +66,11 @@ export function POSTableSelector({
   };
 
   const handleSelectTable = (table: RestaurantTable) => {
-    if (selectedTableId === table.id) {
-      handleSelectTakeaway();
+    // Tapping the table already chosen reloads its bill. It used to switch the till to the counter while keeping the
+    // table's dishes, and "Settle bill" then saved them as a separate counter bill: the payment was taken twice over
+    // and the table's own order stayed open. The counter is chosen with its own button.
+    if (selectedTableId && selectedTableId === table.id) {
+      onSelectActiveTable?.(table);
       return;
     }
 

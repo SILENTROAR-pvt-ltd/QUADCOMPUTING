@@ -103,7 +103,7 @@ export function LiveTablesWorkspace({ venueId, onNavigate, pollMs }: LiveTablesW
                 key={chosen.number} venueId={venueId} tableNumber={chosen.number} state={chosen.state}
                 kitchenTickets={kitchen.tickets} kitchenLoading={kitchen.isLoading} onServeTicket={serve}
                 onChanged={() => { void fetchTables(); }} onFinished={(kind) => finished(chosen.number, kind)}
-                onOpenBilling={() => onNavigate?.('billing')} onClose={close} canSettle={canSettle}
+                onOpenBilling={onNavigate ? () => onNavigate('billing') : undefined} onClose={close} canSettle={canSettle}
               />
             ) : (
               <div className="rounded-3xl border border-dashed border-neutral-300 bg-white p-8 text-center text-sm text-neutral-500">

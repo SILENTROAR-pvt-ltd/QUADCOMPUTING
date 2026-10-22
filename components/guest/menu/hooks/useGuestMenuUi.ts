@@ -3,13 +3,13 @@
 import { useState } from 'react';
 import type { MenuItem } from '@/components/guest/menu/types';
 import type { CustomizableItem } from '@/components/guest/menu/CustomizationDrawer';
+import { showGuestToast } from '@/components/guest/menu/toast-store';
 
 export function useGuestMenuUi() {
   const [selectedCategory, setSelectedCategory] = useState<string>('Dining');
   const [searchQuery, setSearchQuery] = useState('');
   // 'live_order' = the Bill tab; 'me' = profile, wallet & history.
   const [activeTab, setActiveTab] = useState<'menu' | 'live_order' | 'me'>('menu');
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [customizingItem, setCustomizingItem] = useState<CustomizableItem | null>(null);
   const [isCustomizationOpen, setIsCustomizationOpen] = useState(false);
   const [showCartReview, setShowCartReview] = useState(false);
@@ -20,11 +20,8 @@ export function useGuestMenuUi() {
   const [orderCelebration, setOrderCelebration] = useState(false);
   const [isAddonOrderSuccess, setIsAddonOrderSuccess] = useState(false);
 
-  const showToast = (msg: string) => {
-    setToastMessage(msg);
-    // Matches the gold line that runs down the toast (LuxuryToast).
-    setTimeout(() => setToastMessage(null), 3600);
-  };
+  // The toast has its own store (toast-store.ts): showing it no longer redraws the whole menu.
+  const showToast = showGuestToast;
 
   const handleOpenCustomization = (item: MenuItem) => {
     setCustomizingItem(item);
@@ -33,7 +30,7 @@ export function useGuestMenuUi() {
 
   return {
     selectedCategory, setSelectedCategory, searchQuery, setSearchQuery,
-    activeTab, setActiveTab, toastMessage, showToast,
+    activeTab, setActiveTab, showToast,
     customizingItem, setCustomizingItem, isCustomizationOpen, setIsCustomizationOpen,
     showCartReview, setShowCartReview, orderCookingNotes, setOrderCookingNotes,
     showBeyondDining, setShowBeyondDining, selectedService, setSelectedService,

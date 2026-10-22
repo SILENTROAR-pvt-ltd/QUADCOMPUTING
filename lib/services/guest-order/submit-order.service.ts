@@ -11,6 +11,8 @@ import { tableLockKey, withTableLock } from './table-lock';
 import { parseDeliveryRequest } from '@/lib/services/delivery/delivery-input';
 import { quoteDelivery, type DeliveryQuote } from '@/lib/services/delivery/delivery-rules';
 import { loadDeliverySettings } from '@/lib/services/delivery/delivery-settings.service';
+import { invalidateKitchenTicketsCache } from '@/lib/services/kitchen/get-tickets.service';
+import { invalidateTablesCache } from '@/lib/services/table/get-tables.service';
 
 const MAX_ATTEMPTS = 6;
 
@@ -289,6 +291,9 @@ async function submitGuestOrderOnce(body: any, supabase: any) {
   }
 
   if (rpcErr) throw rpcErr;
+  // A read of this venue's kitchen or tables that began before the order must not be shared with screens reading after it.
+  invalidateKitchenTicketsCache(resolvedBizId);
+  invalidateTablesCache(resolvedBizId);
   if (!rpcResult?.success) {
     const err: any = new Error(rpcResult?.error || 'Failed to submit order atomically');
     err.status = 409;

@@ -3,6 +3,7 @@ import { requireHost, adminDb } from '@/lib/auth/guards';
 import {
   fetchKitchenTickets,
   createKitchenTicketRecord,
+  invalidateKitchenTicketsCache,
 } from '@/lib/services/kitchen.service';
 import { withApiErrorBoundary, handleApiError } from '@/lib/middleware/error-handler';
 import { broadcastToGuestTable } from '@/lib/realtime/channels';
@@ -52,6 +53,7 @@ export const POST = withApiErrorBoundary(async function POST(request: Request) {
       .eq('id', businessId)
       .maybeSingle();
     const result = await createKitchenTicketRecord(supabase, businessId, body, stationRow?.kitchen_stations);
+    invalidateKitchenTicketsCache(businessId);
     return NextResponse.json(result);
   } catch (error: any) {
     return handleApiError(error, request, 'KitchenTicketsPOST');
@@ -123,6 +125,7 @@ export const PATCH = withApiErrorBoundary(async function PATCH(request: Request)
       if (!itemRows || itemRows.length === 0) {
         return NextResponse.json({ error: 'Kitchen ticket items were not saved' }, { status: 409 });
       }
+      invalidateKitchenTicketsCache(businessId);
       if (itemsOnly) {
         return NextResponse.json({ success: true, ticket: { id, items, status: ticketRecord.status } });
       }
@@ -160,6 +163,7 @@ export const PATCH = withApiErrorBoundary(async function PATCH(request: Request)
       return NextResponse.json({ error: rpcError.message || 'Failed to update KOT status' }, { status: 400 });
     }
 
+    invalidateKitchenTicketsCache(businessId);
     // The guest's table also hears this from the database's own table ping (20261016000006), so this extra push goes out
     // after the answer: the chef's and waiter's tap is confirmed without waiting for it.
     const pushedStatus = String(rpcData?.ticket?.status || status).toUpperCase();

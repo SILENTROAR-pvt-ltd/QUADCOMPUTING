@@ -242,10 +242,18 @@ export function usePOSCart(activeItems: CatalogItem[] = []) {
   }, []);
 
   /**
-   * Back to the counter: the dishes stay, but nothing of a table's session or a room's stay comes with them. A counter
-   * bill saved with a stale session id used to be sent as that table's settlement and failed on the server.
+   * Back to the counter. Dishes the cashier keyed in for a new bill stay; a table's or room's own bill (loaded from its
+   * order or stay) is cleared with it, because those dishes belong to that order and must never be billed again as a
+   * counter sale. Nothing of a table's session or a room's stay comes along either.
    */
   const clearDestination = useCallback(() => {
+    if (linkedOrderId || activeSessionId || selectedRoomId) {
+      setSelectedItems([]);
+      setCustomAmount('');
+      setDiscountInputValue('');
+      setRedemptionCode(null);
+      setVerifiedRedemption(null);
+    }
     setActiveSessionId(null);
     setActiveSessionStatus(null);
     setLinkedOrderId(null);
@@ -256,7 +264,7 @@ export function usePOSCart(activeItems: CatalogItem[] = []) {
     setSelectedRoomId(null);
     setRoomSettleIntent('payment');
     setSelectedTableNumber('Takeaway / Counter');
-  }, []);
+  }, [linkedOrderId, activeSessionId, selectedRoomId]);
 
   const resetCart = useCallback(() => {
     setSelectedItems([]);
