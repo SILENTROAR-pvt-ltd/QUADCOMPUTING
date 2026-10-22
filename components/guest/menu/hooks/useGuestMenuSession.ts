@@ -6,6 +6,7 @@ import type { MenuItem } from '@/components/guest/menu/types';
 import { getScopedGuestUuid, getStoredGuestProfile } from './guest-storage.util';
 import { partitionMenuItems } from './menu-category.util';
 import { fetchMenuAndInitSession } from './guest-menu-fetch.util';
+import { useMenuRefreshOnReturn } from './useMenuRefreshOnReturn';
 
 export function useGuestMenuSession({ tableParam, cafeParam, roomParam = '' }: { tableParam: string; cafeParam: string; roomParam?: string }) {
   const { session, setSession, setSessionSettled } = useGuestLobbyStore();
@@ -74,6 +75,9 @@ export function useGuestMenuSession({ tableParam, cafeParam, roomParam = '' }: {
     }).finally(() => setIsLoadingMenu(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps -- loads the menu when the table or venue changes; businessName and the session are set by this effect and would refetch the menu in a loop
   }, [tableParam, cafeParam]);
+
+  // Dishes the host switches off (or back on) while this menu is open: picked up when the guest returns to the tab.
+  useMenuRefreshOnReturn(cafeParam, tableParam, setMenuItems);
 
   const { diningItems, venueServices, culinaryCategories } = useMemo(() => partitionMenuItems(menuItems), [menuItems]);
 

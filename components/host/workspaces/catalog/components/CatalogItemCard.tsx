@@ -9,6 +9,7 @@ import {
   isStandaloneServiceEntity,
   isRecipeEligible,
 } from '@/lib/utils/catalog-item';
+import { DishAvailabilityToggle } from './DishAvailabilityToggle';
 
 interface CatalogItemCardProps {
   item: CatalogItem;
@@ -17,6 +18,9 @@ interface CatalogItemCardProps {
   onRecipe: (item: CatalogItem) => void;
   /** Opens the photo picker for this dish. */
   onPickPhoto?: (item: CatalogItem) => void;
+  /** Puts the dish on the guest menu or takes it off (dishes and services; rooms and room add-ons have their own). */
+  onToggleAvailable?: (item: CatalogItem) => void;
+  availabilityBusy?: boolean;
 }
 
 export const CatalogItemCard = React.memo<CatalogItemCardProps>(function CatalogItemCard({
@@ -25,10 +29,14 @@ export const CatalogItemCard = React.memo<CatalogItemCardProps>(function Catalog
   onDelete,
   onRecipe,
   onPickPhoto,
+  onToggleAvailable,
+  availabilityBusy,
 }) {
   const isAddon = isRoomAddonEntity(item);
   const isRoom = isAccommodationEntity(item) && !isAddon;
   const isService = isStandaloneServiceEntity(item);
+  const isOff = item.status === 'sold_out';
+  const canSwitch = Boolean(onToggleAvailable) && !isRoom && !isAddon;
 
   const priceFormatted = isRoom
     ? `₹${((item as any).nightlyRate?.amountMinor ?? (item as any).price?.amountMinor ?? 0).toFixed(2)}`
@@ -46,7 +54,7 @@ export const CatalogItemCard = React.memo<CatalogItemCardProps>(function Catalog
           onClick={() => onPickPhoto?.(item)}
           aria-label={item.imageUrl ? `Change photo for ${item.name}` : `Choose a photo for ${item.name}`}
           title="Choose a photo"
-          className="group relative shrink-0 cursor-pointer rounded-xl"
+          className={`group relative shrink-0 cursor-pointer rounded-xl transition-opacity ${isOff ? 'opacity-50' : ''}`}
         >
           {item.imageUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -62,15 +70,17 @@ export const CatalogItemCard = React.memo<CatalogItemCardProps>(function Catalog
           )}
         </button>
         <div className="min-w-0">
-          <h3 className="font-serif text-base sm:text-xl font-medium text-neutral-900 truncate">{item.name}</h3>
+          <h3 className={`font-serif text-base sm:text-xl font-medium truncate ${isOff ? 'text-neutral-400' : 'text-neutral-900'}`}>{item.name}</h3>
           <p className="mt-1 text-sm text-neutral-500 line-clamp-1 max-w-xs sm:max-w-md">{item.description}</p>
-          <div className="mt-3 flex gap-2">
+          <div className="mt-3 flex flex-wrap items-center gap-2">
             <span className="rounded-md bg-neutral-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-neutral-800">
               {itemTypeLabel}
             </span>
-            {item.status === 'sold_out' && (
+            {canSwitch ? (
+              <DishAvailabilityToggle name={item.name} on={!isOff} busy={availabilityBusy} onToggle={() => onToggleAvailable?.(item)} />
+            ) : isOff && (
               <span className="rounded-md bg-neutral-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-neutral-500 border border-neutral-200">
-                Sold Out
+                Off menu
               </span>
             )}
           </div>

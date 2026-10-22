@@ -7,6 +7,7 @@ import type { CatalogItem } from '@/types';
 import { useCatalogData } from './catalog/hooks/useCatalogData';
 import { useCatalogModals } from './catalog/hooks/useCatalogModals';
 import { useCatalogFilter } from './catalog/hooks/useCatalogFilter';
+import { useDishAvailability } from './catalog/hooks/useDishAvailability';
 import { CatalogHeader } from './catalog/components/CatalogHeader';
 import { CatalogPipelineBanner } from './catalog/components/CatalogPipelineBanner';
 import { CatalogToolbar } from './catalog/components/CatalogToolbar';
@@ -32,6 +33,7 @@ export function CatalogWorkspace({ cafeId: propCafeId }: CatalogWorkspaceProps =
 
   const { activeCafeId, serviceCatalog, isLoading, isRefreshing, fetchError, refreshCatalog } = useCatalogData(propCafeId);
   const modals = useCatalogModals(refreshCatalog);
+  const availability = useDishAvailability(activeCafeId);
   const { searchQuery, setSearchQuery, filterCategory, setFilterCategory, sortOption, setSortOption, activeItems, filteredAndSortedItems } = useCatalogFilter(serviceCatalog);
 
   const handleDirectDelete = async (item: CatalogItem) => {
@@ -102,7 +104,10 @@ export function CatalogWorkspace({ cafeId: propCafeId }: CatalogWorkspaceProps =
         ) : (
           <div className="divide-y divide-neutral-100">
             {filteredAndSortedItems.map((item) => (
-              <CatalogItemCard key={item.id} item={item} onEdit={modals.handleEditItem} onDelete={handleDirectDelete} onRecipe={modals.setRecipeItem} onPickPhoto={setPhotoItem} />
+              <CatalogItemCard
+                key={item.id} item={item} onEdit={modals.handleEditItem} onDelete={handleDirectDelete} onRecipe={modals.setRecipeItem}
+                onPickPhoto={setPhotoItem} onToggleAvailable={availability.toggle} availabilityBusy={availability.busyIds.has(item.id)}
+              />
             ))}
           </div>
         )}

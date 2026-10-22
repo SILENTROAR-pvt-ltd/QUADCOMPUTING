@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useHostWorkspace } from '@/lib/store/host-workspace.store';
 import type { CatalogItem } from '@/types';
+import { catalogStatus } from './catalog-status';
 
 export interface CatalogDebugInfo {
   queryVenue: string;
@@ -84,7 +85,7 @@ export function useCatalogData(propCafeId?: string) {
             name: item.name,
             description: item.description || '',
             imageUrl: item.image_url || null,
-            status: item.is_available ? 'active' : 'sold_out',
+            status: catalogStatus(item),
             addons: [],
             kind: 'accommodation',
             roomType: 'deluxe',
@@ -105,7 +106,7 @@ export function useCatalogData(propCafeId?: string) {
             name: item.name,
             description: item.description || '',
             imageUrl: item.image_url || null,
-            status: item.is_available ? 'active' : 'sold_out',
+            status: catalogStatus(item),
             addons: [],
             kind: 'service',
             price: { amountMinor: priceNum, currency: 'INR' },
@@ -130,7 +131,7 @@ export function useCatalogData(propCafeId?: string) {
           name: item.name,
           description: item.description || '',
           imageUrl: item.image_url || null,
-          status: item.is_available ? 'active' : 'sold_out',
+          status: catalogStatus(item),
           addons: [],
           kind: 'food_beverage',
           // The venue's own category (e.g. "Quick Bites"): the edit form, filters and labels all read it.
