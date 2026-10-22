@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Bell, BedDouble, Check, ChefHat, ConciergeBell, Receipt, Sparkles, AlertTriangle, ChevronDown, ChevronUp, ArrowUpRight } from 'lucide-react';
+import { Bell, BedDouble, CalendarCheck, Check, ChefHat, ConciergeBell, Receipt, Sparkles, AlertTriangle, ChevronDown, ChevronUp, ArrowUpRight } from 'lucide-react';
 import type { StaffAlert } from './useStaffAlerts';
 import { alertTarget, type AlertTarget } from '@/lib/host/alert-routing';
 
@@ -11,6 +11,7 @@ const TYPE_META: Record<string, { label: string; icon: React.FC<{ className?: st
   BILL: { label: 'Requested the bill', icon: Receipt, tone: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
   SERVICE: { label: 'Service request', icon: Sparkles, tone: 'bg-violet-50 text-violet-700 border-violet-200' },
   EVENT_INTEREST: { label: 'Interested in an event', icon: Sparkles, tone: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  STAY_BOOKING: { label: 'New room reservation', icon: CalendarCheck, tone: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
   LOW_STOCK_ALERT: { label: 'Low stock', icon: AlertTriangle, tone: 'bg-rose-50 text-rose-700 border-rose-200' },
   WALLET_SUSPENDED_LOW_BALANCE: { label: 'Wallet balance low', icon: AlertTriangle, tone: 'bg-rose-50 text-rose-700 border-rose-200' },
 };

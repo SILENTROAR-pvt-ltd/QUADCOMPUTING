@@ -1,12 +1,12 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Banknote, KeyRound, Link2 } from 'lucide-react';
+import { DoorOpen, Link2 } from 'lucide-react';
 import type { StayBooking } from './useStayBookings';
 
 interface Props {
-  booking: StayBooking; busy: boolean; choosing: boolean;
-  onToggleChoose: () => void; onCollect: () => void; onShowLink: () => void;
+  booking: StayBooking; busy: boolean; arriving: boolean;
+  onArrived: () => void; onShowLink: () => void;
   onConfirm: () => void; onNoShow: () => void; onCancel: () => void; onRefundCancel: () => void;
 }
 
@@ -14,19 +14,17 @@ const btn = 'inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg bord
 const primary = 'inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg bg-neutral-950 px-3 text-[11px] font-semibold text-white hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-50';
 
 /**
- * What the desk can do with an open booking. Not yet paid: take the room payment (the guest then gets a check-in link),
- * or check them in at the desk as before. Paid: show the link again, check in at the desk (the advance carries over),
- * or refund and cancel, which needs a second tap because money is involved.
+ * What the desk can do with an open booking. One way in when the guest arrives: "Guest arrived" asks first whether they
+ * check in on their phone or at the desk (ArrivalChoice). A paid booking can have its check-in link shown again before
+ * arrival; refund and cancel needs a second tap because money is involved.
  */
-export function BookingActions({ booking: x, busy, choosing, onToggleChoose, onCollect, onShowLink, onConfirm, onNoShow, onCancel, onRefundCancel }: Props) {
+export function BookingActions({ booking: x, busy, arriving, onArrived, onShowLink, onConfirm, onNoShow, onCancel, onRefundCancel }: Props) {
   const [sure, setSure] = useState(false);
   const paid = Boolean(x.pass);
   return (
     <div className="flex shrink-0 flex-wrap gap-2">
-      {paid
-        ? <button type="button" disabled={busy} onClick={onShowLink} className={primary}><Link2 className="h-3 w-3" /> Check-in link</button>
-        : <button type="button" disabled={busy} onClick={onCollect} className={primary}><Banknote className="h-3 w-3" /> Take payment</button>}
-      <button type="button" disabled={busy} onClick={onToggleChoose} aria-expanded={choosing} className={btn}><KeyRound className="h-3 w-3" /> Check in at desk</button>
+      <button type="button" disabled={busy} onClick={onArrived} aria-expanded={arriving} className={primary}><DoorOpen className="h-3 w-3" /> Guest arrived</button>
+      {paid && <button type="button" disabled={busy} onClick={onShowLink} className={btn}><Link2 className="h-3 w-3" /> Check-in link</button>}
       {x.status === 'requested' && <button type="button" disabled={busy} onClick={onConfirm} className={`${btn} border-emerald-200 text-emerald-800`}>Confirm</button>}
       {paid ? (
         sure

@@ -16,6 +16,7 @@ import { StayBookingsPanel } from './accommodations/bookings/StayBookingsPanel';
 import type { StayBooking } from './accommodations/bookings/useStayBookings';
 import { StaySettingsCard } from './accommodations/bookings/StaySettingsCard';
 import { OPEN_ROOM_EVENT, takeOpenRoomRequest } from '@/lib/host/open-room-request';
+import { useOpenBookingsRequest } from './accommodations/hooks/useOpenBookingsRequest';
 
 /** Front desk, room setup and stay history for a venue's rooms. */
 export function AccommodationsWorkspace({ onNavigate }: { onNavigate?: (tab: string, meta?: any) => void }) {
@@ -32,6 +33,9 @@ export function AccommodationsWorkspace({ onNavigate }: { onNavigate?: (tab: str
   // A check-in the desk chose to take payment for at once: the room stays selected, so its occupied box opens on the
   // payment sheet, for the amount chosen before check-in (null: the whole stay).
   const [payNow, setPayNow] = useState<{ roomId: string; amount: number | null } | null>(null);
+  // A reserved guest's arrival: "at the desk" already chosen on the Bookings tab, or checking in on their phone.
+  const [deskChosen, setDeskChosen] = useState(false);
+  const [selfCheckIn, setSelfCheckIn] = useState<StayBooking | null>(null);
   const [bookingsKey, setBookingsKey] = useState(0);
   const [editingRoomForModal, setEditingRoomForModal] = useState<PhysicalRoom | null>(null);
   const [editingCategory, setEditingCategory] = useState<RoomCategory | null>(null);
@@ -61,8 +65,10 @@ export function AccommodationsWorkspace({ onNavigate }: { onNavigate?: (tab: str
     if (room) { setActiveMainTab('front-desk'); setCheckInBooking(undefined); setSelectedRoomId(room.id); }
   }, [wantedRoom, rooms]);
 
+  useOpenBookingsRequest(() => setActiveMainTab('bookings'));
+
   const reload = () => { setBookingsKey((k) => k + 1); return data.loadData(true); };
-  const closeRoomPanel = () => { setSelectedRoomId(null); setCheckInBooking(undefined); setPayNow(null); };
+  const closeRoomPanel = () => { setSelectedRoomId(null); setCheckInBooking(undefined); setPayNow(null); setDeskChosen(false); };
   const checkedIn = (roomId: string, p: { payNow: boolean; amount: number | null }) => {
     setCheckInBooking(undefined);
     if (p.payNow) setPayNow({ roomId, amount: p.amount }); else { setSelectedRoomId(null); showToast('Checked in. The stay is paid at checkout.'); }
@@ -116,7 +122,7 @@ export function AccommodationsWorkspace({ onNavigate }: { onNavigate?: (tab: str
 
       {activeMainTab === 'bookings' && (
         <StayBookingsPanel categories={categories} rooms={rooms} onShowToast={showToast} refreshKey={bookingsKey} onChanged={() => void data.loadData(true)}
-          onCheckIn={(booking, room) => { setCheckInBooking(booking); setSelectedRoomId(room.id); }} />
+          onCheckIn={(booking, room) => { setCheckInBooking(booking); setDeskChosen(true); setSelectedRoomId(room.id); }} />
       )}
 
       {activeMainTab === 'configurator' && (
@@ -155,6 +161,10 @@ export function AccommodationsWorkspace({ onNavigate }: { onNavigate?: (tab: str
         onNavigate={onNavigate}
         payNow={payNow}
         onCheckedIn={checkedIn}
+        arrivalChosen={deskChosen}
+        selfCheckInBooking={selfCheckIn}
+        onSelfCheckIn={(booking) => { closeRoomPanel(); setSelfCheckIn(booking); }}
+        onCloseSelfCheckIn={() => setSelfCheckIn(null)}
       />
     </div>
   );

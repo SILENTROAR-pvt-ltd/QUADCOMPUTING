@@ -195,7 +195,7 @@ describe('stress: concurrent and failing check-ins', () => {
     await reserve();
     const paid = await bill(bookingId());
     const { PATCH } = await import('@/app/api/host/accommodations/rooms/[id]/status/route');
-    const res = await json(await PATCH(req('/api/host/accommodations/rooms/room-2/status', { method: 'PATCH', body: { action: 'check-in', booking_id: bookingId(), guest_name: 'Asha Rao', guest_phone: '9876543210', id_type: 'Aadhaar', id_number: '1234', total_guests: 2, check_out_time: '2026-10-23T05:30:00.000Z' } }), idParams('room-2')));
+    const res = await json(await PATCH(req('/api/host/accommodations/rooms/room-2/status', { method: 'PATCH', body: { action: 'check-in', booking_id: bookingId(), guest_name: 'Asha Rao', guest_phone: '9876543210', id_type: 'Aadhaar', id_number: '1234', dpdp_consent_accepted: true, total_guests: 2, check_out_time: '2026-10-23T05:30:00.000Z' } }), idParams('room-2')));
     expect(res.status).toBe(200);
     expect(db.tables.rooms[1]).toMatchObject({ status: 'OCCUPIED', advance_paid: 7000, checkin_source: 'booking' });
     expect(db.tables.stay_passes[0].status).toBe('used');
@@ -381,7 +381,7 @@ describe('the stay, to the final invoice', () => {
 
     // A second guest at the desk whose number ends the same way: the digits alone are no longer enough.
     const { PATCH } = await import('@/app/api/host/accommodations/rooms/[id]/status/route');
-    await PATCH(req('/api/host/accommodations/rooms/room-2/status', { method: 'PATCH', body: { action: 'check-in', guest_name: 'Other Guest', guest_phone: '9000003210', id_type: 'Aadhaar', id_number: '1', total_guests: 1, check_in_time: '2026-10-21T08:00:00.000Z', check_out_time: '2026-10-22T05:30:00.000Z' } }), idParams('room-2'));
+    await PATCH(req('/api/host/accommodations/rooms/room-2/status', { method: 'PATCH', body: { action: 'check-in', guest_name: 'Other Guest', guest_phone: '9000003210', id_type: 'Aadhaar', id_number: '0001', dpdp_consent_accepted: true, total_guests: 1, check_in_time: '2026-10-21T08:00:00.000Z', check_out_time: '2026-10-22T05:30:00.000Z' } }), idParams('room-2'));
     const two = await find({ phone_last4: '3210' });
     expect(two.status).toBe(409);
     expect(two.body.code).toBe('AMBIGUOUS');
@@ -431,7 +431,7 @@ describe('the stay, to the final invoice', () => {
 
   it('the desk checks in a walk-in and takes the room payment at once; the guest then owes nothing', async () => {
     const { PATCH } = await import('@/app/api/host/accommodations/rooms/[id]/status/route');
-    const res = await json(await PATCH(req('/api/host/accommodations/rooms/room-3/status', { method: 'PATCH', body: { action: 'check-in', guest_name: 'Walk In', guest_phone: '9000000009', id_type: 'Aadhaar', id_number: '9', total_guests: 1, check_in_time: '2026-10-21T08:00:00.000Z', check_out_time: '2026-10-23T05:30:00.000Z' } }), idParams('room-3')));
+    const res = await json(await PATCH(req('/api/host/accommodations/rooms/room-3/status', { method: 'PATCH', body: { action: 'check-in', guest_name: 'Walk In', guest_phone: '9000000009', id_type: 'Aadhaar', id_number: '0009', dpdp_consent_accepted: true, total_guests: 1, check_in_time: '2026-10-21T08:00:00.000Z', check_out_time: '2026-10-23T05:30:00.000Z' } }), idParams('room-3')));
     expect(res.status).toBe(200);
     const { POST: pay } = await import('@/app/api/host/accommodations/rooms/[id]/payment/route');
     const quote = await json(await pay(req('/api/host/accommodations/rooms/room-3/payment', { method: 'POST', body: { action: 'preview' } }), idParams('room-3')));

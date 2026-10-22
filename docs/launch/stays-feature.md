@@ -62,6 +62,30 @@ A guest with no reservation starts from Bookings → *New stay*; the same paymen
 check a booking in itself (*Check in at desk*, or pick the booking from a vacant room's panel); if that booking was
 already paid, the room carries the advance so nothing is charged twice.
 
+## Arrival, requests and notifications (22 October)
+
+- **One way in when a reserved guest arrives.** Bookings → *Guest arrived* (and opening a Reserved room tile) first asks
+  how they check in (`ArrivalChoice.tsx`). *On their phone*: take the payment (UPI, cash, card) and show the check-in QR,
+  or, if already paid, show it again; the guest adds their ID photo and consent and a room opens. Needs Self check-in on.
+  *At the desk*: pick the room (the tile is the room), then the desk form. The old side-by-side "Take payment" and
+  "Check in at desk" buttons are gone.
+- **A desk check-in records what self check-in asks for.** The ID number (or a passport for a foreign national) and a
+  ticked consent ("I have seen this ID, and the guest agrees to it being kept for the guest register") are required by
+  the form and by the server (`checkInError`). A booking checked in at the desk used to be marked "ID verified" with
+  neither.
+- **The booking code** on the guest's confirmation copies in one tap, and the card saves as a picture (share sheet →
+  "Save image" into the gallery; a download where there is no share sheet). The Stay hub's booking row copies the code
+  too and says **Paid · check-in open** once the desk has taken the payment.
+- **The bell rings for a new reservation** (`STAY_BOOKING`, migration `20261022000006`, bundle
+  `supabase/apply-pending-2026-10-22b.sql`): once, not every minute; the tray's link opens Bookings. Until the
+  migration is applied the database refuses the type and the booking still succeeds without a bell.
+- **The folio shows the stay's requests** (`OccupiedRoomRequests.tsx`, `GET .../rooms/[id]/requests`): housekeeping,
+  towels, water, calls, notes, check-out and payment requests, waiting first with *Mark done*, then the handled ones.
+  Live on the floor ping.
+- **The guest hears every answer.** The room page's Services tab lists *Your requests* (On its way / Done), and an alert
+  slides in when the desk marks one done, decides a late check-out, or records a payment (`room-updates.ts`). Marking a
+  room's request done pushes the room's channel at once (`PATCH /api/host/notifications`).
+
 ## Pages and routes
 
 | Page | Who | What |

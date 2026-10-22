@@ -6,7 +6,8 @@ import { roomNumberFromCall } from './open-room-request';
 
 export type AlertTab = 'accommodations' | 'billing' | 'tables' | 'kitchen' | 'inventory' | 'wallet' | 'reservations';
 
-export interface AlertTarget { tab: AlertTab; room?: string; table?: string; place: string }
+/** `view: 'bookings'` opens the Accommodations bookings list rather than the front desk. */
+export interface AlertTarget { tab: AlertTab; room?: string; table?: string; place: string; view?: 'bookings' }
 
 interface AlertLike { table_number?: string | null; notification_type: string }
 
@@ -20,6 +21,7 @@ export function alertTarget(a: AlertLike): AlertTarget {
     case 'LOW_STOCK_ALERT': return { tab: 'inventory', place: 'Inventory' };
     case 'WALLET_SUSPENDED_LOW_BALANCE': return { tab: 'wallet', place: 'Wallet' };
     case 'EVENT_INTEREST': return { tab: 'reservations', place: 'Reservations' };
+    case 'STAY_BOOKING': return { tab: 'accommodations', place: 'Rooms', view: 'bookings' };
     default: return { tab: 'tables', table: table || undefined, place: table ? `Table ${table}` : 'Venue' };
   }
 }

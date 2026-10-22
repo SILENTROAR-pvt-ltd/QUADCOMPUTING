@@ -1,8 +1,10 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
+import { Check, Copy } from 'lucide-react';
 import { shortDate, plural } from '@/components/stay/stay-format';
+import { copyText } from '@/lib/guest/copy-text';
 import type { GuestStay, StayState } from '@/lib/services/stay/stay-hub.service';
 
 const STATE: Record<StayState, { label: string; cls: string }> = {
@@ -16,21 +18,30 @@ const STATE: Record<StayState, { label: string; cls: string }> = {
   no_show: { label: 'No show', cls: 'bg-neutral-100 text-neutral-500 ring-neutral-200' },
 };
 
-/** One reservation: where and when, its code, where it stands, and the next step when there is one. */
+/** One reservation: where and when, its code (one tap copies it), where it stands, and the next step when there is one. */
 export function StayBookingRow({ stay, showVenue = false, roomHref }: { stay: GuestStay; showVenue?: boolean; roomHref?: string | null }) {
+  const [copied, setCopied] = useState(false);
   const s = STATE[stay.state];
   const venue = stay.venue.slug || stay.venue.id;
-  const action = stay.state === 'upcoming' && !showVenue ? { href: `/stay/${encodeURIComponent(venue)}/checkin`, label: 'Check in' }
+  const open = stay.state === 'upcoming' && stay.paid;
+  const action = stay.state === 'upcoming' && !showVenue ? { href: `/stay/${encodeURIComponent(venue)}/checkin`, label: open ? 'Check in now' : 'Check in' }
     : stay.state === 'upcoming' ? { href: `/stay/${encodeURIComponent(venue)}`, label: 'View' }
     : stay.state === 'in_house' && roomHref ? { href: roomHref, label: 'My room' } : null;
+  const copy = async () => { if (stay.code && await copyText(stay.code)) { setCopied(true); setTimeout(() => setCopied(false), 1800); } };
   return (
     <li className="flex items-center justify-between gap-3 py-3">
       <div className="min-w-0">
         <p className="truncate text-sm font-semibold text-neutral-950">{showVenue ? `${stay.venue.name} · ` : ''}{stay.room_type || 'Room'}</p>
         <p className="mt-0.5 text-xs text-neutral-500">{shortDate(stay.check_in)} → {shortDate(stay.check_out)} · {plural(stay.nights, 'night')} · {plural(stay.guests, 'guest')}</p>
-        <p className="mt-1 flex items-center gap-2 text-[11px]">
+        <p className="mt-1 flex flex-wrap items-center gap-2 text-[11px]">
           <span className={`rounded-full px-2 py-0.5 font-semibold ring-1 ring-inset ${s.cls}`}>{s.label}</span>
-          {stay.code && <span className="font-mono text-neutral-500">{stay.code}</span>}
+          {open && <span className="rounded-full bg-emerald-600 px-2 py-0.5 font-semibold text-white">Paid · check-in open</span>}
+          {stay.code && (
+            <button type="button" onClick={() => void copy()} aria-label={`Copy booking code ${stay.code}`}
+              className="inline-flex min-h-7 cursor-pointer items-center gap-1 rounded-md px-1.5 font-mono text-neutral-600 hover:bg-neutral-100">
+              {stay.code} {copied ? <Check className="h-3 w-3 text-emerald-700" aria-hidden /> : <Copy className="h-3 w-3" aria-hidden />}
+            </button>
+          )}
         </p>
       </div>
       {action && <Link href={action.href} className="shrink-0 cursor-pointer rounded-full bg-neutral-950 px-3.5 py-2 text-xs font-semibold text-white hover:bg-neutral-800">{action.label}</Link>}

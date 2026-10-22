@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import type { PhysicalRoom } from '@/types';
 import { CleaningMaintenanceView } from './checkin/CleaningMaintenanceView';
 import { useRoomCheckInState, type CheckInPayment } from './checkin/useRoomCheckInState';
@@ -8,6 +8,7 @@ import { RoomDetailsHeader } from './checkin/RoomDetailsHeader';
 import { RoomCheckInForm, CHECK_IN_FORM_ID } from './checkin/RoomCheckInForm';
 import { CheckInFooter } from './checkin/CheckInFooter';
 import { BookingPicker } from './checkin/BookingPicker';
+import { ArrivalChoice } from './bookings/ArrivalChoice';
 import type { StayBooking } from './bookings/useStayBookings';
 
 interface Props {
@@ -19,14 +20,24 @@ interface Props {
   onBookingChange?: (b: StayBooking | null) => void;
   /** The guest is in: close, or (pay now) go straight on to the room payment in the occupied-room box. */
   onCheckedIn?: (roomId: string, payment: CheckInPayment) => void;
+  /** The desk already chose "at the desk" for this booking (on the Bookings tab), so the panel opens on the form. */
+  arrivalChosen?: boolean;
+  selfEnabled?: boolean;
+  /** The guest checks in on their phone instead: the panel closes and the payment / check-in link sheet opens. */
+  onSelfCheckIn?: (booking: StayBooking) => void;
 }
 
 /**
  * A free room: check a guest in (with or without a reservation), or move it between vacant, housekeeping and
  * maintenance. Fills the screen on a phone, a card on a desk; the total and the check-in button stay in view.
  */
-export function RoomDetailsPanel({ room, onClose, onRoomUpdated, booking = null, onBookingChange, onCheckedIn }: Props) {
+export function RoomDetailsPanel({ room, onClose, onRoomUpdated, booking = null, onBookingChange, onCheckedIn, arrivalChosen = false, selfEnabled = false, onSelfCheckIn }: Props) {
   const s = useRoomCheckInState(room, onClose, onRoomUpdated, booking, onCheckedIn);
+  // A guest arriving with a reservation is asked about first (phone or desk); the desk form shows once "at the desk" is chosen.
+  // Derived, not stored per render: "at the desk" is remembered for this room and booking only.
+  const [deskFor, setDeskFor] = useState<string | null>(null);
+  const key = room && booking ? `${room.id}:${booking.id}` : null;
+  const asking = Boolean(key) && !arrivalChosen && Boolean(onSelfCheckIn) && deskFor !== key && room?.status === 'VACANT';
 
   useEffect(() => {
     if (!room) return;
@@ -55,7 +66,11 @@ export function RoomDetailsPanel({ room, onClose, onRoomUpdated, booking = null,
               <button type="button" onClick={s.clearError} className="cursor-pointer text-xs font-semibold underline underline-offset-2">Dismiss</button>
             </div>
           )}
-          {room.status === 'VACANT' && (
+          {asking && booking && (
+            <ArrivalChoice guestName={booking.guest_name} code={booking.confirmation_code} paidAmount={booking.pass ? booking.pass.amount : null} selfEnabled={selfEnabled} inRoom
+              onSelf={() => onSelfCheckIn?.(booking)} onDesk={() => setDeskFor(key)} />
+          )}
+          {room.status === 'VACANT' && !asking && (
             <>
               {onBookingChange && <BookingPicker room={room} booking={booking} onPick={onBookingChange} />}
               <RoomCheckInForm checkInState={s} />
@@ -73,7 +88,7 @@ export function RoomDetailsPanel({ room, onClose, onRoomUpdated, booking = null,
           )}
         </div>
 
-        {room.status === 'VACANT' && (
+        {room.status === 'VACANT' && !asking && (
           <CheckInFooter numNights={s.numNights} roomPrice={s.roomPrice} checkInAddonsTotal={s.checkInAddonsTotal} estimatedTotal={s.estimatedTotalWithAddons}
             payment={s.payment()} isUpdating={s.isUpdating} onCheckIn={() => s.submitCheckIn(CHECK_IN_FORM_ID)} />
         )}

@@ -30,6 +30,8 @@ export interface RoomState {
   };
   /** The guest's one request to the desk: ready to leave (checkout), or wants to pay the running bill now (bill). */
   checkout_request: null | { kind: 'checkout' | 'bill'; status: 'pending'; requested_at: string; note: string | null };
+  /** Everything this stay has asked the desk for, newest first, waiting or done (null: not read). */
+  requests?: null | Array<{ id: string; kind: 'service' | 'waiter' | 'bill' | 'other'; message: string | null; status: 'waiting' | 'done'; at: string }>;
 }
 
 /**
@@ -71,7 +73,7 @@ export function useRoomStay(code: string) {
   const pushed = useRoomLive(live ? data!.business.id : null, live ? data!.room.room_number : null, () => void load(true));
   useEffect(() => {
     if (!data || (data.occupied && !data.verified)) return;
-    const waiting = data.late_checkout?.request?.status === 'pending' || Boolean(data.checkout_request);
+    const waiting = data.late_checkout?.request?.status === 'pending' || Boolean(data.checkout_request) || (data.requests || []).some((r) => r.status === 'waiting');
     const cooking = (data.folio?.orders || []).some((o) => !['SERVED', 'COMPLETED', 'DELIVERED', 'CANCELLED'].includes(String(o.kot_status || o.status).toUpperCase()));
     const every = !data.occupied ? 20_000 : pushed ? (waiting || cooking ? 30_000 : 90_000) : cooking ? 8_000 : waiting ? 15_000 : 45_000;
     const t = setInterval(() => void load(true), every);
@@ -81,7 +83,8 @@ export function useRoomStay(code: string) {
   const verify = async (last4: string) => { const err = await verifyRoom(code, last4); if (!err) await load(true); return err; };
   const send = async (path: string, body: unknown, ok: string) => {
     const r = await postRoomAction(code, path, body, ok);
-    if (r.ok && path !== 'service') void load(true);
+    // Every request, service ones included, shows in "Your requests" at once.
+    if (r.ok) void load(true);
     return r.message;
   };
   const request = (kind: string, message?: string) => send('service', { kind, message }, 'The desk has been told.');

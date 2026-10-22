@@ -13,6 +13,7 @@ import { OccupiedRoomHeader } from './occupied/OccupiedRoomHeader';
 import { IdProofPanel } from './occupied/IdProofPanel';
 import { LateCheckoutPanel } from './occupied/LateCheckoutPanel';
 import { CheckoutRequestPanel } from './occupied/CheckoutRequestPanel';
+import { OccupiedRoomRequests } from './occupied/OccupiedRoomRequests';
 import { CollectSheet } from './bookings/collect/CollectSheet';
 import { useStaySettings } from './bookings/useStaySettings';
 import type { CollectSpec } from './bookings/collect/useCollect';
@@ -83,6 +84,7 @@ export function OccupiedRoomModal({ room, isOpen, onClose, onRoomUpdated, onNavi
               <OccupiedGuestDossier room={r} />
               <IdProofPanel room={r} onVerified={refresh} />
               <LateCheckoutPanel room={r} onChanged={refresh} />
+              <OccupiedRoomRequests roomId={r.id} />
               <OccupiedRoomOrders orders={d.actualRoomServiceOrders} tickets={d.tickets} roomNumber={r.room_number} />
               {d.isLoading
                 ? <div className="h-64 animate-pulse rounded-2xl border border-neutral-200 bg-white" aria-busy="true" />

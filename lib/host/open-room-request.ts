@@ -5,11 +5,25 @@
 export const OPEN_ROOM_EVENT = 'quad:open-room';
 export const OPEN_TABLE_EVENT = 'quad:open-table';
 export const SETTLE_ROOM_EVENT = 'quad:settle-room';
+export const OPEN_BOOKINGS_EVENT = 'quad:open-bookings';
 
 /** What the till needs to load a room's folio and open its bill for checkout. */
 export interface SettleRoomRequest { id: string; room_number: string; status: string; guest_name?: string | null }
 
-const pending: { room: string | null; table: string | null; settle: SettleRoomRequest | null } = { room: null, table: null, settle: null };
+const pending: { room: string | null; table: string | null; settle: SettleRoomRequest | null; bookings: boolean } = { room: null, table: null, settle: null, bookings: false };
+
+/** Asks the Accommodations workspace to show its bookings list (the bell's "new room reservation"). */
+export function requestOpenBookings() {
+  pending.bookings = true;
+  if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent(OPEN_BOOKINGS_EVENT));
+}
+
+/** Whether the bookings list was asked for, taken once. */
+export function takeOpenBookingsRequest(): boolean {
+  const b = pending.bookings;
+  pending.bookings = false;
+  return b;
+}
 
 /** Asks the Accommodations workspace to open this room's box as soon as it can. */
 export function requestOpenRoom(roomNumber: string) {

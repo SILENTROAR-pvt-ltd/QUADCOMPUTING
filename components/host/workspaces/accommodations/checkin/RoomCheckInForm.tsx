@@ -17,6 +17,7 @@ export function RoomCheckInForm({ checkInState: s }: { checkInState: any }) {
         guestName={s.guestName} setGuestName={s.setGuestName} guestPhone={s.guestPhone} setGuestPhone={s.setGuestPhone}
         guestEmail={s.guestEmail} setGuestEmail={s.setGuestEmail} guestAddress={s.guestAddress} setGuestAddress={s.setGuestAddress}
         idProofType={s.idProofType} setIdProofType={s.setIdProofType} idProofNumber={s.idProofNumber} setIdProofNumber={s.setIdProofNumber}
+        consent={s.consent} setConsent={s.setConsent}
       />
       <CheckInScheduleSection
         checkInTime={s.checkInTime} onCheckInChange={s.handleCheckInDateChange} checkOutTime={s.checkOutTime} onCheckOutChange={s.handleCheckOutDateChange}

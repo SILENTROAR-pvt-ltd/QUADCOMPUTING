@@ -24,6 +24,18 @@ export function stayState(b: { status: string; check_out: string }, today: strin
 export interface GuestStay {
   id: string; code: string | null; state: StayState; check_in: string; check_out: string; nights: number; guests: number;
   room_type: string | null; venue: { id: string; name: string; slug: string | null };
+  /** The desk has taken the room payment, so the guest's self check-in is open. */
+  paid?: boolean;
+}
+
+/** Which of these bookings the desk has been paid for (a live or used pass). A failed read reports none paid. */
+async function paidBookingIds(db: any, bookingIds: string[]): Promise<Set<string>> {
+  if (!bookingIds.length) return new Set();
+  try {
+    const { data, error } = await db.from('stay_passes').select('booking_id, status').in('booking_id', bookingIds).in('status', ['issued', 'used']);
+    if (error) return new Set();
+    return new Set((data || []).map((p: any) => String(p.booking_id)));
+  } catch { return new Set(); }
 }
 
 /** The reservations made under this guest's Vibers ID: at one venue, or at every venue the same login is connected to. */
@@ -42,10 +54,11 @@ export async function staysForAccount(
   if (opts.businessId) q = q.eq('business_id', opts.businessId);
   const { data, error } = await q;
   if (error) throw error;
+  const paid = await paidBookingIds(db, (data || []).filter((b: any) => b.status === 'confirmed' || b.status === 'requested').map((b: any) => String(b.id)));
   // What matters now comes first: the stay the guest is in, then what is coming, then the past.
   const rank: Record<StayState, number> = { in_house: 0, upcoming: 1, requested: 2, stayed: 3, missed: 4, cancelled: 5, declined: 5, no_show: 5 };
   return (data || []).map((b: any): GuestStay => ({
-    id: b.id, code: b.confirmation_code || null, state: stayState(b, today), check_in: b.check_in, check_out: b.check_out,
+    id: b.id, code: b.confirmation_code || null, state: stayState(b, today), paid: paid.has(String(b.id)), check_in: b.check_in, check_out: b.check_out,
     nights: Math.max(0, nightsBetween(b.check_in, b.check_out)), guests: Number(b.guests) || 1, room_type: b.category?.name || null,
     venue: { id: String(b.business_id), name: b.business?.business_name || b.business?.name || 'Venue', slug: b.business?.slug || null },
   })).sort((a: GuestStay, b: GuestStay) => rank[a.state] - rank[b.state] || (rank[a.state] <= 2 ? a.check_in.localeCompare(b.check_in) : b.check_in.localeCompare(a.check_in)));

@@ -16,6 +16,8 @@ export function useCheckInForm(room: PhysicalRoom | null, booking: StayBooking |
   const [guestAddress, setGuestAddress] = useState('');
   const [idProofType, setIdProofType] = useState('Aadhaar Card');
   const [idProofNumber, setIdProofNumber] = useState('');
+  // The desk confirms it saw the ID and the guest consents to it being kept; asked afresh for every check-in.
+  const [consent, setConsent] = useState(false);
   const [checkInTime, setCheckInTime] = useState(nowLocalInput());
   const [checkOutTime, setCheckOutTime] = useState(() => checkoutAfterNights(nowLocalInput(), 1));
   const [adultsCount, setAdultsCount] = useState('2');
@@ -32,7 +34,7 @@ export function useCheckInForm(room: PhysicalRoom | null, booking: StayBooking |
     const now = nowLocalInput();
     setRoomNumber(room.room_number || ''); setIsEditingRoomNumber(false);
     setGuestName(''); setGuestPhone(''); setGuestEmail(''); setGuestAddress('');
-    setIdProofType('Aadhaar Card'); setIdProofNumber('');
+    setIdProofType('Aadhaar Card'); setIdProofNumber(''); setConsent(false);
     setCheckInTime(now); setCheckOutTime(checkoutAfterNights(now, 1));
     setAdultsCount(String(room.category?.occupancy || 2)); setChildrenCount('0');
     setPurposeOfVisit('Leisure & Tourism'); setIsCelebration(false); setCelebrationType('Birthday'); setCelebrationNote('');
@@ -55,7 +57,7 @@ export function useCheckInForm(room: PhysicalRoom | null, booking: StayBooking |
   return {
     roomNumber, setRoomNumber, isEditingRoomNumber, setIsEditingRoomNumber,
     guestName, setGuestName, guestPhone, setGuestPhone, guestEmail, setGuestEmail, guestAddress, setGuestAddress,
-    idProofType, setIdProofType, idProofNumber, setIdProofNumber,
+    idProofType, setIdProofType, idProofNumber, setIdProofNumber, consent, setConsent,
     checkInTime, handleCheckInDateChange: setCheckInTime, checkOutTime, handleCheckOutDateChange: setCheckOutTime, setNights,
     adultsCount, setAdultsCount, childrenCount, setChildrenCount,
     purposeOfVisit, setPurposeOfVisit, isCelebration, setIsCelebration, celebrationType, setCelebrationType,

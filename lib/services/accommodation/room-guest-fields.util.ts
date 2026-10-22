@@ -53,9 +53,15 @@ export interface CheckInBody {
   visa_expiry_date?: string;
 }
 
-/** Why a check-in request cannot be accepted, or null. */
+/**
+ * Why a desk check-in cannot be accepted, or null. A desk check-in records what self check-in asks the guest for: the
+ * ID seen at the desk (its number, or the passport for a foreign national) and the guest's consent to keeping it. A
+ * reservation checked in at the desk used to be marked "ID verified" with neither.
+ */
 export function checkInError(body: CheckInBody): string | null {
   if (!text(body.guest_name) || !text(body.guest_phone)) return 'Guest name and phone are required.';
+  if (!body.is_foreign_national && (text(body.id_number) || '').length < 4) return "Enter the guest's ID number, as printed on the ID shown at the desk.";
+  if (body.dpdp_consent_accepted !== true) return 'Confirm you have seen the ID and the guest agrees to it being kept for the register.';
   const inAt = Date.parse(String(body.check_in_time || ''));
   const outAt = Date.parse(String(body.check_out_time || ''));
   if (!Number.isNaN(inAt) && !Number.isNaN(outAt) && outAt <= inAt) return 'Expected check-out must be after check-in.';

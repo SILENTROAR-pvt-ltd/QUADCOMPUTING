@@ -13,12 +13,16 @@ interface Props {
   guestAddress?: string; setGuestAddress?: (val: string) => void;
   idProofType: string; setIdProofType: (val: string) => void;
   idProofNumber: string; setIdProofNumber: (val: string) => void;
+  consent: boolean; setConsent: (val: boolean) => void;
 }
 
-/** Who is checking in: name and phone (needed), email and address (if given), and the ID shown at the desk. */
+/**
+ * Who is checking in: name, phone, the ID seen at the desk and the guest's consent (all required: a desk check-in
+ * records what self check-in asks the guest for), and email and address if given.
+ */
 export function CheckInGuestSection(p: Props) {
   return (
-    <CheckInSection icon={User} title="Guest" hint="Name and mobile are required; the ID is kept for the register.">
+    <CheckInSection icon={User} title="Guest" hint="Fields marked * are needed for the register.">
       <div className="space-y-3">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
@@ -50,6 +54,10 @@ export function CheckInGuestSection(p: Props) {
           </div>
         </div>
         <CheckInIdDocFields idProofType={p.idProofType} setIdProofType={p.setIdProofType} idProofNumber={p.idProofNumber} setIdProofNumber={p.setIdProofNumber} />
+        <label className="flex cursor-pointer items-start gap-2.5 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-xs leading-snug text-neutral-700">
+          <input type="checkbox" required checked={p.consent} onChange={(e) => p.setConsent(e.target.checked)} className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer accent-neutral-950" />
+          <span>I have seen this ID, and the guest agrees to it being kept for the guest register. *</span>
+        </label>
       </div>
     </CheckInSection>
   );

@@ -39,6 +39,11 @@ describe('a guest\'s stays in one place', () => {
     const everywhere = await staysForAccount(db, { id: 'acc-1', user_id: 'user-1' }, {}, TODAY);
     expect(everywhere.map((s) => s.code)).toEqual(['ST-AAAAAA', 'ST-BBBBBB']); // never another login's booking
     expect(everywhere[1]).toMatchObject({ state: 'stayed', venue: { name: 'Hill House' } });
+    expect(here[0].paid).toBe(false);
+    // Once the desk takes the room payment (a live pass), the guest's booking says check-in is open.
+    db.tables.stay_passes = [{ id: 'p1', business_id: BIZ, booking_id: 'b1', status: 'issued' }, { id: 'p2', business_id: BIZ, booking_id: 'b3', status: 'void' }];
+    const paidNow = await staysForAccount(db, { id: 'acc-1', user_id: 'user-1' }, { businessId: BIZ }, TODAY);
+    expect(paidNow[0]).toMatchObject({ code: 'ST-AAAAAA', paid: true });
   });
 
   it('finds the room this phone is confirmed in, and only while that stay is the current one', async () => {

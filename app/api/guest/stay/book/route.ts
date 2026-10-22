@@ -7,6 +7,8 @@ import { createStayBooking, readStayBookingInput, StayBookingError } from '@/lib
 import { loadStayBusiness } from '@/lib/services/stay/room-route.util';
 import { readExpectedArrival, readPolicies } from '@/lib/services/stay/stay-policy';
 import { accountForRequest } from '@/lib/services/guest-auth/guest-account.service';
+import { ringNewReservation } from '@/lib/services/stay/booking-alert.service';
+import { afterResponse } from '@/lib/utils/after-response';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,6 +34,11 @@ export const POST = withApiErrorBoundary(async function POST(request: Request) {
     input.expectedArrival = readExpectedArrival(input.expectedArrival, readPolicies(business?.stay_policies));
 
     const result = await createStayBooking(db, businessId, input);
+    // The desk's bell rings for the new reservation once the guest has their answer; the guest never waits on it.
+    afterResponse('stay-booking-bell', () => ringNewReservation(db, businessId, {
+      code: result.code, guestName: String(result.booking.guest_name || ''), roomType: result.category.name,
+      checkIn: result.booking.check_in, checkOut: result.booking.check_out, nights: result.nights, guests: Number(result.booking.guests) || 1,
+    }));
     return NextResponse.json({
       success: true,
       booking: {

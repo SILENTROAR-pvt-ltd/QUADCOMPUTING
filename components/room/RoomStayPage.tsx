@@ -16,6 +16,8 @@ import { RoomFolio } from './RoomFolio';
 import { RoomFrontDesk } from './RoomFrontDesk';
 import { RoomCheckedOut } from './RoomCheckedOut';
 import { RoomVacant } from './RoomVacant';
+import { RoomRequestsCard } from './RoomRequestsCard';
+import { RoomUpdateToast } from './RoomUpdateToast';
 
 const serif = { fontFamily: "'Playfair Display', Georgia, serif" };
 
@@ -46,6 +48,7 @@ export function RoomStayPage({ code }: { code: string }) {
   const balance = d.folio?.balance || 0;
   return (
     <StayShell eyebrow="Your room" title={title} right={<RoomFrontDesk data={d} />}>
+      <RoomUpdateToast data={d} />
       <div className="space-y-4">
         {welcome && (
           <div role="status" className="flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
@@ -68,6 +71,7 @@ export function RoomStayPage({ code }: { code: string }) {
         )}
         <RoomTabs tab={tab} onChange={setTab} billBadge={balance > 0 ? inr(balance) : null} />
         {tab === 'order' && <RoomOrderCta data={d} code={code} live={stay.live} onRefresh={() => void stay.reload(true)} onOpenBill={openBill} onStayLonger={() => openService('late-checkout')} onCheckOut={() => openService('checkout-request')} />}
+        {tab === 'services' && d.requests && <RoomRequestsCard requests={d.requests} />}
         {tab === 'services' && <RoomServices data={d} onRequest={stay.request} onRequestLate={stay.requestLateCheckout} onRequestCheckout={stay.requestCheckout} onOpenBill={openBill} />}
         {tab === 'bill' && <RoomFolio data={d} onRequestPay={(action) => stay.requestCheckout(action, undefined, 'bill')} />}
       </div>

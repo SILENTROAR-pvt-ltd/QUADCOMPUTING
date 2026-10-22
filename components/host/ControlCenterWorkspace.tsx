@@ -14,7 +14,7 @@ import { useStaffAlerts } from './control-center/useStaffAlerts';
 import { useRoomRequests } from './control-center/useRoomRequests';
 import { useReservationsUnread } from './control-center/useReservationsUnread';
 import { StaffAlertsTray } from './control-center/StaffAlertsTray';
-import { requestOpenRoom, requestOpenTable } from '@/lib/host/open-room-request';
+import { requestOpenBookings, requestOpenRoom, requestOpenTable } from '@/lib/host/open-room-request';
 import { alertCountsByTab } from '@/lib/host/alert-routing';
 import { HostAlertSound } from './control-center/HostAlertSound';
 import { useVenueTabGuard } from './control-center/useVenueTabGuard';
@@ -112,7 +112,7 @@ export default function ControlCenterWorkspace({
       </div>
 
       <StaffAlertsTray alerts={staffAlerts.alerts} freshIds={staffAlerts.freshIds} onResolve={staffAlerts.resolve}
-        onOpen={(t) => { if (t.room) requestOpenRoom(t.room); else if (t.table) requestOpenTable(t.table); handleTabChange(t.tab); }} />
+        onOpen={(t) => { if (t.room) requestOpenRoom(t.room); else if (t.view === 'bookings') requestOpenBookings(); else if (t.table) requestOpenTable(t.table); handleTabChange(t.tab); }} />
       {/* On every tab: the bell for new orders and guest calls. */}
       <HostAlertSound alerts={staffAlerts.alerts} freshIds={staffAlerts.freshIds} kotArrivals={kotArrivals} />
       {copilot.drawer}

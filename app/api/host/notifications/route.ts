@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import { requireHost, adminDb } from '@/lib/auth/guards';
 import { withApiErrorBoundary, handleApiError } from '@/lib/middleware/error-handler';
+import { broadcastToGuestTable } from '@/lib/realtime/channels';
+import { roomNumberFromCall } from '@/lib/host/open-room-request';
+import { roomTableLabel } from '@/lib/guest/room-mode';
+import { afterResponse } from '@/lib/utils/after-response';
 
 export const dynamic = 'force-dynamic';
 
@@ -60,8 +64,14 @@ export const PATCH = withApiErrorBoundary(async function PATCH(request: Request)
       return NextResponse.json({ success: false, error: 'Provide an alert id or all: true' }, { status: 400 });
     }
 
-    const { data, error } = await query.select('id');
+    const { data, error } = await query.select('id, table_number');
     if (error) throw error;
+    // A room's request marked done: its guest's page hears it at once (an empty ping on the room's channel) and re-reads.
+    const rooms = Array.from(new Set((data || []).map((n: any) => roomNumberFromCall(n.table_number)).filter(Boolean))) as string[];
+    if (rooms.length) {
+      const db = adminDb();
+      afterResponse('room-request-done-push', () => Promise.all(rooms.map((r) => broadcastToGuestTable(db, auth.businessId, roomTableLabel(r), 'order_status_updated'))));
+    }
     return NextResponse.json({ success: true, resolved: (data || []).length });
   } catch (error: any) {
     return handleApiError(error, request, 'HostNotificationsPATCH');

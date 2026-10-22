@@ -7,6 +7,7 @@ import { lateCheckoutAvailable, lateCheckoutView } from '@/lib/services/stay/lat
 import { checkoutRequestView } from '@/lib/services/stay/checkout-request.service';
 import { diningMessage, loadDiningWindow } from '@/lib/services/stay/room-dining-hours';
 import { roomContext } from '@/lib/services/stay/room-route.util';
+import { roomRequests } from '@/lib/services/stay/room-requests.service';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,11 +29,13 @@ export const GET = withApiErrorBoundary(async function GET(request: Request, { p
 
     // ?view=menu: the menu page only needs the room, the venue and the kitchen hours, so the bill is not read for it.
     const own = occupied && verified && new URL(request.url).searchParams.get('view') !== 'menu';
-    const [window, folio, invoice, lateOk] = await Promise.all([
+    const [window, folio, invoice, lateOk, requests] = await Promise.all([
       loadDiningWindow(db, stay.business.id),
       own ? roomFolio(db, stay.business.id, stay.room) : Promise.resolve(null),
       own ? roomInvoice(db, stay.business.id, stay.room) : Promise.resolve(null),
       own ? lateCheckoutAvailable(db, stay.business.id, stay.room) : Promise.resolve(true),
+      // A failed read of the request list never blanks the page: the bill and the rest still show.
+      own ? roomRequests(db, stay.business.id, stay.room).catch(() => null) : Promise.resolve(null),
     ]);
 
     return NextResponse.json({
@@ -48,6 +51,8 @@ export const GET = withApiErrorBoundary(async function GET(request: Request, { p
       late_checkout: own ? lateCheckoutView(stay.room, stay.business, lateOk) : null,
       // The guest's "ready to leave" request, while the desk has not answered it.
       checkout_request: own ? checkoutRequestView(stay.room) : null,
+      // What this stay has asked the desk for, waiting or done: the guest sees each request answered.
+      requests,
     }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     return handleApiError(error, request, 'GuestRoomGET');

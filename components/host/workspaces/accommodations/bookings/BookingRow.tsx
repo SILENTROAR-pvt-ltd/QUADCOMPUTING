@@ -7,9 +7,12 @@ import type { StayPolicies } from '@/lib/services/stay/stay-policy';
 import type { StayBooking } from './useStayBookings';
 import { BookingRoomPicker } from './BookingRoomPicker';
 import { BookingActions } from './BookingActions';
+import { ArrivalChoice } from './ArrivalChoice';
 
 interface Props {
   booking: StayBooking; rooms: PhysicalRoom[]; categoryName: string; busy: boolean; policies: StayPolicies | null;
+  /** The owner has switched self check-in on; without it the guest cannot check themselves in. */
+  selfEnabled: boolean;
   onAct: (id: string, action: 'confirm' | 'decline' | 'cancel' | 'no_show') => void; onRefundCancel: (b: StayBooking) => void;
   onCopy: (code: string) => void; onCheckIn: (b: StayBooking, room: PhysicalRoom) => void; onCollect: (b: StayBooking) => void; onShowLink: (b: StayBooking) => void;
 }
@@ -25,8 +28,9 @@ const nights = (b: StayBooking) => Math.max(1, Math.round((Date.parse(b.check_ou
 const chip = 'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ring-inset';
 
 /** One reservation: who, when, under which code, whether the room is paid, how they said they would arrive, and what the desk can do. */
-export function BookingRow({ booking: x, rooms, categoryName, busy, policies, onAct, onRefundCancel, onCopy, onCheckIn, onCollect, onShowLink }: Props) {
-  const [choosing, setChoosing] = useState(false);
+export function BookingRow({ booking: x, rooms, categoryName, busy, policies, selfEnabled, onAct, onRefundCancel, onCopy, onCheckIn, onCollect, onShowLink }: Props) {
+  // The guest is here: first how they check in (phone or desk), then, at the desk, which room.
+  const [stage, setStage] = useState<'idle' | 'choose' | 'room'>('idle');
   const open = x.status === 'requested' || x.status === 'confirmed';
   const room = x.room_id ? rooms.find((r) => r.id === x.room_id) : null;
   const earlyId = x.expected_arrival?.startsWith('early:') ? x.expected_arrival.slice(6) : null;
@@ -59,11 +63,17 @@ export function BookingRow({ booking: x, rooms, categoryName, busy, policies, on
           </p>
         </div>
         {open && (
-          <BookingActions booking={x} busy={busy} choosing={choosing} onToggleChoose={() => setChoosing((c) => !c)} onCollect={() => onCollect(x)} onShowLink={() => onShowLink(x)}
+          <BookingActions booking={x} busy={busy} arriving={stage !== 'idle'} onArrived={() => setStage((s) => (s === 'idle' ? 'choose' : 'idle'))} onShowLink={() => onShowLink(x)}
             onConfirm={() => onAct(x.id, 'confirm')} onNoShow={() => onAct(x.id, 'no_show')} onCancel={() => onAct(x.id, 'cancel')} onRefundCancel={() => onRefundCancel(x)} />
         )}
       </div>
-      {open && choosing && <BookingRoomPicker booking={x} rooms={rooms} categoryName={categoryName} onPick={(r) => { setChoosing(false); onCheckIn(x, r); }} onCancel={() => setChoosing(false)} />}
+      {open && stage === 'choose' && (
+        <div className="mt-3">
+          <ArrivalChoice guestName={x.guest_name} code={x.confirmation_code} paidAmount={x.pass ? x.pass.amount : null} selfEnabled={selfEnabled}
+            onSelf={() => { setStage('idle'); if (x.pass) onShowLink(x); else onCollect(x); }} onDesk={() => setStage('room')} onCancel={() => setStage('idle')} />
+        </div>
+      )}
+      {open && stage === 'room' && <BookingRoomPicker booking={x} rooms={rooms} categoryName={categoryName} onPick={(r) => { setStage('idle'); onCheckIn(x, r); }} onCancel={() => setStage('choose')} />}
     </li>
   );
 }

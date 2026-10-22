@@ -5,8 +5,10 @@ import { BellRing } from 'lucide-react';
 import { installAutoUnlock, isAlertSoundUnlocked, ringAlert, subscribeAlertSound, unlockAlertSound } from '@/lib/host-alert-sound';
 import type { StaffAlert } from './useStaffAlerts';
 
-/** The guest calls that ring. System notices (low stock, wallet) do not. */
-export const RINGING_TYPES = new Set(['WAITER', 'CHEF', 'BILL', 'SERVICE']);
+/** What rings: guest calls and a guest's new room reservation. System notices (low stock, wallet) do not. */
+export const RINGING_TYPES = new Set(['WAITER', 'CHEF', 'BILL', 'SERVICE', 'STAY_BOOKING']);
+/** What rings again while unanswered: a guest waiting on someone. A reservation rings once; it waits in the tray. */
+export const REPEATING_TYPES = new Set(['WAITER', 'CHEF', 'BILL', 'SERVICE']);
 /** A call nobody has handled rings again this often. */
 export const REPEAT_MS = 60_000;
 /** Only a call at least this old is repeated, so a fresh one never rings twice at once. */
@@ -16,7 +18,11 @@ const LABEL: Record<string, string> = { WAITER: 'wants the waiter', CHEF: 'wants
 
 /** The calls still waiting that are old enough to ring about again. Pure, so it is tested. */
 export const callsToRepeat = (alerts: Array<Pick<StaffAlert, 'notification_type' | 'created_at'>>, now: number) =>
-  alerts.filter((a) => RINGING_TYPES.has(a.notification_type) && now - Date.parse(a.created_at) >= REPEAT_AFTER_MS);
+  alerts.filter((a) => REPEATING_TYPES.has(a.notification_type) && now - Date.parse(a.created_at) >= REPEAT_AFTER_MS);
+
+/** The system notice for a fresh call: who and what. A reservation reads "New room reservation". */
+const noticeTitle = (a: Pick<StaffAlert, 'notification_type' | 'table_number'>) =>
+  a.notification_type === 'STAY_BOOKING' ? 'New room reservation' : `${a.table_number ? `Table ${a.table_number}` : 'A guest'} ${LABEL[a.notification_type] || 'needs you'}`;
 
 interface Props {
   alerts: StaffAlert[];
@@ -72,9 +78,8 @@ export function HostAlertSound({ alerts, freshIds, kotArrivals }: Props) {
     if (!fresh.length) return;
     ringAlert();
     const a = fresh[0];
-    const who = a.table_number ? `Table ${a.table_number}` : 'A guest';
-    announce(`${who} ${LABEL[a.notification_type] || 'needs you'}`, a.message || '', `call-${a.id}`);
-    flashTitle(`${who} needs you`);
+    announce(noticeTitle(a), a.message || '', `call-${a.id}`);
+    flashTitle(a.notification_type === 'STAY_BOOKING' ? 'New reservation' : `${a.table_number ? `Table ${a.table_number}` : 'A guest'} needs you`);
   }, [alerts, freshIds]);
 
   // A call that is still waiting rings again.

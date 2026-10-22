@@ -27,10 +27,10 @@ export function CheckInIdDocFields({ idProofType, setIdProofType, idProofNumber,
         </div>
       </div>
       <div className="sm:col-span-3">
-        <label htmlFor="idProofNumber" className={LABEL}>ID number</label>
+        <label htmlFor="idProofNumber" className={LABEL}>ID number *</label>
         <div className="relative">
           <ShieldCheck className={ICON} aria-hidden />
-          <input id="idProofNumber" type="text" autoCapitalize="characters" placeholder="As printed on the document" value={idProofNumber} onChange={(e) => setIdProofNumber(e.target.value)} className={`${INPUT_ICON} font-mono uppercase`} />
+          <input id="idProofNumber" type="text" required minLength={4} autoCapitalize="characters" placeholder="As printed on the document" value={idProofNumber} onChange={(e) => setIdProofNumber(e.target.value)} className={`${INPUT_ICON} font-mono uppercase`} />
         </div>
       </div>
     </div>

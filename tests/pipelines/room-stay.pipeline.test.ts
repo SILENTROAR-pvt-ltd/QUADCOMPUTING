@@ -47,7 +47,7 @@ describe('Front desk room changes', () => {
 
   it('checks a guest in and opens the folio at the quoted price, with the stay log left open', async () => {
     const res = await patch({
-      action: 'check-in', guest_name: 'Asha', guest_phone: '9876543210', total_guests: 2,
+      action: 'check-in', guest_name: 'Asha', guest_phone: '9876543210', id_type: 'Aadhaar Card', id_number: '1234 5678 9012', dpdp_consent_accepted: true, total_guests: 2,
       check_in_time: '2026-10-08T08:30:00Z', check_out_time: '2026-10-10T05:30:00Z', selected_addons: [{ ...breakfast, persons: 2 }],
     });
     expect(res.status).toBe(200);
@@ -55,6 +55,18 @@ describe('Front desk room changes', () => {
     const folio = ctx.db.tables.orders.find((o: any) => o.order_type === 'room_stay');
     expect(folio).toMatchObject({ status: 'active', grand_total: 11400, table_number: 'ROOM 101' });
     expect(ctx.db.tables.room_stay_logs[0]).toMatchObject({ guest_name: 'Asha', check_out_time: null });
+  });
+
+  it('refuses a desk check-in without the ID number or the guest\'s consent, and leaves the room free', async () => {
+    const base = { action: 'check-in', guest_name: 'Asha', guest_phone: '9876543210', check_in_time: '2026-10-08T08:30:00Z', check_out_time: '2026-10-09T05:30:00Z' };
+    const noId = await patch({ ...base, dpdp_consent_accepted: true });
+    expect(noId.status).toBe(400);
+    expect((await noId.json()).error).toMatch(/ID number/);
+    const noConsent = await patch({ ...base, id_number: 'ABCD1234' });
+    expect(noConsent.status).toBe(400);
+    expect((await noConsent.json()).error).toMatch(/agrees/);
+    expect(ctx.db.tables.rooms[0].status).toBe('VACANT');
+    expect((await patch({ ...base, id_number: 'ABCD1234', dpdp_consent_accepted: true })).status).toBe(200);
   });
 
   it('never checks a second guest into an occupied room', async () => {
@@ -85,7 +97,7 @@ describe('Front desk room changes', () => {
 
   it('does not overwrite a previous guest\'s invoice still waiting for payment', async () => {
     ctx.db.tables.orders.push({ id: 'old', business_id: BIZ, room_id: ROOM, order_type: 'room_stay', status: 'ready_for_settlement', grand_total: 7000, customer_name: 'Ravi' });
-    await patch({ action: 'check-in', guest_name: 'Asha', guest_phone: '9', check_in_time: '2026-10-08T08:30:00Z', check_out_time: '2026-10-09T05:30:00Z' });
+    await patch({ action: 'check-in', guest_name: 'Asha', guest_phone: '9', id_number: 'ABCD1234', dpdp_consent_accepted: true, check_in_time: '2026-10-08T08:30:00Z', check_out_time: '2026-10-09T05:30:00Z' });
     expect(ctx.db.tables.orders.find((o: any) => o.id === 'old')).toMatchObject({ status: 'ready_for_settlement', grand_total: 7000, customer_name: 'Ravi' });
     expect(ctx.db.tables.orders.filter((o: any) => o.order_type === 'room_stay')).toHaveLength(2);
   });

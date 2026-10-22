@@ -7,6 +7,8 @@ import { OccupiedRoomModal } from './OccupiedRoomModal';
 import { EditCategoryModal } from './EditCategoryModal';
 import { EditRoomModal } from './EditRoomModal';
 import { AddUnitModal } from './AddUnitModal';
+import { CollectSheet } from './bookings/collect/CollectSheet';
+import { useStaySettings } from './bookings/useStaySettings';
 import type { StayBooking } from './bookings/useStayBookings';
 
 interface AccommodationsModalsHostProps {
@@ -30,6 +32,12 @@ interface AccommodationsModalsHostProps {
   /** A check-in just finished with "pay now": the occupied-room box opens on the payment sheet for that amount (null: the whole stay). */
   payNow?: { roomId: string; amount: number | null } | null;
   onCheckedIn?: (roomId: string, payment: { payNow: boolean; amount: number | null }) => void;
+  /** "At the desk" was already chosen for the booking on the Bookings tab. */
+  arrivalChosen?: boolean;
+  /** A reserved guest checking in on their phone: the payment (or, if paid, the check-in link) sheet for that booking. */
+  selfCheckInBooking?: StayBooking | null;
+  onSelfCheckIn?: (booking: StayBooking) => void;
+  onCloseSelfCheckIn?: () => void;
 }
 
 export function AccommodationsModalsHost({
@@ -52,7 +60,12 @@ export function AccommodationsModalsHost({
   onNavigate,
   payNow = null,
   onCheckedIn,
+  arrivalChosen = false,
+  selfCheckInBooking = null,
+  onSelfCheckIn,
+  onCloseSelfCheckIn,
 }: AccommodationsModalsHostProps) {
+  const { settings } = useStaySettings();
   return (
     <>
       <RoomDetailsPanel
@@ -62,7 +75,15 @@ export function AccommodationsModalsHost({
         booking={checkInBooking}
         onBookingChange={onCheckInBookingChange}
         onCheckedIn={onCheckedIn}
+        arrivalChosen={arrivalChosen}
+        selfEnabled={Boolean(settings?.self_checkin_enabled)}
+        onSelfCheckIn={onSelfCheckIn}
       />
+
+      {selfCheckInBooking && (
+        <CollectSheet spec={{ kind: 'pass', booking: selfCheckInBooking, showLink: Boolean(selfCheckInBooking.pass) }} categories={categories} settings={settings}
+          onClose={() => onCloseSelfCheckIn?.()} onToast={onShowToast} onRecorded={onDataRefresh} />
+      )}
 
       <OccupiedRoomModal
         room={occupiedRoomForModal}

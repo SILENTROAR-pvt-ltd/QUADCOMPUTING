@@ -74,6 +74,8 @@ export function useRoomCheckInState(room: PhysicalRoom | null, onClose: () => vo
       guest_phone: form.guestPhone.trim(),
       id_type: form.idProofType,
       id_number: form.idProofNumber.trim(),
+      // Required by the server: the desk saw the ID and the guest agreed to it being kept (self check-in asks the guest).
+      dpdp_consent_accepted: form.consent,
       guest_email: form.guestEmail.trim() || null,
       guest_address: form.guestAddress.trim() || null,
       check_in_time: checkIn || new Date().toISOString(),
