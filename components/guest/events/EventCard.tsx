@@ -5,20 +5,30 @@ import { motion } from 'framer-motion';
 import { CalendarDays, Sparkles, Ticket } from 'lucide-react';
 import { pressSoft, press } from '@/components/guest/menu/motion';
 import { eventDay, eventTime, feeLabel, isFull, spotsLabel, type GuestEvent } from './event-format';
+import type { MyEventStatus } from '@/lib/services/live-events/my-event-status';
+import { EventRequestBadge, requestButtonLabel } from './EventRequestBadge';
 
 const SERIF = { fontFamily: "'Playfair Display', Georgia, serif" } as const;
 
-/** One live event: banner, when, what it costs, what the guest gets, and a clear "I'm Interested". */
-export function EventCard({ event, onInterested }: { event: GuestEvent; onInterested: (e: GuestEvent) => void }) {
+/**
+ * One live event: banner, when, what it costs, what the guest gets, and a clear "I'm Interested". Once the guest has
+ * asked, the card shows the venue's answer (`mine`): waiting, "You're going", or not this time.
+ */
+export function EventCard({ event, mine, onInterested }: { event: GuestEvent; mine?: MyEventStatus; onInterested: (e: GuestEvent) => void }) {
   const spots = spotsLabel(event);
   const full = isFull(event);
+  const label = requestButtonLabel(mine, full);
+  // A guest already waiting or declined may still change or repeat their request even when the event looks full.
+  const blocked = full && (!mine || mine.status === 'DECLINED');
 
   return (
     <motion.article {...pressSoft} className="overflow-hidden rounded-3xl border border-zinc-200/80 bg-white shadow-[0_10px_30px_-18px_rgba(10,50,34,0.45)]">
       <div className="relative h-44 w-full bg-[#0A3222]">
         {event.banner_url && (
+          // A banner link that does not load (a typed address that is not an image) leaves the green panel, not a broken icon.
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={event.banner_url} alt="" loading="lazy" className="h-full w-full object-cover" />
+          <img src={event.banner_url} alt="" loading="lazy" className="h-full w-full object-cover"
+            onError={(e) => { e.currentTarget.style.display = 'none'; }} />
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent" />
         <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-white/95 px-3 py-1 text-[11px] font-semibold text-zinc-900">
@@ -39,12 +49,20 @@ export function EventCard({ event, onInterested }: { event: GuestEvent; onIntere
           {event.perks.map((p) => <span key={p} className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-800"><Sparkles className="h-3 w-3" aria-hidden /> {p}</span>)}
         </div>
 
+        {mine && <EventRequestBadge mine={mine} />}
+
         <div className="flex items-center justify-between gap-3 pt-1">
           <span className={`text-[11.5px] font-medium ${full ? 'text-rose-600' : 'text-zinc-500'}`}>{spots}</span>
-          <motion.button type="button" disabled={full} onClick={() => onInterested(event)} {...press}
-            className="ml-auto h-11 cursor-pointer rounded-full bg-[#0A3222] px-5 text-[13px] font-semibold text-white shadow-[0_8px_18px_-10px_rgba(10,50,34,0.9)] disabled:cursor-not-allowed disabled:opacity-40">
-            {full ? 'Fully booked' : "I'm Interested"}
-          </motion.button>
+          {label && (
+            <motion.button type="button" disabled={blocked} onClick={() => onInterested(event)} {...press}
+              className={`ml-auto h-11 cursor-pointer rounded-full px-5 text-[13px] font-semibold disabled:cursor-not-allowed disabled:opacity-40 ${
+                mine?.status === 'INTERESTED'
+                  ? 'border border-zinc-200 bg-white text-zinc-800'
+                  : 'bg-[#0A3222] text-white shadow-[0_8px_18px_-10px_rgba(10,50,34,0.9)]'
+              }`}>
+              {label}
+            </motion.button>
+          )}
         </div>
       </div>
     </motion.article>

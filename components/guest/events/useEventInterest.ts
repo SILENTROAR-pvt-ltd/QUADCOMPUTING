@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import type { PartyMix } from '@/lib/services/live-events/party';
+import { rememberEventRequest } from './useMyEventStatus';
 
 export interface Prefill { signedIn: boolean; name: string; handle: string | null; email: string | null; hasPhone: boolean }
 const EMPTY: Prefill = { signedIn: false, name: '', handle: null, email: null, hasPhone: false };
@@ -32,7 +33,11 @@ export function useEventInterest(venueId: string, eventId: string) {
         body: JSON.stringify({ venue_id: venueId, event_id: eventId, party: input.party, name: input.name, phone: input.phone, email: input.email }),
       });
       const json = await res.json().catch(() => ({}));
-      if (res.ok && json.success) return { message: json.message };
+      if (res.ok && json.success) {
+        // Kept on this phone: it is how the guest sees the venue's answer on the event later.
+        rememberEventRequest(venueId, eventId, json.lead_id);
+        return { message: json.message };
+      }
       setError(json?.error || 'That did not go through. Please try again.');
     } catch {
       setError('No connection. Please check the network and try again.');

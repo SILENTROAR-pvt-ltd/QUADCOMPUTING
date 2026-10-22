@@ -85,8 +85,10 @@ export const POST = withApiErrorBoundary(async function POST(request: Request) {
   });
   if (bellError) console.error('[events] could not notify the team (migration 20261016000008 applied?):', bellError.message);
 
+  // The request's id goes back to this phone only: it is how the guest later sees whether the venue confirmed them
+  // (GET /api/guest/events/mine), without anyone being able to look a booking up by typing a phone number.
   return NextResponse.json({
-    success: true, status: data?.status ?? 'INTERESTED',
-    message: "You're on the guest list! The lounge team has been notified.",
+    success: true, status: data?.status ?? 'INTERESTED', lead_id: data?.lead_id ?? null,
+    message: "Request sent! The venue will confirm your place here.",
   }, { headers: NO_STORE });
 }, 'GuestEventInterest');
