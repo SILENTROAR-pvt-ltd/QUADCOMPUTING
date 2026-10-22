@@ -1,26 +1,31 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { withIdempotency } from './api-idempotency.util';
 
-// A stand-in for Upstash's REST API: the commands the window uses (GET, SET with NX/PX, DEL), one shared store.
-// `failFrom` makes every call from that number on fail, to test a store that goes away.
+// A stand-in for Upstash's REST API: the commands the window uses (GET, SET with NX/PX, DEL), one at a time or several in
+// one /pipeline call, against one shared store. `failFrom` makes every call from that number on fail, to test a store
+// that goes away.
 function fakeSharedStore(failFrom = Infinity) {
   const data = new Map<string, string>();
   let calls = 0;
-  const fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
+  const run = ([cmd, key, value, ...rest]: any[]) => {
+    if (cmd === 'GET') return { result: data.has(key) ? data.get(key) : null };
+    if (cmd === 'DEL') { data.delete(key); return { result: 1 }; }
+    if (cmd === 'SET') {
+      if (rest.includes('NX') && data.has(key)) return { result: null };
+      data.set(key, String(value));
+      return { result: 'OK' };
+    }
+    return { error: `unsupported ${cmd}` };
+  };
+  const fetchMock = vi.fn(async (url: string, init: RequestInit) => {
     calls++;
     if (calls >= failFrom) throw new TypeError('fetch failed');
-    const [cmd, key, value, ...rest] = JSON.parse(String(init.body)) as any[];
-    const answer = (result: unknown) => new Response(JSON.stringify({ result }), { status: 200 });
-    if (cmd === 'GET') return answer(data.has(key) ? data.get(key) : null);
-    if (cmd === 'DEL') { data.delete(key); return answer(1); }
-    if (cmd === 'SET') {
-      if (rest.includes('NX') && data.has(key)) return answer(null);
-      data.set(key, String(value));
-      return answer('OK');
-    }
-    return new Response(JSON.stringify({ error: `unsupported ${cmd}` }), { status: 400 });
+    const body = JSON.parse(String(init.body)) as any[];
+    if (String(url).endsWith('/pipeline')) return new Response(JSON.stringify(body.map(run)), { status: 200 });
+    const one = run(body);
+    return new Response(JSON.stringify(one), { status: one.error ? 400 : 200 });
   });
-  return { fetchMock, data };
+  return { fetchMock, data, calls: () => calls };
 }
 
 const work = (counter: { runs: number }, response: unknown = { ok: true }) => async () => {
@@ -90,20 +95,32 @@ describe('shared idempotency window (Upstash REST)', () => {
     expect(console.warn).toHaveBeenCalled();
   });
 
-  it('fails the request, rather than running it outside the store, when the store fails after the lock is taken', async () => {
-    // Calls: 1 read the answer, 2 take the lock, 3 re-read the answer before running. Failing from 3 stops it before the work.
-    vi.stubGlobal('fetch', fakeSharedStore(3).fetchMock);
-    const counter = { runs: 0 };
-    await expect(withIdempotency('guest_order:late-1', work(counter))).rejects.toThrow();
-    expect(counter.runs).toBe(0);
-  });
-
   it('does not run the work again when the store fails after the work has run', async () => {
-    // Calls: 1 read, 2 lock, 3 re-read, then the work runs and storing its answer (call 4) fails.
-    vi.stubGlobal('fetch', fakeSharedStore(4).fetchMock);
+    // Calls: 1 lock and check together, then the work runs and storing its answer (call 2) fails.
+    vi.stubGlobal('fetch', fakeSharedStore(2).fetchMock);
     const counter = { runs: 0 };
     const res = await withIdempotency('guest_order:after-1', work(counter));
     expect(counter.runs).toBe(1);
     expect(res.response).toEqual({ ok: true });
+  });
+
+  it('costs a fresh order two round trips to the store: the lock with the check, and the answer with the release', async () => {
+    const store = fakeSharedStore();
+    vi.stubGlobal('fetch', store.fetchMock);
+    await withIdempotency('guest_order:trips-1', work({ runs: 0 }));
+    expect(store.calls()).toBe(2);
+    expect(store.data.has('idemp:lock:guest_order:trips-1')).toBe(false);
+    expect(store.data.has('idemp:result:guest_order:trips-1')).toBe(true);
+  });
+
+  it('answers a retry that takes the lock just after the run finished with the stored answer, and frees the lock', async () => {
+    const store = fakeSharedStore();
+    vi.stubGlobal('fetch', store.fetchMock);
+    const counter = { runs: 0 };
+    await withIdempotency('guest_order:late-2', work(counter, { order: 'first' }));
+    const retry = await withIdempotency('guest_order:late-2', work(counter, { order: 'again' }));
+    expect(counter.runs).toBe(1);
+    expect(retry).toMatchObject({ duplicate: true, response: { order: 'first' } });
+    expect(store.data.has('idemp:lock:guest_order:late-2')).toBe(false);
   });
 });

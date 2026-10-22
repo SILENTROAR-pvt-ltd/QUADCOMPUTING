@@ -1,5 +1,6 @@
 import { isValidUuid, normalizeTable } from './session-utils';
 import { processBillRequestEvent } from './bill-request-event.util';
+import { ringBillRequest } from '../guest/bill-call';
 import { buildTableOrFilter, CLOSED_STATUSES } from '../guest-order/order-utils';
 
 export async function updateGuestSession(body: any, supabase: any) {
@@ -70,9 +71,12 @@ export async function updateGuestSession(body: any, supabase: any) {
     throw lastDbError instanceof Error ? lastDbError : new Error(lastDbError?.message || 'Failed to record bill request');
   }
 
-  if (targetStatus === 'bill_requested') {
-    await processBillRequestEvent(supabase, updatedSession, session_id, resolvedBizId, rawTable, normTable, nowIso);
-  }
+  // The history row for the till, and the bell: the BILL call is what rings every host and staff screen and lights
+  // Billing in the sidebar (a bill request used to change the session only, and nothing rang).
+  await Promise.all([
+    processBillRequestEvent(supabase, updatedSession, session_id, resolvedBizId, rawTable, normTable, nowIso),
+    ringBillRequest(supabase, resolvedBizId, rawTable || updatedSession?.table_number),
+  ]);
 
   return {
     success: true,

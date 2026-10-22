@@ -6,6 +6,8 @@ import {
 } from '@/lib/services/kitchen.service';
 import { withApiErrorBoundary, handleApiError } from '@/lib/middleware/error-handler';
 import { broadcastToGuestTable } from '@/lib/realtime/channels';
+import { kotStatusRefusal } from '@/lib/services/kitchen/kot-status-roles';
+import { afterResponse } from '@/lib/utils/after-response';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -82,6 +84,10 @@ export const PATCH = withApiErrorBoundary(async function PATCH(request: Request)
       );
     }
 
+    // The kitchen hands an order over at Ready; Served is the waiter's step, from Live Tables.
+    const refusal = kotStatusRefusal(auth.staff?.role, status);
+    if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
+
     // Verify ticket belongs to authenticated host's business
     const { data: ticketRecord, error: fetchErr } = await db
       .from('kitchen_tickets')
@@ -154,7 +160,10 @@ export const PATCH = withApiErrorBoundary(async function PATCH(request: Request)
       return NextResponse.json({ error: rpcError.message || 'Failed to update KOT status' }, { status: 400 });
     }
 
-    await notifyGuestTable(db, businessId, ticketRecord, String(rpcData?.ticket?.status || status).toUpperCase());
+    // The guest's table also hears this from the database's own table ping (20261016000006), so this extra push goes out
+    // after the answer: the chef's and waiter's tap is confirmed without waiting for it.
+    const pushedStatus = String(rpcData?.ticket?.status || status).toUpperCase();
+    afterResponse('kot-guest-push', () => notifyGuestTable(db, businessId, ticketRecord, pushedStatus));
     return NextResponse.json({
       success: true,
       ticket: rpcData?.ticket || { id, status },

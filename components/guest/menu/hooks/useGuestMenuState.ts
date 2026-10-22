@@ -42,11 +42,15 @@ export function useGuestMenuState({ tableParam, cafeParam, roomParam = '' }: { t
     const finalPhone = overridePhone ?? contact.guestPhoneInput;
     const finalHandle = overrideHandle ?? contact.guestHandleInput;
 
-    await orderData.handlePlaceOrder(finalName, finalPhone, ui.orderCookingNotes, (isAddon) => {
-      // A small thank-you card opens over the menu (OrderSuccessModal); the guest chooses what to do while the food is prepared.
+    const notes = ui.orderCookingNotes;
+    await orderData.handlePlaceOrder(finalName, finalPhone, notes, (isAddon) => {
+      // A small thank-you card opens over the menu (OrderSuccessModal) the moment the guest taps; the order travels meanwhile.
       ui.setShowCartReview(false); ui.setOrderCookingNotes(''); ui.setIsAddonOrderSuccess(isAddon);
       ui.setActiveTab('menu'); ui.setOrderCelebration(true);
-    }, finalHandle);
+    }, finalHandle, () => {
+      // Refused or unreachable: the card closes and the review opens again with the dishes and the note put back.
+      ui.setOrderCelebration(false); ui.setOrderCookingNotes(notes); ui.setShowCartReview(true);
+    });
   };
 
   // Raises a real SERVICE alert for the host (it used to only show a toast —

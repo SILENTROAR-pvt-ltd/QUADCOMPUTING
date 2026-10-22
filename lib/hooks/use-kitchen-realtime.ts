@@ -205,7 +205,8 @@ export function useKitchenRealtime({
     };
   }, [businessId, fetchTickets]);
 
-  // 2b. Polling, for a phone with no realtime channel: a quiet re-read that rings for tickets it has not seen.
+  // 2b. Polling, for a phone with no realtime channel: a quiet re-read that reports the tickets it has not seen and the
+  // ones whose status moved (the chef's "ready" reaching the waiter), the same way the row changes above do.
   const loadedOnce = useRef(false);
   useEffect(() => { if (!isLoading) loadedOnce.current = true; }, [isLoading]);
   const readAndRing = useCallback(async () => {
@@ -214,16 +215,33 @@ export function useKitchenRealtime({
       const res = await fetch(`/api/host/kitchen/tickets?business_id=${encodeURIComponent(businessId)}`, { cache: 'no-store' });
       if (!res.ok) return;
       const next = normalizeKitchenTickets((await res.json()).tickets);
-      const known = new Set(ticketsRef.current.map((t) => t.id));
+      const known = new Map(ticketsRef.current.map((t) => [t.id, t.status]));
       setTickets(next);
-      if (loadedOnce.current) next.filter((t) => !known.has(t.id)).forEach((t) => onNewTicketRef.current?.(t));
+      if (loadedOnce.current) {
+        for (const t of next) {
+          if (!known.has(t.id)) onNewTicketRef.current?.(t);
+          else if (known.get(t.id) !== t.status) onTicketUpdatedRef.current?.(t);
+        }
+      }
     } catch {
       // The next read tries again.
     }
   }, [businessId]);
 
+  // A ping that names a ticket's new stage moves that card at once (the chef's "ready" on the waiter's phone); the read
+  // that follows confirms it. A ticket this screen has not seen yet waits for that read, which brings its dishes.
+  const applyStage = useCallback(({ id, status }: { id: string; status: string }) => {
+    const current = ticketsRef.current.find((t) => t.id === id);
+    if (!current || current.status === status) return;
+    const at = new Date().toISOString();
+    const moved = { ...current, status: status as KitchenTicket['status'], updated_at: at, status_history: [...(current.status_history ?? []), { from: current.status, to: status as KitchenTicket['status'], at }] };
+    ticketsRef.current = ticketsRef.current.map((t) => (t.id === id ? moved : t));
+    setTickets((prev) => prev.map((t) => (t.id === id ? moved : t)));
+    onTicketUpdatedRef.current?.(moved);
+  }, []);
+
   // The venue's floor ping reads at once; while it is up the timer below is only a slow safety net.
-  const pushUp = useFloorPing(pollMs ? businessId : null, readAndRing);
+  const pushUp = useFloorPing(pollMs ? businessId : null, readAndRing, applyStage);
   const readEveryMs = pollMs && pushUp ? PUSH_HEARTBEAT_MS : pollMs;
 
   useEffect(() => {

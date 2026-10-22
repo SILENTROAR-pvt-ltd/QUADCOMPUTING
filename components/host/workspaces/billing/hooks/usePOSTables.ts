@@ -205,12 +205,13 @@ export function usePOSTables(propsBusinessId?: string | null, options: { pollMs?
   useEffect(() => {
     fetchTables();
 
-    // One order touches orders + order_items + dine_in_sessions + restaurant_tables,
-    // so coalesce a burst of realtime events into a single refetch.
+    // One order touches orders + order_items + dine_in_sessions + restaurant_tables in one commit, so their events land
+    // within milliseconds: the first one starts a short window and the read goes out when it closes (it is not pushed back
+    // by each later event, which used to hold the read until the burst went quiet).
     let debounceId: ReturnType<typeof setTimeout> | null = null;
     const scheduleFetch = () => {
-      if (debounceId) clearTimeout(debounceId);
-      debounceId = setTimeout(() => { debounceId = null; fetchTables(); }, 300);
+      if (debounceId) return;
+      debounceId = setTimeout(() => { debounceId = null; fetchTables(); }, 80);
     };
 
     // Fallback poll in case the socket drops; realtime is the primary signal.

@@ -5,8 +5,8 @@ import { createClient } from '@/lib/supabase/client';
 import { guestTableChannel } from '@/lib/realtime/channels';
 import { roomTableLabel } from '@/lib/guest/room-mode';
 
-/** A burst of changes (one order touches several rows) becomes one read. */
-const COALESCE_MS = 300;
+/** A burst of changes (one order touches several rows in one commit) becomes one read; they land within milliseconds. */
+const COALESCE_MS = 80;
 
 /**
  * The room page hears about its orders the way the menu does: the kitchen's ticket moves, the bill changes, the desk

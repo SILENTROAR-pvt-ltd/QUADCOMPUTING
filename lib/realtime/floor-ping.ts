@@ -1,12 +1,16 @@
-// Client side of the "floor ping": a content-free "something changed at this venue" signal that a database trigger
-// broadcasts (see migration 20261016000004_floor_ping.sql). A staff phone signed in by PIN has no database login, so it
-// cannot listen to row changes; it listens to this instead and re-reads through its own authenticated calls. The message
-// carries no data, so the topic being public leaks nothing beyond "there was activity".
+// Client side of the "floor ping": a "something changed at this venue" signal that a database trigger broadcasts (see
+// migrations 20261016000004 and 20261022000003). A staff phone signed in by PIN has no database login, so it cannot listen
+// to row changes; it listens to this instead and re-reads through its own authenticated calls. The message is empty,
+// except that a kitchen ticket changing stage names the ticket id and the stage (no table, dish, amount or person), so a
+// waiter's phone can move that card at once.
 import { createClient } from '@/lib/supabase/client';
 import { isUuid } from './channels';
 
+/** A ticket that changed stage, as the ping names it. */
+export interface TicketStage { id: string; status: string }
+
 export interface FloorListener {
-  ping: () => void;
+  ping: (ticket: TicketStage | null) => void;
   status: (connected: boolean) => void;
 }
 
@@ -18,9 +22,17 @@ interface Shared {
 }
 
 const shared = new Map<string, Shared>();
+const STAGES = new Set(['PENDING', 'PREPARING', 'READY', 'SERVED', 'CANCELLED']);
 
 export const floorTopic = (businessId?: string | null): string | null =>
   isUuid(businessId) ? `floor_${businessId.toLowerCase()}` : null;
+
+/** The ticket stage a ping carries, or null for the usual empty ping. Anything malformed is ignored. */
+export function ticketStageOf(message: any): TicketStage | null {
+  const p = message?.payload ?? message;
+  const id = p?.k, status = typeof p?.s === 'string' ? p.s.toUpperCase() : '';
+  return isUuid(id) && STAGES.has(status) ? { id, status } : null;
+}
 
 /**
  * Listens to one venue's floor pings. Every listener in the page shares a single channel, which closes with the last one.
@@ -36,7 +48,10 @@ export function subscribeFloor(businessId: string, listener: FloorListener): () 
     const created: Shared = { supabase, channel: null, listeners: new Set(), connected: false };
     created.channel = supabase
       .channel(topic)
-      .on('broadcast', { event: 'changed' }, () => created.listeners.forEach((l) => l.ping()))
+      .on('broadcast', { event: 'changed' }, (message: any) => {
+        const ticket = ticketStageOf(message);
+        created.listeners.forEach((l) => l.ping(ticket));
+      })
       .subscribe((status: string) => {
         created.connected = status === 'SUBSCRIBED';
         created.listeners.forEach((l) => l.status(created.connected));

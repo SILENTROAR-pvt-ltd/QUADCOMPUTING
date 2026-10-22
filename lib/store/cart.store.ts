@@ -29,6 +29,8 @@ interface CartStore {
   /** The guest's note for this one dish ("less spicy"), sent to the kitchen under that dish only. */
   setItemNote: (cart_id: string, notes: string) => void;
   clearCart: () => void;
+  /** Puts dishes back (an order shown as sent at once that the server then refused), ahead of anything added since. */
+  restoreItems: (items: CartItem[]) => void;
   getTotalCount: () => number;
   getSubtotal: () => number;
 }
@@ -170,6 +172,15 @@ export const useCartStore = create<CartStore>((set, get) => ({
   clearCart: () => {
     saveCartToStorage([]);
     set({ items: [] });
+  },
+
+  restoreItems: (restored: CartItem[]) => {
+    set((state) => {
+      const ids = new Set(restored.map((it) => it.cart_id));
+      const updatedItems = [...restored, ...state.items.filter((it) => !ids.has(it.cart_id))];
+      saveCartToStorage(updatedItems);
+      return { items: updatedItems };
+    });
   },
 
   getTotalCount: () => {

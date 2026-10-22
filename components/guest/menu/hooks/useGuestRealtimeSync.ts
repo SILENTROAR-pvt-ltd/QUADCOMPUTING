@@ -13,8 +13,8 @@ interface RealtimeSyncProps {
   onTableChanged?: () => void;
 }
 
-/** Burst of table changes (one order touches several rows) becomes one read. */
-const CHANGED_COALESCE_MS = 300;
+/** Burst of table changes (one order touches several rows in one commit) becomes one read; they land within milliseconds. */
+const CHANGED_COALESCE_MS = 80;
 
 /** Returns whether the push channel is up, so the polling safety net can slow down while it is. */
 export function useGuestRealtimeSync(props: RealtimeSyncProps): boolean {

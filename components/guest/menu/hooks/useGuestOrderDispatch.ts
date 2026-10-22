@@ -2,6 +2,8 @@
 
 import { useState, useRef } from 'react';
 import { walletAuthHeaders } from '@/lib/utils/wallet-secret';
+import { useCartStore, type CartItem } from '@/lib/store/cart.store';
+import { attemptSignature, newAttemptKey, orderRequest } from './guest-order-request';
 
 export function useGuestOrderDispatch(p: {
   roomCode?: string;
@@ -19,56 +21,47 @@ export function useGuestOrderDispatch(p: {
   // it already created instead of making a second one. Any change to the cart makes a new key; success clears it.
   const attemptRef = useRef<{ sig: string; key: string } | null>(null);
 
-  const handlePlaceOrder = async (name: string, phone: string, notes: string, cb: (addon: boolean) => void, handle?: string) => {
+  /**
+   * Places the order and shows it as sent at once: the cart empties and the thank-you card opens on the tap, while the
+   * request travels. The server's answer then fills in the bill and the ticket. If the server refuses or cannot be
+   * reached, the dishes go back into the cart and `onFailed` reopens the review with the reason, so nothing is lost.
+   */
+  const handlePlaceOrder = async (name: string, phone: string, notes: string, cb: (addon: boolean) => void, handle?: string, onFailed?: () => void) => {
     if (p.cartItems.length === 0 || isSubmittingRef.current) return;
     isSubmittingRef.current = true;
     setIsSendingToKitchen(true);
     p.resetSettledState?.();
+    const sent: CartItem[] = [...p.cartItems];
+    const store = (k: string, v: string) => { try { localStorage.setItem(k, v); } catch {} };
+    if (name.trim()) { store('quad_guest_name', name.trim()); store('guest_name', name.trim()); }
+    if (phone.trim()) store('quad_guest_phone', phone.trim());
+    const typed = handle?.trim() ? (handle.trim().startsWith('@') ? handle.trim() : `@${handle.trim()}`) : '';
+    if (typed) { store('guest_handle', typed); store('quad_guest_wallet_id', typed); }
+    let stored: string | undefined;
+    try { stored = localStorage.getItem('guest_handle') || localStorage.getItem('quad_guest_wallet_id') || undefined; } catch {}
+    const guestHandle = typed || stored;
+    if (guestHandle && p.cafeParam) {
+      fetch(`/api/guest/wallet?guest_id=${encodeURIComponent(guestHandle)}&cafe_id=${encodeURIComponent(p.cafeParam)}`, { headers: walletAuthHeaders() }).catch(() => {});
+    }
+
+    const sig = attemptSignature(p.tableNumber, notes, sent);
+    if (attemptRef.current?.sig !== sig) attemptRef.current = { sig, key: newAttemptKey() };
+    const { url, init } = orderRequest({ ...p, name, phone, notes, guestHandle, items: sent }, attemptRef.current.key);
+
+    // Shown as sent now; the answer below confirms it.
+    const guessAddon = Boolean(p.masterOrder?.id);
+    p.clearCart();
+    p.setKotStatus('PENDING');
+    cb(guessAddon);
+
+    const fail = (message: string) => {
+      useCartStore.getState().restoreItems(sent);
+      onFailed?.();
+      p.showToast(message);
+    };
     try {
-      if (name.trim() && typeof window !== 'undefined') {
-        localStorage.setItem('quad_guest_name', name.trim());
-        localStorage.setItem('guest_name', name.trim());
-      }
-      if (phone.trim() && typeof window !== 'undefined') localStorage.setItem('quad_guest_phone', phone.trim());
-      if (handle?.trim() && typeof window !== 'undefined') {
-        const cleanHandle = handle.trim().startsWith('@') ? handle.trim() : `@${handle.trim()}`;
-        localStorage.setItem('guest_handle', cleanHandle);
-        localStorage.setItem('quad_guest_wallet_id', cleanHandle);
-      }
-      const rawStored = typeof window !== 'undefined' ? localStorage.getItem('guest_handle') || localStorage.getItem('quad_guest_wallet_id') || undefined : undefined;
-      const guestHandle = handle?.trim() ? (handle.trim().startsWith('@') ? handle.trim() : `@${handle.trim()}`) : rawStored;
-
-      if (guestHandle && p.cafeParam) {
-        fetch(`/api/guest/wallet?guest_id=${encodeURIComponent(guestHandle)}&cafe_id=${encodeURIComponent(p.cafeParam)}`, { headers: walletAuthHeaders() }).catch(() => {});
-      }
-
-      const payload = {
-        session_id: p.activeSession?.id || p.guestId,
-        order_id: p.masterOrder?.id || p.activeSession?.active_order_id || `ord_${Date.now()}`,
-        table_number: p.tableNumber, business_id: p.activeSession?.business_id || p.cafeParam,
-        cafe_id: p.cafeParam, guest_name: name.trim() || p.currentGuestName || 'Guest', guest_phone: phone.trim() || undefined,
-        guest_handle: guestHandle,
-        // Each dish carries only its own notes. The table note is sent once, for the whole ticket.
-        table_note: notes.trim() || undefined,
-        items: p.cartItems.map((c) => ({
-          id: c.item_id, item_id: c.item_id, name: c.name, price: c.total_item_price, quantity: c.quantity,
-          notes: [(c.selected_addons || []).map((a: any) => `${a.name} (+₹${a.price})`).join(', '), c.notes].filter(Boolean).join(' | ') || undefined,
-        })),
-      };
-      const sig = JSON.stringify([p.tableNumber, payload.table_note || '', payload.items.map((i) => [i.item_id, i.quantity, i.notes || ''])]);
-      if (attemptRef.current?.sig !== sig) {
-        const rand = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-        attemptRef.current = { sig, key: `go-${rand}` };
-      }
-      // In room mode the order goes to the room's own endpoint: it checks the guest's room session, the kitchen's hours and
-      // that every line is a dish, and puts the order on the room's bill. Prices are the menu's, never this payload's.
-      const res = p.roomCode
-        ? await fetch(`/api/guest/room/${encodeURIComponent(p.roomCode)}/order`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ items: payload.items.map((i) => ({ item_id: i.item_id, quantity: i.quantity, notes: i.notes })), note: payload.table_note || null, idempotency_key: attemptRef.current.key }),
-        })
-        : await fetch('/api/guest/order', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...payload, idempotency_key: attemptRef.current.key }) });
-      const data = await res.json();
+      const res = await fetch(url, init);
+      const data = await res.json().catch(() => ({}));
       if (data.success) {
         attemptRef.current = null;
         p.resetSettledState?.();
@@ -76,17 +69,19 @@ export function useGuestOrderDispatch(p: {
           const { useGuestLobbyStore } = await import('@/lib/store/guest-lobby.store');
           useGuestLobbyStore.getState().setSessionSettled(false);
         } catch {}
-        p.clearCart(); p.setSentItems(data.items || []);
+        p.setSentItems(data.items || []);
         if (data.order) p.setMasterOrder(data.order);
         if (data.kot_status) p.setKotStatus(data.kot_status);
-        if (data.ticket?.ticket_number) p.setTicketNumber(data.ticket.ticket_number);
+        if (data.ticket?.ticket_number || data.ticket_number) p.setTicketNumber(data.ticket?.ticket_number || data.ticket_number);
         p.setIsRecentAddon(Boolean(data.is_addon));
-        cb(Boolean(data.is_addon));
-        p.showToast(p.roomCode ? 'Sent to the kitchen — it will be brought to your room' : data.is_addon ? 'Items appended to KOT — Chef notified' : 'Order dispatched to kitchen — Live tracker active');
-      } else { p.showToast(data.error || 'Failed to dispatch order.'); }
-    } catch { p.showToast('Network error dispatching order.'); } finally {
+      } else {
+        fail(`${data.error || 'The order did not go through.'} Your dishes are back in the cart.`);
+      }
+    } catch {
+      fail('No connection, so the order did not go through. Your dishes are back in the cart; try again.');
+    } finally {
       setIsSendingToKitchen(false);
-      setTimeout(() => { isSubmittingRef.current = false; }, 1500);
+      setTimeout(() => { isSubmittingRef.current = false; }, 600);
     }
   };
 

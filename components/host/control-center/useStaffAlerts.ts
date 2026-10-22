@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { businessFilter } from '@/lib/realtime/channels';
+import { useFloorPing } from '@/lib/hooks/use-floor-ping';
 
 export interface StaffAlert {
   id: string;
@@ -12,6 +13,9 @@ export interface StaffAlert {
   status: string;
   created_at: string;
 }
+
+/** Two signals for one change (the row and the floor ping) arrive together; this gathers them into one read. */
+const COALESCE_MS = 120;
 
 /** Pending guest calls / system alerts for the venue, live. */
 export function useStaffAlerts(venueId?: string) {
@@ -35,6 +39,16 @@ export function useStaffAlerts(venueId?: string) {
       setAlerts(list);
     } catch {}
   }, []);
+
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scheduleFetch = useCallback(() => {
+    if (timer.current) return;
+    timer.current = setTimeout(() => { timer.current = null; void fetchAlerts(); }, COALESCE_MS);
+  }, [fetchAlerts]);
+
+  // The venue's floor ping: a staff phone signed in by PIN has no database login, so the row change below never reaches
+  // it; the ping does, the moment a call is made or handled (migration 20261022000003).
+  useFloorPing(venueId || null, scheduleFetch);
 
   const resolve = useCallback(async (id?: string) => {
     setAlerts((prev) => (id ? prev.filter((a) => a.id !== id) : []));
@@ -62,15 +76,16 @@ export function useStaffAlerts(venueId?: string) {
     const sb = createClient();
     const channel = sb
       .channel(`staff_alerts_${venueId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'staff_notifications', filter: businessFilter(venueId) }, () => void fetchAlerts())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'staff_notifications', filter: businessFilter(venueId) }, scheduleFetch)
       .subscribe();
 
     return () => {
       clearInterval(interval);
+      if (timer.current) { clearTimeout(timer.current); timer.current = null; }
       document.removeEventListener('visibilitychange', onVisible);
       void sb.removeChannel(channel);
     };
-  }, [venueId, fetchAlerts]);
+  }, [venueId, fetchAlerts, scheduleFetch]);
 
   return { alerts, freshIds, resolve };
 }

@@ -36,6 +36,8 @@ const SHARED_FLOOR: Rule[] = [
   { prefix: '/api/host/sessions', methods: READ_WRITE },
   { prefix: '/api/host/catalog', methods: READ },
   { prefix: '/api/host/settings/waiter-settle', methods: READ },
+  // Guest calls (the waiter, the bill): read them, and mark them handled.
+  { prefix: '/api/host/notifications', methods: ['GET', 'PATCH'] },
 ];
 const KITCHEN: Rule = { prefix: '/api/host/kitchen/tickets', methods: READ_WRITE };
 

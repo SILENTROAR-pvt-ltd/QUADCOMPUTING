@@ -1,6 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { createClient } from '@/lib/supabase/client';
+import { businessFilter } from '@/lib/realtime/channels';
+import { useFloorPing } from '@/lib/hooks/use-floor-ping';
 import { sharedGet } from '@/lib/utils/shared-get';
 import { usePoll } from '@/lib/utils/use-poll';
 
@@ -9,10 +12,12 @@ export interface BillRequestItem {
   subtotal: number;
 }
 
-const POLL_MS = 6000;
+/** The safety-net read. A change at a table (a guest asking, a bill settled) reads at once through the signals below. */
+const POLL_MS = 20_000;
+const COALESCE_MS = 150;
 
-/** Tables that have asked for their bill, for the sidebar alert. Polls only while the tab is visible. */
-export function useBillRequests() {
+/** Tables that have asked for their bill, for the sidebar alert. Reads on every change at the venue, and slowly otherwise. */
+export function useBillRequests(venueId?: string) {
   const [billRequests, setBillRequests] = useState<BillRequestItem[]>([]);
 
   const check = useCallback(async () => {
@@ -41,7 +46,28 @@ export function useBillRequests() {
     setBillRequests(Array.from(reqsMap.values()));
   }, []);
 
-  useEffect(() => { void check(); }, [check]);
+  // One read for a burst of changes (a settlement touches the session, the order and the request rows together).
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const schedule = useCallback(() => {
+    if (timer.current) return;
+    timer.current = setTimeout(() => { timer.current = null; void check(); }, COALESCE_MS);
+  }, [check]);
+
+  useFloorPing(venueId || null, schedule);
+
+  useEffect(() => {
+    void check();
+    if (!venueId) return;
+    const sb = createClient();
+    const filter = businessFilter(venueId);
+    const channel = sb.channel(`bill_requests_${venueId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'dine_in_sessions', ...(filter ? { filter } : {}) }, schedule)
+      .subscribe();
+    return () => {
+      if (timer.current) { clearTimeout(timer.current); timer.current = null; }
+      void sb.removeChannel(channel);
+    };
+  }, [venueId, check, schedule]);
   usePoll(() => { void check(); }, POLL_MS);
 
   return { billRequests };

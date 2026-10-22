@@ -2,10 +2,14 @@ import { useState, useEffect, useCallback } from 'react';
 import type { BillRequestEvent } from '../BillRequestsModal';
 import { sharedGet } from '@/lib/utils/shared-get';
 import { usePoll } from '@/lib/utils/use-poll';
+import { useFloorPing, PUSH_HEARTBEAT_MS } from '@/lib/hooks/use-floor-ping';
+import { useHostWorkspace } from '@/lib/store/host-workspace.store';
 
-const POLL_MS = 6000;
+/** The safety-net read while the venue's push channel is down. */
+const POLL_MS = 15_000;
 
 export function useBillRequests() {
+  const businessId = useHostWorkspace((s) => s.businessId);
   const [requests, setRequests] = useState<BillRequestEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -25,7 +29,9 @@ export function useBillRequests() {
   }, []);
 
   useEffect(() => { void load(); }, [load]);
-  usePoll(() => { void load(); }, POLL_MS);
+  // The venue's floor ping (a table asked, a bill was settled) reads at once; the timer only covers a dropped channel.
+  const pushUp = useFloorPing(businessId || null, useCallback(() => { void load(); }, [load]));
+  usePoll(() => { void load(); }, pushUp ? PUSH_HEARTBEAT_MS : POLL_MS);
 
   return { requests, isLoading, error };
 }

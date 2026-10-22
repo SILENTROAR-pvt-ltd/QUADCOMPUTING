@@ -38,51 +38,63 @@ async function command(cfg: SharedStoreConfig, args: Array<string | number>): Pr
   return body?.result;
 }
 
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
-async function readStored(cfg: SharedStoreConfig, resultKey: string): Promise<Stored | null> {
-  const raw = await command(cfg, ['GET', resultKey]);
-  return typeof raw === 'string' ? (JSON.parse(raw) as Stored) : null;
+/** Several commands in one round trip, run in order (Upstash's /pipeline). Fails if any of them failed. */
+async function pipeline(cfg: SharedStoreConfig, commands: Array<Array<string | number>>): Promise<any[]> {
+  const res = await fetch(`${cfg.url.replace(/\/+$/, '')}/pipeline`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${cfg.token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(commands),
+    signal: AbortSignal.timeout(1500),
+  });
+  if (!res.ok) throw new Error(`shared store answered ${res.status}`);
+  const body = await res.json();
+  if (!Array.isArray(body)) throw new Error('shared store gave no pipeline answer');
+  const failed = body.find((b: any) => b?.error);
+  if (failed) throw new Error(String(failed.error));
+  return body.map((b: any) => b?.result);
 }
 
-async function takeLock(cfg: SharedStoreConfig, lockKey: string): Promise<boolean> {
-  return (await command(cfg, ['SET', lockKey, '1', 'NX', 'PX', LOCK_TTL_MS])) === 'OK';
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * Takes the lock and reads any stored answer in one round trip. The store runs the two in order, so the read sees the
+ * store as it is once the lock is held: an answer a previous run has just written is never missed.
+ */
+async function lockAndRead(cfg: SharedStoreConfig, lockKey: string, resultKey: string): Promise<{ acquired: boolean; stored: Stored | null }> {
+  const [set, raw] = await pipeline(cfg, [['SET', lockKey, '1', 'NX', 'PX', LOCK_TTL_MS], ['GET', resultKey]]);
+  return { acquired: set === 'OK', stored: typeof raw === 'string' ? (JSON.parse(raw) as Stored) : null };
 }
 
 const asDuplicate = <T>(stored: Stored): Outcome<T> => ({ response: stored.response as T, status: stored.status, duplicate: true });
+const release = (cfg: SharedStoreConfig, lockKey: string) => command(cfg, ['DEL', lockKey]).catch(() => undefined);
 
-/** Holds the lock and has not run the work yet. Checks the answer once more: the previous run may have just finished. */
-async function claimAndRun<T>(
+/** Holds the lock, and no answer is stored: runs the work once and shares its answer. */
+async function runHeld<T>(
   cfg: SharedStoreConfig,
   lockKey: string,
   resultKey: string,
   work: () => Promise<{ response: T; status?: number }>,
 ): Promise<Outcome<T>> {
-  let late: Stored | null;
-  try {
-    late = await readStored(cfg, resultKey);
-  } catch (err) {
-    await command(cfg, ['DEL', lockKey]).catch(() => undefined);
-    throw err;
-  }
-  if (late) {
-    await command(cfg, ['DEL', lockKey]).catch(() => undefined);
-    return asDuplicate<T>(late);
-  }
-
   let result: { response: T; status?: number };
   try {
     result = await work();
   } catch (err) {
     // A failed run leaves nothing behind, so a retry runs at once, as it did before the shared store.
-    await command(cfg, ['DEL', lockKey]).catch(() => undefined);
+    await release(cfg, lockKey);
     throw err;
   }
   const status = result.status || 200;
-  // The answer is stored before the lock goes, so no instance sees a moment when the key is free but the answer is missing.
-  await command(cfg, ['SET', resultKey, JSON.stringify({ response: result.response, status }), 'PX', IDEMPOTENCY_WINDOW_MS])
-    .catch((err) => console.error('[idempotency] could not store the answer; this request is not shared with other instances', err));
-  await command(cfg, ['DEL', lockKey]).catch(() => undefined);
+  // The answer is stored, then the lock goes, in one pipelined round trip (the store runs them in order), so no instance
+  // sees a moment when the key is free but the answer is missing. The order waits for this, so it is one trip, not two.
+  try {
+    await pipeline(cfg, [
+      ['SET', resultKey, JSON.stringify({ response: result.response, status }), 'PX', IDEMPOTENCY_WINDOW_MS],
+      ['DEL', lockKey],
+    ]);
+  } catch (err) {
+    console.error('[idempotency] could not store the answer; this request is not shared with other instances', err);
+    await release(cfg, lockKey);
+  }
   return { response: result.response, status };
 }
 
@@ -99,26 +111,32 @@ export async function withSharedIdempotency<T>(
   const lockKey = `idemp:lock:${key}`;
   const resultKey = `idemp:result:${key}`;
 
-  let stored: Stored | null = null;
-  let acquired = false;
+  // One round trip before the work: the lock and the stored answer together. A fresh request (nearly all of them) then
+  // runs at once; a retry after the run gets the stored answer.
+  let first: { acquired: boolean; stored: Stored | null };
   try {
-    stored = await readStored(cfg, resultKey);
-    if (!stored) acquired = await takeLock(cfg, lockKey);
+    first = await lockAndRead(cfg, lockKey, resultKey);
   } catch (err) {
     throw new IdempotencyStoreUnavailable(err instanceof Error ? err.message : 'shared store unavailable');
   }
-  if (stored) return asDuplicate<T>(stored);
-  if (acquired) return claimAndRun(cfg, lockKey, resultKey, work);
+  if (first.stored) {
+    if (first.acquired) await release(cfg, lockKey);
+    return asDuplicate<T>(first.stored);
+  }
+  if (first.acquired) return runHeld(cfg, lockKey, resultKey, work);
 
   // Another request holds the key: wait for its answer, or take the key if that run failed and released it.
   const deadline = Date.now() + WAIT_MS;
   for (;;) {
     await sleep(50);
-    const seen = await readStored(cfg, resultKey);
-    if (seen) return asDuplicate<T>(seen);
+    const next = await lockAndRead(cfg, lockKey, resultKey);
+    if (next.stored) {
+      if (next.acquired) await release(cfg, lockKey);
+      return asDuplicate<T>(next.stored);
+    }
+    if (next.acquired) return runHeld(cfg, lockKey, resultKey, work);
     if (Date.now() >= deadline) {
       throw Object.assign(new Error('This request is already being processed. Try again in a moment.'), { status: 409 });
     }
-    if (await takeLock(cfg, lockKey)) return claimAndRun(cfg, lockKey, resultKey, work);
   }
 }

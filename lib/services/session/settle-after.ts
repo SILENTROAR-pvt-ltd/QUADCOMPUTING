@@ -1,5 +1,6 @@
 import { broadcastToGuestTable } from '@/lib/realtime/channels';
 import { recordLedgerVisit } from '@/lib/services/live-events/ledger.service';
+import { clearBillCalls } from '@/lib/services/guest/bill-call';
 import { IS_UUID } from './settle-input';
 
 export interface SettledBill {
@@ -53,6 +54,8 @@ async function cleanUp(b: SettledBill) {
         ? b.supabase.from('bill_request_events').update({ settled_at: b.nowIso }).eq('business_id', b.businessId).or(b.tableOr).is('settled_at', null)
         : null,
       b.rawTable && b.tableOr ? closeStraySessions(b) : null,
+      // The paid table's "asked for the bill" call leaves the bell tray.
+      b.rawTable && b.tableOr ? clearBillCalls(b.supabase, b.businessId, b.tableOr) : null,
     ]);
   } catch (cleanupErr) {
     console.error('[Settlement] Secondary cleanup (stray orders / bill requests) failed:', cleanupErr);

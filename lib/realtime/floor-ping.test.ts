@@ -6,8 +6,8 @@ const removed: any[] = [];
 vi.mock('@/lib/supabase/client', () => ({
   createClient: () => ({
     channel: (topic: string) => {
-      const ch: any = { topic, handler: null as null | (() => void), onStatus: null as null | ((s: string) => void) };
-      ch.on = (_type: string, _filter: any, cb: () => void) => { ch.handler = cb; return ch; };
+      const ch: any = { topic, handler: null as null | ((m?: any) => void), onStatus: null as null | ((s: string) => void) };
+      ch.on = (_type: string, _filter: any, cb: (m?: any) => void) => { ch.handler = cb; return ch; };
       ch.subscribe = (cb: (s: string) => void) => { ch.onStatus = cb; return ch; };
       channels.push(ch);
       return ch;
@@ -16,9 +16,10 @@ vi.mock('@/lib/supabase/client', () => ({
   }),
 }));
 
-import { floorTopic, subscribeFloor } from './floor-ping';
+import { floorTopic, subscribeFloor, ticketStageOf } from './floor-ping';
 
 const BIZ = '189664b2-99e7-4d45-ac50-ffb647ef97df';
+const TICKET = '7b0c6a5e-1111-4222-8333-444444444444';
 
 beforeEach(() => { channels.length = 0; removed.length = 0; });
 
@@ -63,5 +64,29 @@ describe('floor ping', () => {
     channels[0].onStatus('CHANNEL_ERROR');
     expect(l.status).toHaveBeenLastCalledWith(false);
     off();
+  });
+
+  it('hands listeners the ticket stage a ping names, and nothing for an empty ping', () => {
+    const l = { ping: vi.fn(), status: vi.fn() };
+    const off = subscribeFloor(BIZ, l);
+    channels[0].handler({ event: 'changed', payload: { k: TICKET, s: 'READY' } });
+    channels[0].handler({ event: 'changed', payload: {} });
+    expect(l.ping.mock.calls).toEqual([[{ id: TICKET, status: 'READY' }], [null]]);
+    off();
+  });
+});
+
+describe('the floor ping message', () => {
+  it('reads a ticket stage the database names, as realtime delivers it', () => {
+    expect(ticketStageOf({ event: 'changed', payload: { k: TICKET, s: 'READY' } })).toEqual({ id: TICKET, status: 'READY' });
+    expect(ticketStageOf({ payload: { k: TICKET, s: 'served' } })).toEqual({ id: TICKET, status: 'SERVED' });
+  });
+
+  it('treats the usual empty ping, and anything malformed, as no stage', () => {
+    expect(ticketStageOf({ event: 'changed', payload: {} })).toBeNull();
+    expect(ticketStageOf(undefined)).toBeNull();
+    expect(ticketStageOf({ payload: { k: 'not-a-uuid', s: 'READY' } })).toBeNull();
+    expect(ticketStageOf({ payload: { k: TICKET, s: 'EATEN' } })).toBeNull();
+    expect(ticketStageOf({ payload: { k: TICKET } })).toBeNull();
   });
 });

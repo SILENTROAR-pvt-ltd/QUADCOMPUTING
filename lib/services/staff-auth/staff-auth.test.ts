@@ -31,6 +31,14 @@ describe('roles and routes', () => {
     expect(staffMayCall('WAITER', 'GET', '/api/host/expenses/staff')).toBe(false);
   });
 
+  it('lets the waiter and the cashier hear and handle guest calls; the chef has the kitchen bell', () => {
+    expect(staffMayCall('WAITER', 'GET', '/api/host/notifications')).toBe(true);
+    expect(staffMayCall('WAITER', 'PATCH', '/api/host/notifications')).toBe(true);
+    expect(staffMayCall('CASHIER', 'GET', '/api/host/notifications')).toBe(true);
+    expect(staffMayCall('WAITER', 'POST', '/api/host/notifications')).toBe(false);
+    expect(staffMayCall('CHEF', 'GET', '/api/host/notifications')).toBe(false);
+  });
+
   it('keeps a chef to the kitchen', () => {
     expect(staffMayCall('CHEF', 'PATCH', '/api/host/kitchen/tickets')).toBe(true);
     expect(staffMayCall('CHEF', 'GET', '/api/host/sessions')).toBe(false);

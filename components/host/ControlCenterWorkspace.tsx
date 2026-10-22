@@ -61,7 +61,7 @@ export default function ControlCenterWorkspace({
     handleUnlock, handleCancelUnlock, handleLockSession, handleUnlockRequest, setPendingLockedTab, setShowGatekeeper,
   } = useControlCenterSecurity(activeTab, switchTab);
   useVenueTabGuard(activeTab, switchTab);
-  const { billRequests } = useBillRequests();
+  const { billRequests } = useBillRequests(initialBusinessId);
 
   // The server page validated ?business_id= against the host's own venues and redirected before
   // render if it was missing or foreign, so this is always the venue shown in the URL.

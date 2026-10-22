@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { CheckCircle2, Flame, Loader2, UtensilsCrossed, Wine } from 'lucide-react';
+import { BellRing, CheckCircle2, Flame, Loader2, UtensilsCrossed, Wine, XCircle } from 'lucide-react';
 import type { KitchenTicket } from '@/lib/utils/kitchen';
 import { kotTimeline } from '@/lib/utils/kot-timeline';
 import { splitPlace } from '@/lib/utils/kot-notes';
@@ -90,6 +90,16 @@ export function KotTicketCard({ ticket, station, nowMs, onStatus, onToggleItem }
           >
             {busy && <Loader2 className="h-4 w-4 animate-spin" />} {style.next.label}
           </button>
+        ) : style.waitingOn ? (
+          // Ready: the kitchen's part is done. The waiter marks it served from Live Tables, so no button here.
+          <p role="status" className="flex h-12 items-center justify-center gap-1.5 rounded-xl bg-emerald-50 px-2 text-center text-xs font-semibold leading-tight text-emerald-800">
+            <BellRing className="h-4 w-4 shrink-0 animate-pulse" aria-hidden />
+            Ready {clockTime(timeline.stages[2].at) ?? ''} · {style.waitingOn}
+          </p>
+        ) : ticket.status === 'CANCELLED' ? (
+          <p className="flex h-12 items-center justify-center gap-1.5 rounded-xl bg-rose-50 text-xs font-semibold text-rose-800">
+            <XCircle className="h-4 w-4" aria-hidden /> Cancelled
+          </p>
         ) : (
           <p className="flex h-12 items-center justify-center gap-1.5 rounded-xl bg-neutral-50 text-xs font-semibold text-neutral-600">
             <CheckCircle2 className="h-4 w-4 text-emerald-600" />

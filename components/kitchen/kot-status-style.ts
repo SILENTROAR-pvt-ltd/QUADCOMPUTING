@@ -1,5 +1,6 @@
 // How each ticket status looks on the kitchen board, and the one next step the kitchen can take from it.
-// The steps follow update_kot_status: PENDING -> PREPARING -> READY -> SERVED.
+// The kitchen's steps follow update_kot_status: PENDING -> PREPARING -> READY. Served is the waiter's step, taken from
+// Live Tables once the dish is at the table (lib/services/kitchen/kot-status-roles.ts), so a ready card has no button.
 import type { KitchenTicket } from '@/lib/utils/kitchen';
 
 type Status = KitchenTicket['status'];
@@ -12,6 +13,8 @@ export interface KotStatusStyle {
   /** What the timer measures in this status. */
   timerLabel: string;
   next?: { to: Status; label: string; button: string };
+  /** Who the kitchen is waiting on when the next step is not its own. */
+  waitingOn?: string;
 }
 
 export const KOT_STATUS: Record<Status, KotStatusStyle> = {
@@ -34,7 +37,7 @@ export const KOT_STATUS: Record<Status, KotStatusStyle> = {
     band: 'bg-emerald-500',
     chip: 'bg-emerald-50 text-emerald-900 border-emerald-200',
     timerLabel: 'to serve',
-    next: { to: 'SERVED', label: 'Mark served', button: 'bg-neutral-950 hover:bg-neutral-800 text-white' },
+    waitingOn: 'The waiter serves it from Live Tables',
   },
   SERVED: {
     label: 'Served',

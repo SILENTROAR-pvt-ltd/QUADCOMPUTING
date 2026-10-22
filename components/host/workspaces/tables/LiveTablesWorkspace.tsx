@@ -1,9 +1,11 @@
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePOSTables, type RestaurantTable } from '@/components/host/workspaces/billing/hooks/usePOSTables';
 import { useKitchenRealtime } from '@/lib/hooks/use-kitchen-realtime';
+import type { KitchenTicket } from '@/lib/utils/kitchen';
 import { activeTickets } from '@/lib/utils/table-kitchen';
+import { ringAlert } from '@/lib/host-alert-sound';
 import { LiveTableGrid } from './LiveTableGrid';
 import { LiveTableControlPanel } from './LiveTableControlPanel';
 import { LiveTablesHeader, type BoardFilter, type BoardView } from './LiveTablesHeader';
@@ -28,8 +30,15 @@ const KITCHEN_REFRESH_MS = 15_000;
 /** The waiter's dashboard: a bar of orders ready to serve, every table with its bill and kitchen, and every order waiting. */
 export function LiveTablesWorkspace({ venueId, onNavigate, pollMs }: LiveTablesWorkspaceProps) {
   const { tables, fetchTables, loaded } = usePOSTables(venueId, { pollMs });
+  // The kitchen's "ready" rings here the moment it happens, once per ticket, so a dish never waits at the pass unnoticed.
+  const rang = useRef<Set<string>>(new Set());
+  const onTicketUpdated = useCallback((t: KitchenTicket) => {
+    if (t.status !== 'READY' || rang.current.has(t.id)) return;
+    rang.current.add(t.id);
+    ringAlert();
+  }, []);
   // One live kitchen feed for the whole page: a chef's change reaches every tile, panel and order box at once.
-  const kitchen = useKitchenRealtime({ businessId: venueId, pollMs });
+  const kitchen = useKitchenRealtime({ businessId: venueId, pollMs, onTicketUpdated });
   const { refetch: refetchKitchen, updateTicketStatus } = kitchen;
   const { settledAt, reload: reloadSettled } = useSettledAt();
   const canSettle = useWaiterCanSettle();

@@ -108,7 +108,7 @@ export function KitchenBoard({ businessId, stationFilter = 'ALL', className = ''
             {tab === 'ACTIVE'
               ? 'New orders appear here the moment a guest sends them.'
               : tab === 'READY'
-                ? 'Dishes show up here the moment the kitchen marks them ready, so you can take them out.'
+                ? 'Dishes show up here the moment the kitchen marks them ready; the waiter takes them out from Live Tables.'
                 : 'Served tickets are kept here for the day.'}
           </p>
         </div>

@@ -1,4 +1,5 @@
 import { closeActiveOrder } from '@/lib/store/active-order-store';
+import { clearBillCalls } from '@/lib/services/guest/bill-call';
 import { CLOSED_STATUSES, buildTableOrFilter } from './session-entry.util';
 
 const LIVE_SESSION = ['open', 'bill_requested'];
@@ -57,6 +58,7 @@ export async function releaseTable(body: any, supabase: any, businessId: string)
   const { error: requestErr } = await supabase.from('bill_request_events')
     .update({ settled_at: new Date().toISOString() }).eq('business_id', businessId).or(tableOr).is('settled_at', null);
   if (requestErr) console.error('[releaseTable] Could not clear the bill request:', requestErr.message);
+  await clearBillCalls(supabase, businessId, tableOr);
 
   closeActiveOrder(businessId, rawTable);
   return { ok: true, status: 'VACANT', message: 'Table is free. Unstarted items were removed.' };
