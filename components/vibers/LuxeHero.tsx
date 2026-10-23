@@ -43,7 +43,7 @@ export function LuxeHero() {
           Live your vibe, unfiltered.
         </p>
         <div className={`${s.enter} mt-8 flex w-full max-w-xs flex-col justify-center gap-3 sm:w-auto sm:max-w-none sm:flex-row`} style={at(0.95)}>
-          <Link href="/join" className={BTN_IVORY}>Join Vibers Club</Link>
+          <Link href="/vibers-club" className={BTN_IVORY}>Join Vibers Club</Link>
           <a href="#welcome" className={BTN_GHOST_LIGHT}>Discover the vibe</a>
         </div>
       </div>

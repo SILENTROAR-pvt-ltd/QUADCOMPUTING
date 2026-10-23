@@ -30,7 +30,7 @@ export function ClosingAndFooter() {
             </p>
           </Reveal>
           <Reveal index={3} className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <Link href="/join" className={BTN_IVORY}>Join Vibers Club</Link>
+            <Link href="/vibers-club" className={BTN_IVORY}>Join Vibers Club</Link>
             <a href="#welcome" className={BTN_GHOST_LIGHT}>Read it again</a>
           </Reveal>
           <Reveal index={4}><p className={`${DISPLAY} mt-8 text-[1.3rem] italic text-[#f5f1e8]/80`}>Find your people, and be yourself.</p></Reveal>

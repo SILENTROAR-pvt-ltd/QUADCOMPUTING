@@ -1,0 +1,73 @@
+/* Vibers Club, arriving soon: quiet and slow. The photo settles, then breathes for as long as the page is open; the words
+   rise one after another out of a soft blur; a gold hairline draws itself; "soon" carries a slow champagne sheen.
+   Transform and opacity only on the photo; everything stops for people who prefer reduced motion. */
+
+.photo { animation: settle 9s cubic-bezier(0.2, 0.7, 0.1, 1) both, breathe 32s ease-in-out 9s infinite alternate; transform-origin: 48% 60%; }
+@keyframes settle { from { transform: scale(1.14); opacity: 0; } 30% { opacity: 1; } to { transform: scale(1.04); opacity: 1; } }
+@keyframes breathe { from { transform: scale(1.04); } to { transform: scale(1.11) translate3d(-1%, -0.6%, 0); } }
+
+.rise { opacity: 0; animation: rise 1.6s cubic-bezier(0.2, 0.7, 0.1, 1) forwards; animation-delay: var(--d, 0s); }
+@keyframes rise { from { opacity: 0; transform: translate3d(0, 16px, 0); filter: blur(6px); } to { opacity: 1; transform: none; filter: blur(0); } }
+
+.line { transform: scaleX(0); transform-origin: center; animation: line 1.8s cubic-bezier(0.6, 0, 0.2, 1) forwards; animation-delay: var(--d, 0s); }
+@keyframes line { to { transform: scaleX(1); } }
+
+/* The photo is already a night scene: only a touch of contrast, so the headlights glow without lifting the blacks. */
+.exposure { filter: brightness(0.92) saturate(0.95) contrast(1.06); }
+
+/* The photo is portrait. On a phone it fills the screen; on a wider screen it stands at full height in the centre, its
+   sides melting into a dark, blurred glow of itself instead of being cropped to a strip. */
+.frame { position: absolute; inset: 0; overflow: hidden; }
+.ambient { display: none; }
+@media (orientation: landscape) {
+  .frame {
+    right: auto;
+    left: 50%;
+    height: 100%;
+    aspect-ratio: 9 / 16;
+    transform: translateX(-50%);
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 22%, #000 78%, transparent);
+    mask-image: linear-gradient(90deg, transparent, #000 22%, #000 78%, transparent);
+  }
+  .ambient { display: block; position: absolute; inset: -6%; width: 112%; height: 112%; object-fit: cover; filter: blur(42px) brightness(0.42) saturate(1.15); }
+}
+
+/* Fine film grain over the photo: fractal noise blended softly, shifting a few times a second like real grain. */
+.grain {
+  position: absolute;
+  inset: -50%;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  background-size: 240px 240px;
+  opacity: 0.2;
+  mix-blend-mode: overlay;
+  animation: grain 0.9s steps(6) infinite;
+}
+@keyframes grain {
+  0% { transform: translate3d(0, 0, 0); }
+  20% { transform: translate3d(-3%, 2%, 0); }
+  40% { transform: translate3d(2%, -3%, 0); }
+  60% { transform: translate3d(-2%, -1%, 0); }
+  80% { transform: translate3d(3%, 3%, 0); }
+  100% { transform: translate3d(0, 0, 0); }
+}
+
+/* A soft champagne light behind the headline, slowly brightening and fading. */
+.glow { animation: glow 7s ease-in-out infinite alternate; }
+@keyframes glow { from { opacity: 0.35; transform: scale(0.96); } to { opacity: 0.65; transform: scale(1.04); } }
+
+.sheen {
+  background: linear-gradient(100deg, #d9c193 38%, #fff4d6 50%, #d9c193 62%);
+  background-size: 260% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: sheen 7s ease-in-out 2.4s infinite;
+}
+@keyframes sheen { from { background-position: 100% 0; } 55%, to { background-position: 0% 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .photo, .rise, .line, .glow, .sheen, .grain { animation: none !important; }
+  .photo { transform: scale(1.04); }
+  .rise { opacity: 1; }
+  .line { transform: none; }
+}

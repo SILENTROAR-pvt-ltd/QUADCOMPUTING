@@ -41,7 +41,7 @@ export function LuxeNav() {
         </ul>
         <div className="flex items-center gap-4">
           <Link href="/quad-computing" className={`hidden text-[10.5px] font-semibold uppercase tracking-[0.2em] md:inline ${solid ? 'text-[#10231a]/65 hover:text-[#10231a]' : 'text-[#f5f1e8]/75 hover:text-[#f5f1e8]'}`}>For venues</Link>
-          <Link href="/join" className={`inline-flex h-10 items-center rounded-full px-5 text-[12px] font-semibold tracking-[0.06em] transition-all duration-300 ${solid ? 'bg-[#0f2a1e] text-[#f5f1e8] hover:bg-[#173a2a]' : 'border border-[#f5f1e8]/50 text-[#f5f1e8] hover:border-[#f5f1e8] hover:bg-white/5'}`}>
+          <Link href="/vibers-club" className={`inline-flex h-10 items-center rounded-full px-5 text-[12px] font-semibold tracking-[0.06em] transition-all duration-300 ${solid ? 'bg-[#0f2a1e] text-[#f5f1e8] hover:bg-[#173a2a]' : 'border border-[#f5f1e8]/50 text-[#f5f1e8] hover:border-[#f5f1e8] hover:bg-white/5'}`}>
             Join the Club
           </Link>
         </div>

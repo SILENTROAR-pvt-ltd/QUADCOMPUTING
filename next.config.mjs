@@ -73,6 +73,15 @@ const nextConfig = {
 	async rewrites() {
 		return [{ source: '/api/v1/:path*', destination: '/api/:path*' }];
 	},
+	// Vibers Club is not open yet: its landing (/join, where the QR campaigns point) and every Club page show the
+	// "arriving soon" page instead. Temporary, so the old addresses work again the day the Club opens.
+	async redirects() {
+		return [
+			{ source: '/join', destination: '/vibers-club', permanent: false },
+			{ source: '/club', destination: '/vibers-club', permanent: false },
+			{ source: '/club/:path*', destination: '/vibers-club', permanent: false },
+		];
+	},
 	async headers() {
 		return [
 			{ source: '/:path*', headers: securityHeaders },

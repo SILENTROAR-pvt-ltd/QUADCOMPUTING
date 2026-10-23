@@ -56,7 +56,7 @@ export function ClubConnect() {
         <Reveal index={2} className="mt-10"><PlanFlow /></Reveal>
         <Reveal index={2} className="mt-14 flex flex-col items-start gap-5 sm:flex-row sm:items-center sm:justify-between">
           <p className={`${DISPLAY} max-w-xl text-[1.35rem] italic text-[#f5f1e8]/85`}>Share your plans, stories, memories and mood, and let like-minded Vibers make your vibe louder.</p>
-          <Link href="/join" className={BTN_IVORY}>Join Vibers Club</Link>
+          <Link href="/vibers-club" className={BTN_IVORY}>Join Vibers Club</Link>
         </Reveal>
       </div>
     </section>
