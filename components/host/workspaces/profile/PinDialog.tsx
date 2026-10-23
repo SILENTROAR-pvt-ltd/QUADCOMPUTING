@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { pinProblem } from '@/lib/services/security/pin-rules';
+import { markUnlocked } from '@/components/host/control-center/useSecurityStatus';
 import type { PinState } from './useProfile';
 
 interface Props {
@@ -51,7 +52,7 @@ export function PinDialog({ kind, mode, pins, onClose, onDone }: Props) {
     setBusy(false);
     if (!res?.ok) { setError(json.error || 'No connection. Nothing changed.'); setCurrent(''); return; }
     // Setting the master PIN proves it, so this session stays unlocked.
-    if (kind === 'admin' && mode === 'set') sessionStorage.setItem('master_admin_unlocked', 'true');
+    if (kind === 'admin' && mode === 'set') markUnlocked(true);
     window.dispatchEvent(new Event('master_admin_refresh'));
     onDone({ isAdminPinSet: json.isAdminPinSet, isStaffPinSet: json.isStaffPinSet }, mode === 'remove' ? `The ${name} is removed.` : `The ${name} is saved.`);
   };

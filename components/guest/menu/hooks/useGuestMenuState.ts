@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useCartStore } from '@/lib/store/cart.store';
 import type { MenuItem } from '@/components/guest/menu/types';
 import { useGuestMenuSession } from './useGuestMenuSession';
@@ -8,6 +9,7 @@ import { useGuestMenuUi } from './useGuestMenuUi';
 import { useGuestCartHandlers } from './useGuestCartHandlers';
 import { useGuestContactInfo } from './useGuestContactInfo';
 import { apiRequest, jsonRequest } from '@/lib/utils/api-client';
+import { matchesDiet } from '@/lib/guest/diet-filter';
 
 export function useGuestMenuState({ tableParam, cafeParam, roomParam = '' }: { tableParam: string; cafeParam: string; roomParam?: string }) {
   const cart = useCartStore();
@@ -15,6 +17,9 @@ export function useGuestMenuState({ tableParam, cafeParam, roomParam = '' }: { t
   const contact = useGuestContactInfo();
   const cartHandlers = useGuestCartHandlers({ showToast: ui.showToast, handleOpenCustomization: ui.handleOpenCustomization });
   const sessionData = useGuestMenuSession({ tableParam, cafeParam, roomParam });
+  const { bindVenue } = cart;
+  // The tray belongs to this venue: dishes left from another venue's menu would only be refused at the kitchen.
+  useEffect(() => { if (sessionData.businessId) bindVenue(sessionData.businessId); }, [sessionData.businessId, bindVenue]);
 
   const orderData = useGuestOrderActions({
     roomCode: roomParam, tableNumber: sessionData.tableNumber, cafeParam, guestId: sessionData.guestId,
@@ -30,8 +35,10 @@ export function useGuestMenuState({ tableParam, cafeParam, roomParam = '' }: { t
   });
 
   const cartSubtotal = Math.round(cart.getSubtotal() * 100) / 100;
-  // Only the search narrows the menu. The category chips scroll to a section and follow the page instead of hiding the rest.
-  const filteredDiningItems = sessionData.diningItems.filter((item) => {
+  // The diet chips and the search narrow the menu. The category chips scroll to a section and follow the page instead of
+  // hiding the rest. dietItems is the menu under the chosen diet alone (the category rail counts from it).
+  const dietItems = ui.dietFilter === 'all' ? sessionData.diningItems : sessionData.diningItems.filter((item) => matchesDiet(item, ui.dietFilter));
+  const filteredDiningItems = dietItems.filter((item) => {
     if (!ui.searchQuery.trim()) return true;
     const q = ui.searchQuery.toLowerCase();
     return item.name.toLowerCase().includes(q) || (item.description && item.description.toLowerCase().includes(q));
@@ -75,7 +82,7 @@ export function useGuestMenuState({ tableParam, cafeParam, roomParam = '' }: { t
     cartItems: cart.items, addToCart: cart.addToCart, removeFromCart: cart.removeFromCart,
     incrementQuantity: cart.incrementQuantity, decrementQuantity: cart.decrementQuantity,
     totalCartCount: cart.getTotalCount(), cartSubtotal, gstAmount: 0, cartGrandTotal: cartSubtotal,
-    filteredDiningItems, handlePlaceOrderToKitchen, handleConciergeServiceRequest,
+    dietItems, filteredDiningItems, handlePlaceOrderToKitchen, handleConciergeServiceRequest,
   };
 }
 

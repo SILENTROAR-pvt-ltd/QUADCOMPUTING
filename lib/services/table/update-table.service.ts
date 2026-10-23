@@ -5,7 +5,8 @@ import { invalidateTablesCache } from './get-tables.service';
 import { renameZone, resolveZone, zoneColumnAvailable } from './table-zone.service';
 
 export async function updateHostTable(body: any, user: any, supabase: any, authorizedBizId?: string) {
-  let businessId: string | null = authorizedBizId || body.business_id || body.venue_id || null;
+  // The venue comes from the sign-in (or the signed-in owner's venue), never from the request body.
+  let businessId: string | null = authorizedBizId || null;
 
   if (!businessId && user) {
     const { data: business } = await supabase
@@ -60,6 +61,7 @@ export async function updateHostTable(body: any, user: any, supabase: any, autho
       .from('restaurant_tables')
       .update(updatePayload)
       .eq('id', targetId)
+      .eq('business_id', resolvedBizId)
       .select()
       .maybeSingle();
 

@@ -14,7 +14,7 @@ if (typeof globalThis !== 'undefined' && globalThis.AsyncLocalStorage && typeof 
 }
 
 // The origins the app really loads from: the configured Supabase project (so a custom domain works), Sentry, Google Fonts,
-// and Razorpay for the Club checkout. Next's inline bootstrap script needs 'unsafe-inline' (no nonces yet), and the dev
+// Razorpay for the Club checkout, and India Post's PIN-code lookup (host sign-up fills city and state from it). Next's inline bootstrap script needs 'unsafe-inline' (no nonces yet), and the dev
 // server needs 'unsafe-eval' for hot reload. Images may come from any https host: dish and venue photos are not fixed.
 function contentSecurityPolicy() {
 	const isDev = process.env.NODE_ENV !== 'production';
@@ -30,7 +30,7 @@ function contentSecurityPolicy() {
 		"font-src 'self' data: https://fonts.gstatic.com",
 		"img-src 'self' data: blob: https:",
 		"media-src 'self' blob: https:",
-		`connect-src 'self' ${supabase} ${supabaseSocket} https://*.supabase.co wss://*.supabase.co https://*.sentry.io https://api.razorpay.com`,
+		`connect-src 'self' ${supabase} ${supabaseSocket} https://*.supabase.co wss://*.supabase.co https://*.sentry.io https://api.razorpay.com https://api.postalpincode.in`,
 		'frame-src https://api.razorpay.com https://checkout.razorpay.com',
 		"worker-src 'self' blob:",
 		"manifest-src 'self'",

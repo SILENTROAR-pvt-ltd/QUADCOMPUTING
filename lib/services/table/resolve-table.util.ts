@@ -8,13 +8,12 @@ export async function resolveTargetTable(
   let targetNum = table_number;
   let resolvedBiz = businessId;
 
-  // 1. If targetId provided, check if it actually exists in DB
+  // 1. If targetId provided, check if it actually exists in DB (inside the venue when one is known:
+  // a table id from another venue is treated as unknown, so nothing outside this venue is changed)
   if (targetId) {
-    const { data: t } = await supabase
-      .from('restaurant_tables')
-      .select('id, table_number, business_id')
-      .eq('id', targetId)
-      .maybeSingle();
+    let byId = supabase.from('restaurant_tables').select('id, table_number, business_id').eq('id', targetId);
+    if (resolvedBiz) byId = byId.eq('business_id', resolvedBiz);
+    const { data: t } = await byId.maybeSingle();
 
     if (t) {
       targetNum = t.table_number;

@@ -16,6 +16,12 @@ describe('dishMark', () => {
     expect(dishMark({ name: 'Eggless Brownie', dietary: 'veg' })).toBe('veg');
   });
 
+  it('keeps an egg dish as egg inside a non-veg section, but not one that names a meat', () => {
+    expect(dishMark({ name: 'Egg Curry (Half)', category: 'Non Veg', dietary: 'egg' })).toBe('egg');
+    expect(dishMark({ name: 'Egg Chicken Roll', category: 'Non Veg', dietary: 'egg' })).toBe('non_veg');
+    expect(dishMark({ name: 'Plain Platter', category: 'Non Veg' })).toBe('non_veg');
+  });
+
   it('follows the platform default (veg) for a dish added before diets were stored', () => {
     expect(dishMark({ name: 'Masala Chai' })).toBe('veg');
     expect(dishMark({ name: 'Pav Bhaji', category: 'Pav Bhaji' })).toBe('veg');

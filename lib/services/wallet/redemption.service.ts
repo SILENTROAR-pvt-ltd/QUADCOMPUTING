@@ -158,6 +158,11 @@ export async function verifyRedemptionCode(
     return { success: false, error: 'Invalid redemption code. Please check and try again.' };
   }
 
+  // Check venue match before revealing anything else about the code (even whether it was used)
+  if (!resolvedBiz || (record.cafe_id !== resolvedBiz && record.business_id !== resolvedBiz)) {
+    return { success: false, error: 'This redemption code is not valid for this venue.' };
+  }
+
   // Idempotency check: Cannot be used more than once!
   if (record.status === 'redeemed') {
     return {
@@ -170,11 +175,6 @@ export async function verifyRedemptionCode(
 
   if (record.status === 'cancelled') {
     return { success: false, error: 'This redemption code has been cancelled.' };
-  }
-
-  // Check venue match before revealing anything else about the code
-  if (resolvedBiz && record.cafe_id !== resolvedBiz && record.business_id !== resolvedBiz) {
-    return { success: false, error: 'This redemption code is not valid for this venue.' };
   }
 
   if (record.status === 'expired' || new Date(record.expires_at).getTime() < Date.now()) {

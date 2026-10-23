@@ -31,6 +31,8 @@ interface CartStore {
   clearCart: () => void;
   /** Puts dishes back (an order shown as sent at once that the server then refused), ahead of anything added since. */
   restoreItems: (items: CartItem[]) => void;
+  /** Ties the tray to the venue whose menu is open: dishes left from another venue's menu are dropped. */
+  bindVenue: (venueId: string) => void;
   getTotalCount: () => number;
   getSubtotal: () => number;
 }
@@ -48,6 +50,9 @@ function areAddonsEqual(a: CartAddon[] = [], b: CartAddon[] = []): boolean {
   const sortedB = [...b].sort((x, y) => x.name.localeCompare(y.name));
   return sortedA.every((addon, i) => addon.name === sortedB[i].name && addon.price === sortedB[i].price);
 }
+
+/** The venue the stored tray belongs to (a guest who scans another venue's QR starts with an empty tray). */
+const CART_VENUE_KEY = 'quad_guest_cart_venue';
 
 function loadInitialCart(): CartItem[] {
   if (typeof window === 'undefined') return [];
@@ -181,6 +186,20 @@ export const useCartStore = create<CartStore>((set, get) => ({
       saveCartToStorage(updatedItems);
       return { items: updatedItems };
     });
+  },
+
+  bindVenue: (venueId: string) => {
+    if (!venueId || typeof window === 'undefined') return;
+    try {
+      const held = localStorage.getItem(CART_VENUE_KEY);
+      if (held && held !== venueId) {
+        saveCartToStorage([]);
+        set({ items: [] });
+      }
+      localStorage.setItem(CART_VENUE_KEY, venueId);
+    } catch {
+      // storage unavailable: the tray lives only in memory, so nothing carries over anyway
+    }
   },
 
   getTotalCount: () => {

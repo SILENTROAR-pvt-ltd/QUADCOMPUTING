@@ -69,7 +69,12 @@ export async function executeCatalogDelete(
   // NOTE: there is no `menu_items` table in this schema — catalog_items is the
   // single source of truth for catalog entries (previously this also issued a
   // delete against a nonexistent `menu_items` table, silently swallowed below).
+  // Only for a dish this venue owns: an id from another venue must not reach its recipe or stock rows.
   if (targetId) {
+    const { data: owned, error: ownErr } = await supabase.from('catalog_items').select('id')
+      .eq('id', targetId).eq('business_id', businessId).maybeSingle();
+    if (ownErr) throw ownErr;
+    if (!owned) throw Object.assign(new Error('Catalog item not found'), { status: 404 });
     const { error: recipeErr } = await supabase.from('recipe_ingredients').delete().eq('catalog_item_id', targetId);
     if (recipeErr) throw recipeErr;
     const { error: stockErr } = await supabase.from('inventory_stock').delete().eq('catalog_item_id', targetId);

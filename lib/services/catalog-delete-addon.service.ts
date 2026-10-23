@@ -1,5 +1,6 @@
 /**
- * Deletes room category add-ons like 'Breakfast (CP)' from room_categories.
+ * Deletes room category add-ons like 'Breakfast (CP)' from room_categories, only ever in the caller's own venue: a
+ * room category id sent with the request narrows the search inside that venue, it never reaches another venue's rooms.
  */
 export async function deleteRoomCategoryAddon(
   supabase: any,
@@ -8,12 +9,9 @@ export async function deleteRoomCategoryAddon(
   targetName: string,
   roomCategoryId?: string
 ): Promise<boolean> {
-  let query = supabase.from('room_categories').select('id, business_id, addons, available_addons');
-  if (roomCategoryId) {
-    query = query.eq('id', roomCategoryId);
-  } else if (businessId) {
-    query = query.eq('business_id', businessId);
-  }
+  if (!businessId) return false;
+  let query = supabase.from('room_categories').select('id, business_id, addons, available_addons').eq('business_id', businessId);
+  if (roomCategoryId) query = query.eq('id', roomCategoryId);
 
   const { data: categories, error } = await query;
   if (error || !categories || categories.length === 0) return false;
@@ -36,7 +34,8 @@ export async function deleteRoomCategoryAddon(
       anyDeleted = true;
       await supabase.from('room_categories')
         .update({ [field]: remaining })
-        .eq('id', rc.id);
+        .eq('id', rc.id)
+        .eq('business_id', businessId);
     }
   }
 

@@ -1,12 +1,13 @@
 'use client';
 
 import React from 'react';
-import { X } from 'lucide-react';
+import { Compass, X } from 'lucide-react';
 import type { ControlCenterTab } from '../ControlCenterHeader';
 import { useVisibleTabs } from './useVisibleTabs';
 import { NavWorkspaceItem } from './NavWorkspaceItem';
 import { MobileHeaderBar } from './MobileHeaderBar';
 import { SignOutButton } from './SignOutButton';
+import { openWelcomeTour } from '../tour/useWelcomeTour';
 import type { BillRequestItem } from './useBillRequests';
 import type { SecurityStatus } from './useControlCenterSecurity';
 
@@ -109,6 +110,11 @@ export function MobileNavDrawer({
             </div>
 
             <div className="p-4 border-t border-neutral-100 space-y-2.5">
+              <button type="button" onClick={() => { setMobileDrawerOpen(false); openWelcomeTour(); }}
+                className="flex w-full cursor-pointer items-center justify-between rounded-xl border border-neutral-200 bg-white px-3.5 py-2.5 text-xs font-medium text-neutral-700 hover:bg-neutral-50">
+                <span>Take the tour</span>
+                <Compass className="h-3.5 w-3.5 text-neutral-400" />
+              </button>
               <SignOutButton />
               <p className="text-[11px] text-neutral-400 text-center font-mono">
                 Venue ID: {venueId.slice(0, 8)}...{venueId.slice(-4)}

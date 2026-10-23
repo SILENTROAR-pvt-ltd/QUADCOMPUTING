@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server';
+import { ZodError } from 'zod';
 import { requireHost, adminDb } from '@/lib/auth/guards';
 import { hostOnboardingSchema } from '@/lib/validations/onboarding';
 import { generateOwnerCafeId } from '@/lib/utils/ids';
 import { withApiErrorBoundary } from '@/lib/middleware/error-handler';
 import { safeMessage } from '@/lib/utils/safe-message';
+import { provisionRef } from '@/lib/services/host/provision-ref';
 
 export const POST = withApiErrorBoundary(async function POST(request: Request) {
   try {
@@ -93,10 +95,13 @@ export const POST = withApiErrorBoundary(async function POST(request: Request) {
     // Error` is false for them, which was silently collapsing every real DB
     // failure down to the generic 'Invalid payload' fallback.
     // The real error is logged below; the client gets the message only when it is a rule the host can act on.
-    const message = safeMessage(error, 'We could not set up your venue. Please try again.');
+    // A form the host can fix says what to fix, instead of the generic sentence.
+    const message = error instanceof ZodError
+      ? error.issues[0]?.message || 'Please check the details you entered.'
+      : safeMessage(error, 'We could not set up your venue. Please try again.');
     console.error('[HostProvisionPOST] Provisioning failed:', error);
     return NextResponse.json(
-      { success: false, error: message },
+      { success: false, error: message, ref: provisionRef(error) },
       { status: (error as any)?.status || 400 },
     );
   }

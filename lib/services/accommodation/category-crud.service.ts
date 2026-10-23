@@ -40,9 +40,11 @@ export async function deleteAccommodationCategory(
   categoryId: string,
   supabase: any,
   userId: string,
-  businessId?: string
+  businessId: string
 ): Promise<{ success: boolean; error?: string; status?: number }> {
-  const scoped = (q: any) => (businessId ? q.eq('business_id', businessId) : q);
+  // Always inside the caller's own venue: without one there is no owner to check, so nothing is deleted.
+  if (!businessId) return { success: false, error: 'Venue required.', status: 400 };
+  const scoped = (q: any) => q.eq('business_id', businessId);
   const { data: category } = await scoped(
     supabase.from('room_categories').select('id, catalog_item_id').eq('id', categoryId)
   ).maybeSingle();

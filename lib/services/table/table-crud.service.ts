@@ -3,7 +3,8 @@ import { resolveZone, zoneColumnAvailable } from './table-zone.service';
 import { cleanZone } from './table-zones';
 
 export async function createHostTable(body: any, user: any, supabase: any, authorizedBizId?: string) {
-  let businessId = authorizedBizId || body.business_id || body.venue_id;
+  // The venue comes from the sign-in (or the signed-in owner's venue), never from the request body.
+  let businessId = authorizedBizId;
   if (!businessId && user) {
     const { data: business } = await supabase
       .from('businesses')
@@ -67,7 +68,8 @@ export async function createHostTable(body: any, user: any, supabase: any, autho
 }
 
 export async function deleteHostTable(body: any, user: any, supabase: any, authorizedBizId?: string) {
-  let businessId = authorizedBizId || body.business_id || body.venue_id;
+  // The venue comes from the sign-in (or the signed-in owner's venue), never from the request body.
+  let businessId = authorizedBizId;
   if (!businessId && user) {
     const { data: business } = await supabase
       .from('businesses')
@@ -81,16 +83,16 @@ export async function deleteHostTable(body: any, user: any, supabase: any, autho
 
   const { id } = body;
   if (!id) throw new Error('Table id is required for deactivation');
+  // Only ever a table of this venue: without one there is no owner to check, so nothing changes.
+  if (!businessId) throw new Error('Business ID is required to remove a table');
 
-  let q = supabase.from('restaurant_tables').update({ is_active: false }).eq('id', id);
-  if (businessId) q = q.eq('business_id', businessId);
-
-  const { error } = await q;
+  const { error } = await supabase.from('restaurant_tables').update({ is_active: false })
+    .eq('id', id).eq('business_id', businessId);
   if (error) {
     console.error('[deleteHostTable error]', error);
     throw error;
   }
 
-  if (businessId) invalidateTablesCache(businessId);
+  invalidateTablesCache(businessId);
   return { success: true };
 }

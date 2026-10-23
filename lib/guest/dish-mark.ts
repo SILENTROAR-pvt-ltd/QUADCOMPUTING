@@ -18,8 +18,12 @@ const VEG_WORD = /\b(paneer|veg|vegetable|veggie|soya|soy|mushroom|aloo|gobi|tof
 
 export function dishMark(d: Dish): DishMark | null {
   if (d.type && NOT_FOOD.has(d.type)) return null;
+  const own = dietOf({ name: d.name, category: '', description: d.description ?? '' }).diet;
   const said = dietOf({ name: d.name, category: d.category ?? '', description: d.description ?? '' }).diet;
-  if (said === 'non_veg' || d.dietary === 'non_veg') return 'non_veg';
+  if (own === 'non_veg' || d.dietary === 'non_veg') return 'non_veg';
+  // A non-veg section ("Non Veg", "Non-Veg Starters") marks its dishes non-veg, except one the host saved as egg: an egg
+  // curry listed among the chicken curries is still an egg dish.
+  if (said === 'non_veg' && d.dietary !== 'egg') return 'non_veg';
   if (said === 'egg' || d.dietary === 'egg') return 'egg';
   if (d.dietary === 'veg' || d.dietary === 'vegan') return 'veg';
   if (d.dietary) return null;

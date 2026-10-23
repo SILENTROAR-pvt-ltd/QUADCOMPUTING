@@ -1,8 +1,9 @@
 'use client';
 
 import React from 'react';
-import { BellRing, ExternalLink } from 'lucide-react';
+import { BellRing, Compass, ExternalLink } from 'lucide-react';
 import { SignOutButton } from './SignOutButton';
+import { openWelcomeTour } from '../tour/useWelcomeTour';
 import type { BillRequestItem } from './useBillRequests';
 
 interface SidebarFooterProps {
@@ -11,7 +12,7 @@ interface SidebarFooterProps {
   onBilling: () => void;
 }
 
-/** Live bill requests, the guest menu link and sign-out. */
+/** Live bill requests, the guest menu link, the welcome tour and sign-out. */
 export function SidebarFooter({ billRequests, venueId, onBilling }: SidebarFooterProps) {
   const total = billRequests.reduce((sum, r) => sum + r.subtotal, 0);
 
@@ -39,6 +40,11 @@ export function SidebarFooter({ billRequests, venueId, onBilling }: SidebarFoote
         <span>Guest menu (T-01)</span>
         <ExternalLink className="h-3.5 w-3.5 text-neutral-400" />
       </a>
+      <button type="button" onClick={openWelcomeTour}
+        className="flex w-full cursor-pointer items-center justify-between rounded-xl border border-neutral-200 bg-white px-3.5 py-2 text-xs font-medium text-neutral-700 hover:bg-neutral-50">
+        <span>Take the tour</span>
+        <Compass className="h-3.5 w-3.5 text-neutral-400" />
+      </button>
       <SignOutButton />
     </div>
   );

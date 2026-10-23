@@ -24,7 +24,7 @@ async function handleDelete(request: Request, auth: any) {
     return NextResponse.json(result);
   } catch (error: any) {
     console.error('[Catalog Delete Fatal Error]', error);
-    const status = error.message?.includes('Missing') ? 400 : 500;
+    const status = error.status || (error.message?.includes('Missing') ? 400 : 500);
     return NextResponse.json({ error: safeMessage(error, 'Internal Server Error') }, { status });
   }
 }

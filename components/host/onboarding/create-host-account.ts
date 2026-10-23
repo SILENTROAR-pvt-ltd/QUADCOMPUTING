@@ -1,12 +1,29 @@
 import { createClient } from '@/lib/supabase/client';
 import { friendlyAuthError } from '@/lib/auth/auth-messages';
+import { clearHostCaches } from '@/lib/host/host-caches';
 import type { HostOnboardingForm } from '@/lib/validations/onboarding';
 
 export type CreateResult = { ok: true; url: string } | { ok: false; error: string };
 
+const sameEmail = (a: string | null | undefined, b: string) => Boolean(a) && a!.trim().toLowerCase() === b.trim().toLowerCase();
+
 /**
- * Creates the host's account (unless the browser is already signed in to a user that still exists),
- * then provisions their venues under it.
+ * Whether the login already signed in on this browser should own the new venue. Only when the person typed that
+ * login's own email: a retry of this sign-up, or an owner adding another venue to their account. Anyone else signed in
+ * (an owner who left the console open on a shared device, a guest's Vibers login) never gets a venue attached to their
+ * account by someone filling in this form; the form's own email and password are used instead.
+ */
+async function reuseSignedIn(user: { id: string; email?: string | null }, email: string): Promise<boolean> {
+  if (!sameEmail(user.email, email)) return false;
+  const pendingId = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('quad-new-host-user') : null;
+  if (user.id === pendingId) return true;
+  const access = await fetch('/api/auth/host-access', { cache: 'no-store' }).then((r) => r.json()).catch(() => null);
+  return Boolean(access?.isHost);
+}
+
+/**
+ * Creates the host's account (unless the browser is already signed in to that same account), then provisions their
+ * venues under it.
  */
 export async function createHostAccount(data: HostOnboardingForm): Promise<CreateResult> {
   const supabase = createClient();
@@ -14,22 +31,12 @@ export async function createHostAccount(data: HostOnboardingForm): Promise<Creat
   // getUser(), not getSession(): a cached session can outlive a deleted account, which then made
   // provisioning fail with a confusing 401.
   const { data: existing, error: existingErr } = await supabase.auth.getUser();
-  // A signed-in login only counts if it already owns a venue, or it is the account this onboarding just created
-  // (a retry after a failed provisioning). A Vibers guest login is never turned into a host by opening onboarding.
-  const pendingId = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('quad-new-host-user') : null;
-  let reuse = false;
-  if (!existingErr && existing.user) {
-    if (existing.user.id === pendingId) {
-      reuse = true;
-    } else {
-      const access = await fetch('/api/auth/host-access', { cache: 'no-store' }).then((r) => r.json()).catch(() => null);
-      reuse = Boolean(access?.isHost);
-    }
-  }
+  const reuse = !existingErr && existing.user ? await reuseSignedIn(existing.user, data.email) : false;
 
   if (!reuse) {
-    // Clear any stale or guest session so this venue is created under its own host login.
+    // A different account (or a stale session) is signed out, and everything it left in this browser goes with it.
     await supabase.auth.signOut();
+    clearHostCaches();
     const { data: signUp, error: signUpError } = await supabase.auth.signUp({ email: data.email, password: data.password });
     if (signUpError) return { ok: false, error: friendlyAuthError(signUpError.message, 'We could not create your account. Please try again.') };
     // Supabase answers an email that already has an account with no identities, instead of an error.
@@ -50,7 +57,9 @@ export async function createHostAccount(data: HostOnboardingForm): Promise<Creat
   });
   const provisioning = await response.json().catch(() => null);
   if (!response.ok || !provisioning?.success) {
-    return { ok: false, error: provisioning?.error || 'We could not set up your venue. Please try again.' };
+    // The reference (a database code and rule name, never the host's data) lets support see what refused the set-up.
+    const ref = typeof provisioning?.ref === 'string' && provisioning.ref ? ` (ref ${provisioning.ref})` : '';
+    return { ok: false, error: `${provisioning?.error || 'We could not set up your venue. Please try again.'}${ref}` };
   }
   sessionStorage.setItem('quad-provisioning', JSON.stringify(provisioning));
   return { ok: true, url: provisioning.controlCenterUrl || provisioning.dashboardUrl || '/host/control-center' };

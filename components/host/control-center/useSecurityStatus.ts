@@ -9,6 +9,14 @@ export interface SecurityStatus {
 
 const UNLOCK_KEY = 'master_admin_unlocked';
 
+/** The venue on screen. The tab remembers which venue the master PIN was entered for, so it unlocks that one only. */
+const venueOnScreen = () => {
+  try { return new URLSearchParams(window.location.search).get('business_id') || ''; } catch { return ''; }
+};
+const unlockedHere = () => {
+  try { const venue = venueOnScreen(); return Boolean(venue) && sessionStorage.getItem(UNLOCK_KEY) === venue; } catch { return false; }
+};
+
 /**
  * Locking must reach the server: the unlock itself is an HttpOnly cookie the server set at PIN entry, which the page
  * cannot remove. Without this call, "Lock now" hid the sections but every write behind the master PIN still went
@@ -21,9 +29,11 @@ const lockOnServer = () => {
 };
 
 export const markUnlocked = (on: boolean) => {
-  if (on) { sessionStorage.setItem(UNLOCK_KEY, 'true'); return; }
-  sessionStorage.removeItem(UNLOCK_KEY);
-  lockOnServer();
+  try {
+    if (on) { sessionStorage.setItem(UNLOCK_KEY, venueOnScreen()); return; }
+    sessionStorage.removeItem(UNLOCK_KEY);
+  } catch { /* storage unavailable: the sections simply stay locked */ }
+  if (!on) lockOnServer();
 };
 
 /**
@@ -43,7 +53,7 @@ export function useSecurityStatus() {
   }, []);
 
   useEffect(() => {
-    const readSession = () => setIsMasterUnlocked(sessionStorage.getItem(UNLOCK_KEY) === 'true');
+    const readSession = () => setIsMasterUnlocked(unlockedHere());
     readSession();
     void fetchStatus();
     const onLock = () => { markUnlocked(false); readSession(); void fetchStatus(); };

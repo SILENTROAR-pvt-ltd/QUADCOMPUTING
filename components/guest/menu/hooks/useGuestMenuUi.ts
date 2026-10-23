@@ -4,10 +4,13 @@ import { useState } from 'react';
 import type { MenuItem } from '@/components/guest/menu/types';
 import type { CustomizableItem } from '@/components/guest/menu/CustomizationDrawer';
 import { showGuestToast } from '@/components/guest/menu/toast-store';
+import type { DietFilter } from '@/lib/guest/diet-filter';
 
 export function useGuestMenuUi() {
   const [selectedCategory, setSelectedCategory] = useState<string>('Dining');
   const [searchQuery, setSearchQuery] = useState('');
+  // The guest's diet filter (Veg, Vegan, Egg, Non-veg); 'all' shows every dish.
+  const [dietFilter, setDietFilter] = useState<DietFilter>('all');
   // 'live_order' = the Bill tab; 'me' = profile, wallet & history.
   const [activeTab, setActiveTab] = useState<'menu' | 'live_order' | 'me'>('menu');
   const [customizingItem, setCustomizingItem] = useState<CustomizableItem | null>(null);
@@ -29,7 +32,7 @@ export function useGuestMenuUi() {
   };
 
   return {
-    selectedCategory, setSelectedCategory, searchQuery, setSearchQuery,
+    selectedCategory, setSelectedCategory, searchQuery, setSearchQuery, dietFilter, setDietFilter,
     activeTab, setActiveTab, showToast,
     customizingItem, setCustomizingItem, isCustomizationOpen, setIsCustomizationOpen,
     showCartReview, setShowCartReview, orderCookingNotes, setOrderCookingNotes,

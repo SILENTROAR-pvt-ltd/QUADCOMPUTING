@@ -96,6 +96,7 @@ export async function updateAccommodationCategory(
     .from('room_categories')
     .update(catUpdatePayload)
     .eq('id', id)
+    .eq('business_id', business.id)
     .select()
     .single();
   if (catUpErr) throw new Error(catUpErr.message);
@@ -132,7 +133,8 @@ export async function updateAccommodationCategory(
           addons: catUpdatePayload.addons || existingCat.addons || [],
         },
       })
-      .eq('id', targetCatalogItemId);
+      .eq('id', targetCatalogItemId)
+      .eq('business_id', business.id);
   }
 
   const { data: currentRooms } = await supabase

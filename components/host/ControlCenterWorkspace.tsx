@@ -20,6 +20,7 @@ import { HostAlertSound } from './control-center/HostAlertSound';
 import { useVenueTabGuard } from './control-center/useVenueTabGuard';
 import { useCopilotHost } from './vibey/useCopilotHost';
 import { MasterPinNotice } from './control-center/MasterPinNotice';
+import { WelcomeTour } from './tour/WelcomeTour';
 
 interface ControlCenterWorkspaceProps {
   /** Resolved server-side from the authenticated host's session and the
@@ -116,6 +117,9 @@ export default function ControlCenterWorkspace({
       {/* On every tab: the bell for new orders and guest calls. */}
       <HostAlertSound alerts={staffAlerts.alerts} freshIds={staffAlerts.freshIds} kotArrivals={kotArrivals} />
       {copilot.drawer}
+      {/* First visit after sign-up (or "Take the tour"): each step opens its section, never one behind the master PIN. */}
+      <WelcomeTour venueId={venueId} venueName={venueName}
+        onShowTab={(tab) => { if (!isTabProtected(tab) || isMasterUnlocked) { setMobileDrawerOpen(false); switchTab(tab); } }} />
     </div>
   );
 }
