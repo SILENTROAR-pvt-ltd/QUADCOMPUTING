@@ -18,6 +18,7 @@ export function toDishes(items: any[]): MenuDish[] {
       category: i.category ? String(i.category) : undefined,
       item_type: i.item_type ? String(i.item_type) : undefined,
       description: i.description ? String(i.description).slice(0, 400) : undefined,
+      dietary: typeof i.dietary === 'string' ? i.dietary : null,
     }));
 }
 

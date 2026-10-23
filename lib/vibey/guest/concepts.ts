@@ -67,6 +67,8 @@ export function matchBrowse(topic: string, menu: MenuDish[]): BrowseMatch {
   STOP_CONCEPTS.forEach((c) => wanted.delete(c));
   const coldFirst = wanted.has('cold');
   wanted.delete('cold');
+  // "kuch thanda" on its own asks for something cold to drink.
+  if (coldFirst && !wanted.size) wanted.add('drink');
   if (!wanted.size) return { dishes: [], concepts: [], coldFirst };
 
   const scored = menu.map((dish) => {

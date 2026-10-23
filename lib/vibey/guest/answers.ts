@@ -7,6 +7,7 @@ import { dishTokens } from './text';
 import { dietOf, dietRequest, dishesForDiet, isDietWord } from './diet';
 import { CONCEPT_LABEL } from './lexicon';
 import { matchBrowse, venueCategories } from './concepts';
+import { facetsOf } from './facets';
 
 export interface Answer { text: string; cards: string[]; chips?: string[]; staff?: 'dietary' | 'other' }
 
@@ -99,10 +100,23 @@ export function dietary(text: string, menu: MenuDish[]): Answer {
     text: 'I don’t want to guess about ingredients, allergies or spice levels. The staff can tell you for sure. Shall I call someone to your table?',
     cards: [], staff: 'dietary',
   };
-  if (/\ballerg|spic|jain|vegan|gluten|lactose|dairy|nut/i.test(text) || !ASKS_VEG.test(text)) return handoff;
-  const dishWords = dishTokens(text).filter((w) => !isDietWord(w) && !['is', 'it', 'kya', 'hai', 'does', 'have', 'contain'].includes(w)).join(' ');
+  const strict = /\ballerg|spic|jain|gluten|lactose|dairy|nut/i.test(text);
+  const vegan = /\bvegan\b/i.test(text);
+  if (strict || (!vegan && !ASKS_VEG.test(text))) return handoff;
+  const dishWords = dishTokens(text).filter((w) => !isDietWord(w) && !['is', 'it', 'kya', 'hai', 'does', 'have', 'contain', 'vegan'].includes(w)).join(' ');
   const r = dishWords ? resolveMention(dishWords, menu) : null;
   if (r?.status !== 'ok') return handoff;
+  // The venue said what the dish is: Vibey repeats that, and says who said it.
+  const saved = r.dish.dietary;
+  if (saved === 'veg' || saved === 'vegan' || saved === 'egg' || saved === 'non_veg') {
+    const said = facetsOf(r.dish).diet;
+    const card = { cards: [r.dish.id], chips: [`Add ${r.dish.name}`.slice(0, 48)] };
+    if (vegan) return said === 'vegan' ? { text: `Yes, ${r.dish.name} is marked vegan by the venue.`, ...card } : { ...handoff, text: `${r.dish.name} isn’t marked vegan (the venue lists it as ${said === 'veg' ? 'vegetarian' : said === 'egg' ? 'containing egg' : 'non-vegetarian'}). The staff can tell you about dairy and other ingredients. Shall I call someone?`, cards: [r.dish.id] };
+    if (said === 'veg' || said === 'vegan') return { text: `Yes, ${r.dish.name} is vegetarian (marked by the venue). For allergies or Jain food, please check with the staff.`, ...card };
+    if (said === 'egg') return { text: `${r.dish.name} contains egg, so it isn’t vegetarian.`, cards: [r.dish.id] };
+    return { text: `No, ${r.dish.name} is non-vegetarian.`, cards: [r.dish.id] };
+  }
+  if (vegan) return handoff;
   const fact = dietOf(r.dish);
   if (fact.diet === 'not_mentioned') return { ...handoff, text: `The menu doesn’t mention meat, fish or egg for ${r.dish.name}, but I can’t promise it’s strictly veg. The staff can confirm. Shall I call someone?`, cards: [r.dish.id] };
   return { text: `${r.dish.name} is not veg: the menu mentions ${fact.evidence} for it.`, cards: [r.dish.id] };

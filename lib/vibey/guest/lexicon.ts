@@ -53,7 +53,8 @@ const BASE_LEXICON: Record<string, string[]> = {
     'peda', 'kaju katli', 'barfee', 'nutella', 'chocolate waffle', 'dessert shots', 'gelato', 'kheer rice',
   ],
   drink: [
-    'drink', 'drinks', 'beverage', 'beverages', 'peena', 'peene', 'piyenge', 'pina', 'sip', 'refreshment', 'juice', 'juices',
+    'drink', 'drinks', 'beverage', 'beverages', 'peena', 'peene', 'piyenge', 'pina', 'pila', 'pilao', 'pila do', 'pilado', 'pilaiye',
+    'sip', 'refreshment', 'juice', 'juices',
     'shake', 'shakes', 'milkshake', 'milk shake', 'lassi', 'soda', 'lemonade', 'mocktail', 'mocktails', 'cooler', 'smoothie',
     'frappe', 'chaas', 'chhaas', 'buttermilk', 'nimbu pani', 'sharbat', 'sherbet', 'aam panna', 'cola', 'coke', 'sprite', 'water',
     'mineral water', 'tea', 'chai', 'coffee', 'hot chocolate', 'cocoa', 'green tea', 'lemon tea', 'hot milk', 'milk', 'doodh',

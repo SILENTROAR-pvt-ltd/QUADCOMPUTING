@@ -39,7 +39,14 @@ describe('Greeting', () => {
     expect(greetingFor(8)).toBe('Good morning');
     expect(greetingFor(13)).toBe('Good afternoon');
     expect(greetingFor(19)).toBe('Good evening');
-    expect(greetingFor(2)).toBe('Good evening');
+    // After midnight is morning: a guest ordering at 2 am is greeted "Good morning".
+    expect(greetingFor(0)).toBe('Good morning');
+    expect(greetingFor(2)).toBe('Good morning');
+    expect(greetingFor(11)).toBe('Good morning');
+    expect(greetingFor(12)).toBe('Good afternoon');
+    expect(greetingFor(16)).toBe('Good afternoon');
+    expect(greetingFor(17)).toBe('Good evening');
+    expect(greetingFor(23)).toBe('Good evening');
   });
 
   it('uses a real name, never "Guest", and shortens a long one', () => {

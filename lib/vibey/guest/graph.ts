@@ -1,12 +1,18 @@
 // The guest agent as a LangGraph state graph: retrieve -> fastpath -> (understand, only when needed) -> respond.
-// The route has already checked the venue, table, flags and rate limits. The model step is injected, so the graph runs
-// the same in tests (with a fake model) and in production (with the real one), and degrades to rules when it fails.
+// The neural layer reads; the deterministic layer decides: the model only says what the guest means, in words, and the
+// rules, resolver and recommender turn that into dishes from this venue's menu. The route has already checked the venue,
+// table, flags and rate limits. The model step is injected, so the graph runs the same in tests (with a fake model) and in
+// production (with the real one), and degrades to rules when it fails.
 import { Annotation, END, START, StateGraph } from '@langchain/langgraph';
 import { fastParse, SAME_AS_LAST } from './fastpath';
+import { dialogueParse } from './dialogue';
 import { resolveMention } from './resolve';
 import { candidatesFor, rankDishes, type MenuDish } from './retrieve';
 import { buildPrompt, groundUnderstood, understoodSchema, type Turn } from './understand';
 import { respond } from './respond';
+import { replyLang } from './language';
+import { localiseReply, type Translate } from './localise';
+import type { VenueEvent } from './turn-replies';
 import type { GuestRequest, Understood, VibeyGuestReply } from './schema';
 import type { LlmUsage } from '../core/llm';
 
@@ -15,6 +21,10 @@ export interface GuestGraphDeps {
   understand: (prompt: { system: string; user: string }, schema: typeof understoodSchema) => Promise<{ data: Understood; usage: LlmUsage }>;
   /** Spends one call from the venue's daily budget; false when the model must not be used. */
   reserveModel: (businessId: string) => Promise<boolean>;
+  /** The venue's events, read only when a guest asks about them. */
+  loadEvents?: (businessId: string) => Promise<VenueEvent[]>;
+  /** Translates a finished reply for a guest who writes in another language (one model call, same daily budget). */
+  translate?: Translate;
 }
 
 const State = Annotation.Root({
@@ -22,6 +32,8 @@ const State = Annotation.Root({
   req: Annotation<GuestRequest>,
   menu: Annotation<MenuDish[]>,
   featured: Annotation<string[]>,
+  popularity: Annotation<Record<string, number> | undefined>,
+  hour: Annotation<number | undefined>,
   started: Annotation<number>,
   candidates: Annotation<MenuDish[]>,
   understood: Annotation<Understood | null>,
@@ -31,6 +43,8 @@ const State = Annotation.Root({
   errorCode: Annotation<string | null>,
   unread: Annotation<boolean>,
   reply: Annotation<VibeyGuestReply | null>,
+  /** The language to answer in (ISO 639-1). */
+  lang: Annotation<string>,
 });
 type S = typeof State.State;
 
@@ -62,7 +76,8 @@ export function buildGuestGraph(deps: GuestGraphDeps) {
   return new StateGraph(State)
     .addNode('retrieve', (s: S) => ({ candidates: candidatesFor(s.req.text, s.menu, 20) }))
     .addNode('fastpath', (s: S) => {
-      const understood = fastParse(s.req.text, s.menu);
+      // The conversation rules first (totals, pairings, "make it half", "the second one"), then the order parser.
+      const understood = dialogueParse(s.req.text, s.menu, s.req.tray, s.req.context) ?? fastParse(s.req.text, s.menu);
       return { understood, needsModel: needsModel(understood, s.menu), path: 'fastpath' as const };
     })
     .addNode('understand', async (s: S) => {
@@ -78,14 +93,29 @@ export function buildGuestGraph(deps: GuestGraphDeps) {
         return { ...rulesOnly(s.understood, s.menu), path: 'fallback' as const, errorCode: String(err?.code || 'model_error') };
       }
     })
-    .addNode('respond', (s: S) => ({
-      reply: respond({ understood: s.understood, req: s.req, menu: s.menu, featured: s.featured, path: s.path, ms: Date.now() - s.started, unread: s.unread }),
-    }))
+    .addNode('respond', async (s: S) => {
+      const events = s.understood?.intent === 'events' && deps.loadEvents
+        ? await deps.loadEvents(s.businessId).catch(() => null)
+        : null;
+      return {
+        reply: respond({
+          understood: s.understood, req: s.req, menu: s.menu, featured: s.featured, path: s.path, ms: Date.now() - s.started,
+          unread: s.unread, popularity: s.popularity, hour: s.hour, events, lang: s.lang,
+        }),
+      };
+    })
+    .addNode('translate', async (s: S) => {
+      if (!deps.translate || !s.reply || !(await deps.reserveModel(s.businessId).catch(() => false))) return {};
+      const out = await localiseReply(s.reply, s.lang, s.menu, deps.translate);
+      return { reply: out.reply, usage: addUsage(s.usage, out.usage) };
+    })
     .addEdge(START, 'retrieve')
     .addEdge('retrieve', 'fastpath')
     .addConditionalEdges('fastpath', (s: S) => (s.needsModel ? 'understand' : 'respond'), ['understand', 'respond'])
     .addEdge('understand', 'respond')
-    .addEdge('respond', END)
+    // Only a guest writing in another language waits for a translation.
+    .addConditionalEdges('respond', (s: S) => (s.lang !== 'en' && deps.translate ? 'translate' : END), ['translate', END])
+    .addEdge('translate', END)
     .compile();
 }
 
@@ -93,10 +123,17 @@ export type GuestGraph = ReturnType<typeof buildGuestGraph>;
 
 export interface GuestTurnResult { reply: VibeyGuestReply; usage: LlmUsage | null; errorCode: string | null }
 
-type TurnInput = { businessId: string; req: GuestRequest; menu: MenuDish[]; featured: string[] };
+type TurnInput = { businessId: string; req: GuestRequest; menu: MenuDish[]; featured: string[]; popularity?: Record<string, number>; hour?: number };
 const initial = (input: TurnInput) => ({
   ...input, started: Date.now(), candidates: [], understood: null, needsModel: false, path: 'fastpath' as const, usage: null, errorCode: null, unread: false, reply: null,
+  lang: replyLang(input.req),
 });
+
+/** Two model calls in one turn (reading, then translating) are logged as one. */
+function addUsage(a: LlmUsage | null, b: LlmUsage | null): LlmUsage | null {
+  if (!a || !b) return a ?? b;
+  return { model: a.model, ms: a.ms + b.ms, tokensIn: a.tokensIn + b.tokensIn, tokensOut: a.tokensOut + b.tokensOut };
+}
 
 /** Runs one guest message through the graph. */
 export async function runGuestTurn(graph: GuestGraph, input: TurnInput): Promise<GuestTurnResult> {
@@ -105,7 +142,7 @@ export async function runGuestTurn(graph: GuestGraph, input: TurnInput): Promise
 }
 
 /** The graph's steps, as the guest sees them while Vibey works. */
-export type GuestStep = 'retrieve' | 'fastpath' | 'understand' | 'respond';
+export type GuestStep = 'retrieve' | 'fastpath' | 'understand' | 'respond' | 'translate';
 
 /** Same as runGuestTurn, reporting each step the moment it finishes (for the live progress in the chat). */
 export async function runGuestTurnStream(graph: GuestGraph, input: TurnInput, onStep: (step: GuestStep) => void): Promise<GuestTurnResult> {

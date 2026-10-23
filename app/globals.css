@@ -210,7 +210,7 @@ body {
 }
 
 .shimmer-text {
-  background: linear-gradient(90deg, #18181b 0%, #18181b 40%, #a1a1aa 50%, #18181b 60%, #18181b 100%);
+  background: linear-gradient(90deg, #10231a 0%, #10231a 40%, #c9a96e 50%, #10231a 60%, #10231a 100%);
   background-size: 200% 100%;
   -webkit-background-clip: text;
   background-clip: text;
@@ -219,7 +219,7 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .shimmer-text { animation: none; color: #18181b; background: none; }
+  .shimmer-text { animation: none; color: #10231a; background: none; }
 }
 /* ---------- Vibey chat: mascot motion and ambient glow (transform/opacity only, so it stays smooth on phones) ---------- */
 @keyframes vibey-bob {
@@ -236,30 +236,26 @@ body {
   0% { transform: scale(0.9); opacity: 0.7; }
   100% { transform: scale(1.55); opacity: 0; }
 }
-@keyframes vibey-drift {
-  0% { transform: translate3d(0, 0, 0) scale(1); }
-  50% { transform: translate3d(-4%, 3%, 0) scale(1.06); }
-  100% { transform: translate3d(3%, -2%, 0) scale(1.02); }
-}
 @keyframes vibey-progress {
   0% { transform: translateX(-100%); }
   100% { transform: translateX(250%); }
 }
 
-.vibey-bob { animation: vibey-bob 2.4s ease-in-out infinite; transform-origin: 50% 85%; }
-.vibey-groove { animation: vibey-groove 0.9s ease-in-out infinite; transform-origin: 50% 85%; }
-.vibey-ring { animation: vibey-ring 1.6s ease-out infinite; }
+/* The mascot moves on its own small layer, so the page around it is never repainted for it. */
+.vibey-bob { animation: vibey-bob 2.4s ease-in-out infinite; transform-origin: 50% 85%; will-change: transform; backface-visibility: hidden; }
+.vibey-groove { animation: vibey-groove 0.9s ease-in-out infinite; transform-origin: 50% 85%; will-change: transform; backface-visibility: hidden; }
+.vibey-ring { animation: vibey-ring 1.6s ease-out infinite; will-change: transform, opacity; }
 
+/* The sheet's warm light. Still on purpose: a moving layer this size (the whole screen when the chat is full screen)
+   made the mascot stutter on phones. */
 .vibey-glow {
   position: absolute;
-  inset: -25%;
+  inset: 0;
   background:
-    radial-gradient(42% 34% at 86% 10%, rgba(253, 186, 116, 0.42), transparent 70%),
-    radial-gradient(30% 26% at 14% 16%, rgba(251, 113, 133, 0.18), transparent 70%),
-    radial-gradient(44% 36% at 18% 88%, rgba(196, 181, 253, 0.34), transparent 70%),
-    radial-gradient(40% 34% at 84% 84%, rgba(147, 197, 253, 0.3), transparent 70%);
-  animation: vibey-drift 16s ease-in-out infinite alternate;
-  will-change: transform;
+    radial-gradient(52% 30% at 88% 4%, rgba(217, 193, 147, 0.34), transparent 70%),
+    radial-gradient(36% 24% at 8% 14%, rgba(230, 207, 156, 0.2), transparent 70%),
+    radial-gradient(50% 32% at 12% 96%, rgba(29, 70, 50, 0.08), transparent 70%),
+    radial-gradient(46% 30% at 90% 92%, rgba(176, 141, 87, 0.14), transparent 70%);
 }
 .vibey-glow-hot { opacity: 1; transition: opacity 0.4s ease; }
 .vibey-glow-calm { opacity: 0.75; transition: opacity 0.4s ease; }
@@ -269,17 +265,38 @@ body {
   position: absolute;
   inset: 0;
   width: 40%;
-  background: linear-gradient(90deg, transparent, rgba(244, 63, 94, 0.9), rgba(250, 204, 21, 0.9), transparent);
+  background: linear-gradient(90deg, transparent, rgba(176, 141, 87, 0.95), rgba(230, 207, 156, 0.95), transparent);
   animation: vibey-progress 1.1s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .vibey-bob, .vibey-groove, .vibey-ring, .vibey-glow, .vibey-progress::after { animation: none; }
+  .vibey-bob, .vibey-groove, .vibey-ring, .vibey-progress::after { animation: none; }
 }
-/* Vibey welcome: the speech bubbles around the mascot drift gently, each on its own beat. */
+/* While a guest sheet is open, the page behind it holds still: its Ken Burns photos, marquees and pulses keep the phone
+   compositing under the chat for nothing (the whole screen, when the chat is full screen). They resume on close. */
+html[data-sheet-open] body *:not([role="dialog"]):not([role="dialog"] *),
+html[data-sheet-open] body *:not([role="dialog"]):not([role="dialog"] *)::before,
+html[data-sheet-open] body *:not([role="dialog"]):not([role="dialog"] *)::after { animation-play-state: paused !important; }
+
+/* Vibey's reply streams in a few words at a time, behind a blinking gold caret. */
+@keyframes vibey-caret {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.15; }
+}
+.vibey-caret {
+  display: inline-block; width: 2px; height: 1.05em; margin-left: 2px; vertical-align: -0.16em;
+  border-radius: 2px; background: #b08d57; animation: vibey-caret 0.9s ease-in-out infinite;
+}
+/* The welcome: a hairline gold ring breathing round the mascot, and the ask bubbles drifting, each on its own beat.
+   Transform and opacity only, each on its own small layer, so a full-screen chat stays smooth on a phone. */
+@keyframes vibey-halo {
+  0%, 100% { transform: scale(1); opacity: 0.9; }
+  50% { transform: scale(1.08); opacity: 0.4; }
+}
 @keyframes vibey-float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-5px); }
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(0, -5px, 0); }
 }
-.vibey-float { animation: vibey-float 3.2s ease-in-out infinite; }
-@media (prefers-reduced-motion: reduce) { .vibey-float { animation: none; } }
+.vibey-halo { animation: vibey-halo 4.8s ease-in-out infinite; will-change: transform, opacity; }
+.vibey-float { animation: vibey-float 3.6s ease-in-out infinite; will-change: transform; backface-visibility: hidden; }
+@media (prefers-reduced-motion: reduce) { .vibey-caret, .vibey-halo, .vibey-float { animation: none; } }

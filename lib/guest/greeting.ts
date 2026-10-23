@@ -1,9 +1,9 @@
 // Small pure helpers for how the menu greets a guest. Kept apart from the components so they are tested directly.
 
-/** "Good morning" from five until noon, "Good afternoon" until five, "Good evening" after (and late at night). */
+/** "Good morning" from midnight until noon, "Good afternoon" from noon until five, "Good evening" from five until midnight. */
 export function greetingFor(hour: number): string {
-  if (hour >= 5 && hour < 12) return 'Good morning';
-  if (hour >= 12 && hour < 17) return 'Good afternoon';
+  if (hour < 12) return 'Good morning';
+  if (hour < 17) return 'Good afternoon';
   return 'Good evening';
 }
 

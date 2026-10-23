@@ -1,47 +1,35 @@
 'use client';
 
-import React from 'react';
-import { motion, useReducedMotion } from 'framer-motion';
-import { Check } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { VibeyAvatar } from './VibeyAvatar';
 
-/** Vibey's real steps, in the words a guest sees while it works. "understand" only appears when the model is asked. */
-export const STEP_LABELS: Record<string, string> = {
-  read: 'Reading your message',
-  retrieve: 'Looking through the menu',
-  fastpath: 'Matching dishes',
-  understand: 'Understanding your request',
-  respond: 'Preparing your reply',
-};
+/** What Vibey says while it works: short and warm, one line at a time, never a list of its inner steps. */
+const LINES = ['One moment…', 'Checking the menu…', 'Finding the good stuff…', 'Almost there…'];
 
-/** The live progress, Perplexity-style, next to the grooving mascot: finished steps ticked, the current one shimmering. */
+/**
+ * The wait, next to the grooving mascot: a single polite line that changes every second or so (shimmering in gold), or
+ * "Replying in your language…" while a reply is being translated.
+ */
 export function VibeyThinking({ steps }: { steps: string[] }) {
   const calm = useReducedMotion();
-  const shown = steps.length ? steps : ['read'];
+  const [i, setI] = useState(0);
+  useEffect(() => {
+    const id = window.setInterval(() => setI((n) => Math.min(n + 1, LINES.length - 1)), 1100);
+    return () => window.clearInterval(id);
+  }, []);
+  const line = steps.includes('translate') ? 'Replying in your language…' : LINES[i];
   return (
-    <div className="flex w-full gap-2">
-      <span className="mt-0.5"><VibeyAvatar size={28} mood="thinking" /></span>
-      <div role="status" aria-label="Vibey is working on it"
-        className="mr-auto min-w-0 rounded-[20px] rounded-tl-md bg-white/95 px-3.5 py-3 shadow-[0_10px_24px_-18px_rgba(24,24,27,0.5)] ring-1 ring-black/[0.05]">
-        <ul className="space-y-1.5">
-          {shown.map((s, i) => {
-            const current = i === shown.length - 1;
-            return (
-              <motion.li key={s} initial={calm ? false : { opacity: 0, x: -4 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.16 }}
-                className="flex items-center gap-2 text-[13px]">
-                {current ? (
-                  <span aria-hidden className="relative grid h-4 w-4 place-items-center">
-                    <span className="absolute h-4 w-4 animate-ping rounded-full bg-orange-300/70 motion-reduce:hidden" />
-                    <span className="h-2 w-2 rounded-full bg-gradient-to-br from-rose-500 to-amber-400" />
-                  </span>
-                ) : (
-                  <Check aria-hidden className="h-4 w-4 text-emerald-600" />
-                )}
-                <span className={current ? 'shimmer-text font-medium' : 'text-zinc-500'}>{STEP_LABELS[s] ?? s}{current ? '…' : ''}</span>
-              </motion.li>
-            );
-          })}
-        </ul>
+    <div className="flex w-full items-center gap-2.5">
+      <VibeyAvatar size={30} mood="thinking" />
+      <div role="status" aria-live="polite" aria-label="Vibey is working on it"
+        className="mr-auto rounded-[20px] rounded-tl-md bg-[#fffdf8] px-4 py-2.5 shadow-[0_14px_30px_-24px_rgba(16,35,26,0.55)] ring-1 ring-[#e8dfcc]">
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.span key={line} className="shimmer-text block text-[13.5px] font-medium"
+            initial={calm ? false : { opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={calm ? undefined : { opacity: 0, y: -4 }} transition={{ duration: 0.2 }}>
+            {line}
+          </motion.span>
+        </AnimatePresence>
       </div>
     </div>
   );

@@ -33,6 +33,8 @@ export function VibeyScreen() {
   const [messages, setMessages] = useState<VibeyMsg[]>([]);
   const [sending, setSending] = useState(false);
   const [steps, setSteps] = useState<string[]>([]);
+  const [typingId, setTypingId] = useState<string | null>(null);
+  const doneTyping = useCallback(() => setTypingId(null), []);
 
   useEffect(() => { useCartStore.setState({ items: [] }); }, []);
 
@@ -45,15 +47,16 @@ export function VibeyScreen() {
       const applied = applyActions(ANSWER.actions, MENU);
       setSending(false);
       setSteps([]);
-      setMessages((ms) => [...ms, { id: `v${ms.length}`, role: 'vibey', text: ANSWER.reply, reply: ANSWER,
-        applied: { lines: applied.lines, before: applied.before, after: applied.after } }]);
+      const id = `v${Date.now()}`;
+      setTypingId(id);
+      setMessages((ms) => [...ms, { id, role: 'vibey', text: ANSWER.reply, reply: ANSWER, applied: { lines: applied.lines, before: applied.before, after: applied.after } }]);
     }, STEP_MS * STEPS.length);
   }, []);
 
   const chat = useMemo(() => ({
-    status: { enabled: true, simple: false }, messages, sending, steps, send,
+    status: { enabled: true, simple: false }, messages, sending, steps, typingId, doneTyping, send,
     undo: () => undefined, callStaff: async () => undefined,
-  }), [messages, sending, steps, send]);
+  }), [messages, sending, steps, typingId, doneTyping, send]);
 
   const quantityOf = (id: string) => items.filter((i) => i.item_id === id).reduce((a, i) => a + i.quantity, 0);
   const increment = (item: MenuItem) => useCartStore.getState().addToCart({

@@ -27,7 +27,15 @@ export function BottomSheet({ labelledBy, onClose, locked = false, full = false,
     window.addEventListener("keydown", onKey);
     const previous = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    return () => { window.removeEventListener("keydown", onKey); document.body.style.overflow = previous; };
+    // The page behind holds its animations still while a sheet is open (see globals.css); counted, for stacked sheets.
+    const root = document.documentElement;
+    root.dataset.sheetOpen = String(Number(root.dataset.sheetOpen || 0) + 1);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = previous;
+      const left = Number(root.dataset.sheetOpen || 1) - 1;
+      if (left > 0) root.dataset.sheetOpen = String(left); else delete root.dataset.sheetOpen;
+    };
   }, [onClose, locked]);
 
   return (

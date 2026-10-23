@@ -4,14 +4,14 @@
 // with options is never added blind: it is handed back so the customisation drawer can open. Nothing here orders.
 import { useCartStore, type CartItem } from '@/lib/store/cart.store';
 import type { MenuItem } from '@/components/guest/menu/types';
-import type { GuestAction } from '@/lib/vibey/guest/schema';
+import type { GuestAction, StaffReason } from '@/lib/vibey/guest/schema';
 
 export interface Applied {
   /** What changed, one line per dish, for the receipt. */
   lines: string[];
   needsOptions: MenuItem[];
   openTray: boolean;
-  staff: 'help' | 'dietary' | 'other' | null;
+  staff: StaffReason | null;
   /** The tray before and after, for Undo. */
   before: CartItem[];
   after: string;

@@ -27,7 +27,7 @@ export function VibeyDishRail({ items, quantityOf, onIncrement, onDecrement }: V
           </div>
         ))}
       </div>
-      {items.length > 2 && <p className="mt-0.5 text-[11px] text-zinc-400">{items.length} dishes · swipe for more</p>}
+      {items.length > 2 && <p className="mt-0.5 text-[10.5px] font-medium uppercase tracking-[0.18em] text-[#a8987a]">{items.length} dishes · swipe for more</p>}
     </div>
   );
 }

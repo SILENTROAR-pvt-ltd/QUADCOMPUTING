@@ -9,6 +9,8 @@ import { recordTurn } from '@/lib/vibey/core/telemetry';
 import { buildGuestGraph, runGuestTurn, runGuestTurnStream, type GuestTurnResult } from '@/lib/vibey/guest/graph';
 import { guestReplySchema, guestRequestSchema } from '@/lib/vibey/guest/schema';
 import { loadGuestVenue } from '@/lib/vibey/guest/venue';
+import { loadPopularity, venueHour } from '@/lib/vibey/guest/popularity';
+import { listPublicEvents } from '@/lib/services/live-events/events.service';
 
 // Node, not Edge: the service-role client, node:crypto and LangGraph's async context need it.
 export const runtime = 'nodejs';
@@ -20,6 +22,9 @@ const NO_STORE = { 'Cache-Control': 'no-store' };
 const graph = buildGuestGraph({
   understand: (prompt, schema) => chatJson({ ...prompt, schema, timeoutMs: 3500, maxTokens: 300 }),
   reserveModel: async (businessId) => vibeyModelConfigured() && spendModelBudget(businessId, 'guest'),
+  loadEvents: (businessId) => listPublicEvents(adminDb(), businessId),
+  // A guest writing in another language gets the reply translated (dish names and prices are kept out of the model's reach).
+  translate: (prompt, schema) => chatJson({ ...prompt, schema, timeoutMs: 4000, maxTokens: 600 }),
 });
 
 /** Runs work after the response is sent; outside a request (tests) it simply runs. */
@@ -59,7 +64,11 @@ export const POST = withApiErrorBoundary(async function POST(request: Request) {
   if (!venue) return NextResponse.json({ success: false, error: 'Venue not found.' }, { status: 404 });
   if (!vibeyFlags(venue.business).guest) return NextResponse.json({ success: false, error: 'Vibey is not available at this venue.' }, { status: 403 });
 
-  const input = { businessId, menu: venue.dishes, featured: venue.featured, req: { ...req, table_number: tableNumber ?? req.table_number } };
+  const popularity = await loadPopularity(db, businessId);
+  const input = {
+    businessId, menu: venue.dishes, featured: venue.featured, popularity, hour: venueHour(),
+    req: { ...req, table_number: tableNumber ?? req.table_number },
+  };
   const finish = (result: GuestTurnResult) => {
     const safe = guestReplySchema.parse(result.reply);
     later(() => recordTurn(db, {

@@ -9,6 +9,8 @@ export interface MenuDish {
   category?: string;
   item_type?: string;
   description?: string;
+  /** The diet the venue saved for the dish ('veg' | 'vegan' | 'egg' | 'non_veg'), when it saved one. */
+  dietary?: string | null;
 }
 
 export interface ScoredDish {

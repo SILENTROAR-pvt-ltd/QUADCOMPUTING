@@ -2,13 +2,19 @@
 
 import React from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
+import { LUXE_SERIF } from '@/components/guest/luxe/luxe-theme';
+import { greetingFor } from '@/lib/guest/greeting';
 import { VibeyAvatar } from './VibeyAvatar';
 
-/** Vibey's opening lines, floating around the mascot. Each one is a tap-to-ask suggestion. */
-const BUBBLES = [
-  { text: 'Kuch thanda chalega?', ask: 'Kuch thanda peena hai', place: 'left-0 top-0', delay: '0s' },
-  { text: 'Chef’s top picks?', ask: "What's popular?", place: 'right-0 top-[8px]', delay: '1.1s' },
-  { text: 'Something sweet?', ask: 'Something sweet', place: 'left-[6%] bottom-0', delay: '2.2s' },
+/**
+ * The first things to ask, floating around the mascot. "Dinner for two" is safe here because Vibey asks the table's
+ * tastes first (veg or non-veg, then the craving) before it suggests a spread.
+ */
+const OPTIONS = [
+  { text: 'Dinner for two?', ask: 'Dinner for 2', place: 'left-0 top-[14px]', delay: '0s' },
+  { text: 'Chef’s top picks?', ask: "What's popular?", place: 'right-0 top-[40px]', delay: '1.2s' },
+  { text: 'Something sweet?', ask: 'Something sweet', place: 'left-[4%] bottom-[44px]', delay: '2.1s' },
+  { text: 'Something spicy?', ask: 'Something spicy', place: 'right-[2%] bottom-[6px]', delay: '0.6s' },
 ];
 
 interface VibeyWelcomeProps {
@@ -16,31 +22,35 @@ interface VibeyWelcomeProps {
   onPick: (text: string) => void;
 }
 
-/** The empty chat: a two-tone greeting, the grooving mascot and its speech bubbles (the guest taps one to start). */
+/** The empty chat: the mascot in the middle with tap-to-ask bubbles drifting round it, then a short greeting. */
 export function VibeyWelcome({ venueName, onPick }: VibeyWelcomeProps) {
   const calm = useReducedMotion();
   return (
-    <motion.div initial={calm ? false : { opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, ease: 'easeOut' }}
-      className="flex flex-1 flex-col items-center justify-center px-1 py-3 text-center">
-      <h3 className="text-[25px] font-semibold leading-[1.15] tracking-tight text-zinc-950 sm:text-[32px]">
-        <span className="bg-gradient-to-r from-zinc-400 via-zinc-500 to-rose-400 bg-clip-text text-transparent">Hi, I’m Vibey.</span>
-        <br />What’s your vibe today?
-      </h3>
-      <p className="mt-2 max-w-[300px] text-[13px] leading-relaxed text-zinc-500">
-        Order in English or Hinglish. I’ll set up your tray at {venueName}, and you place the order.
-      </p>
-
-      <div className="relative mt-4 h-[196px] w-full max-w-[360px]">
-        <span aria-hidden className="absolute left-1/2 top-1/2 h-36 w-36 -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-br from-amber-200/60 via-rose-200/50 to-violet-200/60 blur-2xl" />
-        <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"><VibeyAvatar size={88} mood="idle" /></span>
-        {BUBBLES.map((b) => (
-          <button key={b.text} type="button" onClick={() => onPick(b.ask)} style={{ animationDelay: b.delay }}
-            className={`vibey-float absolute ${b.place} flex max-w-[48%] cursor-pointer items-center gap-1.5 rounded-2xl bg-white px-3 py-1.5 text-left text-[12px] font-medium text-zinc-800 shadow-[0_10px_24px_-14px_rgba(24,24,27,0.5)] ring-1 ring-black/[0.06] transition-shadow hover:shadow-[0_12px_28px_-12px_rgba(244,63,94,0.45)]`}>
-            <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-full bg-gradient-to-br from-rose-400 to-amber-300" />
-            <span className="leading-snug">{b.text}</span>
-          </button>
-        ))}
+    <div className="no-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto px-1 text-center">
+      {/* Centred by auto margins, so a short screen scrolls the whole welcome instead of cutting its top off; the
+          bubbles' stage is never squeezed onto the mascot. */}
+      <div className="my-auto flex flex-col items-center py-4">
+        <div className="relative h-[270px] w-full max-w-[360px] shrink-0">
+          <span aria-hidden className="absolute left-1/2 top-1/2 h-[200px] w-[200px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,rgba(230,207,156,0.42)_0%,rgba(230,207,156,0.12)_45%,transparent_70%)]" />
+          <span aria-hidden className="absolute left-1/2 top-1/2 h-[148px] w-[148px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#d9c193]/60" />
+          <span aria-hidden className="vibey-halo absolute left-1/2 top-1/2 -ml-[62px] -mt-[62px] h-[124px] w-[124px] rounded-full border border-[#d9c193]/45" />
+          <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"><VibeyAvatar size={104} mood="idle" /></span>
+          {OPTIONS.map((o, i) => (
+            <motion.div key={o.text} className={`absolute ${o.place}`}
+              initial={calm ? false : { opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.3, delay: 0.15 + i * 0.08 }}>
+              <button type="button" onClick={() => onPick(o.ask)} style={{ animationDelay: o.delay }}
+                className="vibey-float flex cursor-pointer items-center gap-2 rounded-full border border-[#10231a]/[0.08] bg-white px-3.5 py-2 text-[13px] font-medium text-[#10231a] shadow-[0_12px_26px_-16px_rgba(16,35,26,0.45)] transition-colors hover:border-[#b08d57]/60">
+                <span aria-hidden className="h-2 w-2 shrink-0 rounded-full bg-gradient-to-br from-[#b08d57] to-[#e6cf9c]" />
+                {o.text}
+              </button>
+            </motion.div>
+          ))}
+        </div>
+        <h3 style={LUXE_SERIF} className="mt-4 text-[32px] font-semibold leading-none text-[#10231a]">{greetingFor(new Date().getHours())}</h3>
+        <p className="mt-2.5 max-w-[300px] text-[13.5px] leading-relaxed text-[#6f6a5c]">
+          I’m Vibey, your host at {venueName}. Ask me anything, in any language.
+        </p>
       </div>
-    </motion.div>
+    </div>
   );
 }

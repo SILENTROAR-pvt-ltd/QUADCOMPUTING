@@ -1,10 +1,10 @@
 'use client';
 
 import React from 'react';
-import { motion } from 'framer-motion';
-import { Minus, Plus } from 'lucide-react';
 import { DishImage } from '@/components/guest/menu/DishImage';
-import { press } from '@/components/guest/menu/motion';
+import { DishAddControl } from '@/components/guest/menu/DishAddControl';
+import { ItemVegMark } from '@/components/guest/menu/cards/VegMark';
+import { LUXE_SERIF } from '@/components/guest/luxe/luxe-theme';
 import { rupees } from '@/lib/guest/cashback';
 import type { MenuItem } from '@/components/guest/menu/types';
 
@@ -15,32 +15,23 @@ interface VibeyDishTileProps {
   onDecrement: (item: MenuItem) => void;
 }
 
-/** One dish in a swipeable row: photo, a two-line name, price, and the menu's own + / stepper. Every tile is the same size. */
+/**
+ * One dish in a swipeable row, dressed like the menu: a square photo with the menu's own forest + / − stepper on it, the
+ * diet mark, the name in the serif and the price in gold. Every tile is the same size.
+ */
 export function VibeyDishTile({ item, quantity, onIncrement, onDecrement }: VibeyDishTileProps) {
   return (
-    <div className="group flex h-full w-[150px] flex-col overflow-hidden rounded-2xl bg-white shadow-[0_10px_26px_-18px_rgba(24,24,27,0.55)] ring-1 ring-black/[0.06]">
-      <div className="relative aspect-[4/3] w-full overflow-hidden bg-zinc-100">
+    <div className="flex h-full w-[156px] flex-col overflow-hidden rounded-[20px] border border-[#e8dfcc] bg-[#fffdf8] shadow-[0_16px_32px_-26px_rgba(16,35,26,0.6)]">
+      <div className="relative aspect-square w-full overflow-hidden bg-[#efe7d6]">
         <DishImage src={item.image_url} name={item.name} />
+        <span className="absolute left-2 top-2"><ItemVegMark item={item} /></span>
+        <span className="absolute bottom-2 right-2">
+          <DishAddControl name={item.name} quantity={quantity} onIncrement={() => onIncrement(item)} onDecrement={() => onDecrement(item)} />
+        </span>
       </div>
-      <div className="flex flex-1 flex-col gap-2 p-2.5">
-        <p className="line-clamp-2 min-h-[34px] text-[13px] font-semibold leading-[17px] text-zinc-900">{item.name}</p>
-        <div className="mt-auto flex items-center justify-between gap-1">
-          <span className="text-[13px] font-medium tabular-nums text-zinc-600">{rupees(Number(item.price) || 0)}</span>
-          {quantity > 0 ? (
-            <div className="flex items-center rounded-full bg-zinc-950 text-white">
-              <motion.button type="button" {...press} onClick={() => onDecrement(item)} aria-label={`One less ${item.name}`}
-                className="grid h-8 w-8 cursor-pointer place-items-center rounded-full hover:bg-white/10"><Minus className="h-3.5 w-3.5" /></motion.button>
-              <span aria-live="polite" className="min-w-4 text-center text-[12px] font-semibold tabular-nums">{quantity}</span>
-              <motion.button type="button" {...press} onClick={() => onIncrement(item)} aria-label={`One more ${item.name}`}
-                className="grid h-8 w-8 cursor-pointer place-items-center rounded-full hover:bg-white/10"><Plus className="h-3.5 w-3.5" /></motion.button>
-            </div>
-          ) : (
-            <motion.button type="button" {...press} onClick={() => onIncrement(item)} aria-label={`Add ${item.name}`}
-              className="grid h-9 w-9 cursor-pointer place-items-center rounded-full bg-zinc-950 text-white shadow-[0_6px_14px_-6px_rgba(24,24,27,0.6)] hover:bg-zinc-800">
-              <Plus className="h-4 w-4" />
-            </motion.button>
-          )}
-        </div>
+      <div className="flex flex-1 flex-col gap-1 px-3 pb-3 pt-2.5">
+        <p style={LUXE_SERIF} className="line-clamp-2 min-h-[38px] text-[16px] font-semibold leading-[19px] text-[#10231a]">{item.name}</p>
+        <span className="mt-auto text-[13px] font-semibold tabular-nums text-[#8a6d3f]">{rupees(Number(item.price) || 0)}</span>
       </div>
     </div>
   );
