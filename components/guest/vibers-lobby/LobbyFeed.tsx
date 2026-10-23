@@ -8,6 +8,7 @@ import { LobbyPostCard } from './LobbyPostCard';
 import { POSTCARD_SERIF } from './MemoryPostcard';
 import { Print } from './LoungeHero';
 import { LOUNGE_MEDIA, LOUNGE_TINT } from './lounge-media';
+import { LuxeReveal } from '@/components/guest/luxe/LuxeReveal';
 
 type Result = { ok: boolean; error?: string };
 
@@ -33,7 +34,7 @@ interface LobbyFeedProps {
 
 function Empty({ filtered, venueName, canWrite, onWrite }: { filtered: boolean; venueName: string; canWrite: boolean; onWrite: () => void }) {
   return (
-    <div className="rounded-2xl border border-dashed border-[#d9cfb6] bg-[#fffdf8] px-6 py-10 text-center">
+    <div className="rounded-[24px] border border-dashed border-[#d9c193] bg-[#fbf9f4] px-6 py-10 text-center">
       {!filtered && (
         <div aria-hidden className="mx-auto mb-5 flex h-[112px] items-center justify-center">
           <Print src={LOUNGE_MEDIA.toast} tint={LOUNGE_TINT.toast} tilt={-7} className="w-[78px] -mr-2" />
@@ -45,7 +46,7 @@ function Empty({ filtered, venueName, canWrite, onWrite }: { filtered: boolean; 
         {filtered ? 'Try another filter or search.' : `Be the first to leave a memory at ${venueName || 'the venue'}.`}
       </p>
       {!filtered && canWrite && (
-        <button type="button" onClick={onWrite} className="mt-4 inline-flex h-10 items-center rounded-full bg-zinc-950 px-5 text-[13px] font-semibold text-white cursor-pointer">Write a postcard</button>
+        <button type="button" onClick={onWrite} className="mt-4 inline-flex h-10 items-center rounded-full bg-gradient-to-br from-[#0f2a1e] to-[#1d4632] px-5 text-[13px] font-semibold text-[#f5f1e8] ring-1 ring-[#d9c193]/30 cursor-pointer">Write a postcard</button>
       )}
     </div>
   );
@@ -77,17 +78,18 @@ export function LobbyFeed(props: LobbyFeedProps) {
     <div className="space-y-5">
       {error && <p role="alert" className="text-xs font-medium text-rose-600">{error}</p>}
       {posts.map((p) => (
-        <LobbyPostCard
-          key={p.id}
-          venueId={venueId}
-          venueName={venueName}
-          post={p}
-          canEngage={canEngage}
-          onRemove={props.onRemove}
-          onLike={props.onLike}
-          onRequestJoin={props.onRequestJoin}
-          onRepliesChanged={props.onRepliesChanged}
-        />
+        <LuxeReveal key={p.id}>
+          <LobbyPostCard
+            venueId={venueId}
+            venueName={venueName}
+            post={p}
+            canEngage={canEngage}
+            onRemove={props.onRemove}
+            onLike={props.onLike}
+            onRequestJoin={props.onRequestJoin}
+            onRepliesChanged={props.onRepliesChanged}
+          />
+        </LuxeReveal>
       ))}
       {hasMore && (
         <div className="pt-2 text-center">

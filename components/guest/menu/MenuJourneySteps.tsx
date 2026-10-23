@@ -39,12 +39,12 @@ export function MenuJourneySteps({ cartCount, sentCount, roomMode = false }: Men
           <li
             key={step.title}
             aria-current={active ? 'step' : undefined}
-            className={`relative flex flex-col items-center gap-1 rounded-2xl border px-2 pb-2.5 pt-2 text-center transition-all ${
+            className={`relative flex flex-col items-center gap-1 rounded-[20px] border px-2 pb-2.5 pt-2 text-center transition-all duration-500 ${
               active
-                ? 'border-emerald-700/30 bg-white shadow-[0_10px_30px_-14px_rgba(16,185,129,0.65)]'
+                ? 'border-[#b08d57]/60 bg-[#fbf9f4] shadow-[0_0_0_3px_rgba(217,193,147,0.18),0_14px_30px_-18px_rgba(15,42,30,0.55)]'
                 : done
-                  ? 'border-emerald-100 bg-emerald-50/60'
-                  : 'border-zinc-200/70 bg-white/60'
+                  ? 'border-[#e8dfcc] bg-[#f3ecdc]'
+                  : 'border-[#e8dfcc] bg-[#fbf9f4]/70'
             }`}
           >
             <span className="relative block h-12 w-12 sm:h-14 sm:w-14">
@@ -65,16 +65,16 @@ export function MenuJourneySteps({ cartCount, sentCount, roomMode = false }: Men
                 />
               </motion.span>
               {done && (
-                <span aria-hidden className="absolute -bottom-0.5 -right-2 grid h-[18px] w-[18px] place-items-center rounded-full bg-emerald-500 text-white ring-2 ring-white">
+                <span aria-hidden className="absolute -bottom-0.5 -right-2 grid h-[18px] w-[18px] place-items-center rounded-full bg-[#0f2a1e] text-[#d9c193] ring-2 ring-[#fbf9f4]">
                   <Check size={11} strokeWidth={3} />
                 </span>
               )}
             </span>
-            <span className={`text-[11px] sm:text-xs font-semibold ${active ? 'text-zinc-950' : done ? 'text-emerald-800' : 'text-zinc-500'}`}>
+            <span className={`text-[11px] sm:text-xs font-semibold ${active ? 'text-[#10231a]' : done ? 'text-[#173a2a]' : 'text-[#10231a]/50'}`}>
               {step.title}
             </span>
-            <span className="hidden sm:block text-[10px] leading-tight text-zinc-500">{step.hint}</span>
-            {active && <span aria-hidden className="absolute -top-1 right-2 h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_10px_2px_rgba(52,211,153,0.8)] animate-pulse" />}
+            <span className="hidden sm:block text-[10px] leading-tight text-[#10231a]/55">{step.hint}</span>
+            {active && <span aria-hidden className="absolute -top-1 right-2 h-2 w-2 rounded-full bg-[#b08d57] shadow-[0_0_10px_2px_rgba(217,193,147,0.8)] animate-pulse" />}
           </li>
         );
       })}

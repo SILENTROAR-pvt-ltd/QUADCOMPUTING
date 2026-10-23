@@ -34,15 +34,15 @@ export function StayEntry({ cafeId }: { cafeId: string }) {
 
   return (
     <div className="col-span-2">
-      <div className="flex w-full items-center gap-2.5 rounded-2xl bg-white py-2 pl-3 pr-2 shadow-[0_1px_3px_rgba(0,0,0,0.08)] ring-1 ring-zinc-200/70">
+      <div className="flex w-full items-center gap-2.5 rounded-[20px] bg-[#fbf9f4] py-2 pl-3 pr-2 shadow-[0_14px_30px_-26px_rgba(16,35,26,0.55)] ring-1 ring-[#e8dfcc]">
         <button type="button" onClick={() => setOpen(true)} className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 text-left active:scale-[0.99]">
-          <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${view.live ? 'bg-emerald-600 text-white' : 'bg-zinc-100 text-zinc-900'}`}><BedDouble className="h-4 w-4" aria-hidden /></span>
+          <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#0f2a1e] ${view.live ? 'text-[#f5f1e8] ring-2 ring-[#d9c193]' : 'text-[#d9c193]'}`}><BedDouble className="h-4 w-4" aria-hidden /></span>
           <span className="min-w-0">
-            <span className="block truncate text-[13px] font-semibold text-zinc-900">{view.title}</span>
-            <span className="block truncate text-[11px] text-zinc-500">{view.hint}</span>
+            <span className="block truncate text-[13px] font-semibold text-[#10231a]">{view.title}</span>
+            <span className="block truncate text-[11px] text-[#10231a]/55">{view.hint}</span>
           </span>
         </button>
-        <Link href={view.action.href} className={`inline-flex h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-full px-3.5 text-xs font-semibold transition active:scale-95 ${view.live ? 'bg-emerald-700 text-white hover:bg-emerald-800' : 'bg-zinc-950 text-white hover:bg-zinc-800'}`}>
+        <Link href={view.action.href} className={`inline-flex h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-full bg-gradient-to-br from-[#0f2a1e] to-[#1d4632] px-3.5 text-xs font-semibold text-[#f5f1e8] ring-1 transition active:scale-95 ${view.live ? 'ring-[#d9c193]' : 'ring-[#d9c193]/30'}`}>
           <view.action.Icon className="h-3.5 w-3.5" aria-hidden /> {view.action.label}
         </Link>
       </div>

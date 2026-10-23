@@ -6,11 +6,13 @@ import { OfferTicker } from '@/components/guest/offers/OfferTicker';
 import { HostTopPicks } from './HostTopPicks';
 import { GuestFavouritesRail } from './GuestFavouritesRail';
 import { MenuDishList } from './MenuDishList';
-import { VenueServicesMarquee } from './VenueServicesMarquee';
 import { BeyondDiningSection } from './BeyondDiningSection';
 import { MenuInfoPanel } from './MenuInfoPanel';
+import { MenuStaySection, isAccommodation } from './stay/MenuStaySection';
+import { MemoryVault } from './vault/MemoryVault';
 import type { MenuInfo } from '@/lib/services/menu-info/menu-info';
 import { LiveEventsFeed } from '@/components/guest/events/LiveEventsFeed';
+import { isRoomTable } from '@/lib/guest/room-mode';
 import type { DishLikesView } from './DiningFeed';
 import type { GuestMenuState } from './hooks/useGuestMenuState';
 
@@ -19,18 +21,17 @@ interface MenuTabBodyProps {
   venueId: string;
   info: MenuInfo;
   likes?: DishLikesView;
-  /** Services unlock once an order is placed (or has just been settled). */
+  /** Shows the live order tracker at the top once an order is placed (or has just been settled). */
   orderPlaced: boolean;
   trackerProps: React.ComponentProps<typeof LiveOrderTracker>;
 }
 
-/** The menu tab: the tracker once an order is placed, the picks, the whole menu, then the venue's services and live events. */
+/**
+ * The menu tab: the tracker once an order is placed, the picks and the whole menu. Then, once the dishes are done, the
+ * venue itself: its rooms, its memory vault, its live events, and what it offers beyond dining.
+ */
 export function MenuTabBody({ state, venueId, info, likes, orderPlaced, trackerProps }: MenuTabBodyProps) {
-  const toServices = (title?: string) => {
-    state.setShowBeyondDining(true);
-    if (title) state.showToast(`Selected: ${title}`);
-    setTimeout(() => document.getElementById('services-section')?.scrollIntoView({ behavior: 'smooth' }), 150);
-  };
+  const others = state.venueServices.filter((s) => !isAccommodation(s));
   return (
     <div className="space-y-4 sm:space-y-5">
       {orderPlaced && <LiveOrderTracker {...trackerProps} />}
@@ -43,14 +44,13 @@ export function MenuTabBody({ state, venueId, info, likes, orderPlaced, trackerP
 
       <MenuDishList state={state} likes={likes} />
 
-      {/* Moments and the venue's services open up once an order is placed: until then the dishes come first. */}
-      {orderPlaced && (
-        <>
-          <VenueServicesMarquee services={state.venueServices} onSelectService={(s) => toServices(s.title)} />
-          <LiveEventsFeed venueId={venueId} layout="rail" hideWhenEmpty />
-          {state.venueServices.length > 0 && <BeyondDiningSection services={state.venueServices} onSelectService={state.setSelectedService} />}
-        </>
+      {/* After the dishes, the place: a guest already in a room is not offered one. */}
+      {!isRoomTable(state.tableNumber) && (
+        <MenuStaySection venueId={venueId} venueName={state.businessName} services={state.venueServices} onSelectService={state.setSelectedService} />
       )}
+      <MemoryVault gallery={info.gallery} venueName={state.businessName} />
+      <LiveEventsFeed venueId={venueId} layout="rail" hideWhenEmpty />
+      {others.length > 0 && <BeyondDiningSection services={others} onSelectService={state.setSelectedService} />}
       <MenuInfoPanel info={info} />
     </div>
   );

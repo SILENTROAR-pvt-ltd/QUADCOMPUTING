@@ -86,14 +86,14 @@ export const CartReviewModal: React.FC<CartReviewModalProps> = (p) => {
           className="fixed inset-0 z-[100] flex items-end justify-center bg-black/55 p-0 sm:items-center sm:p-4">
           <motion.div role="dialog" aria-modal="true" aria-labelledby="cart-review-title"
             initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'spring', stiffness: 380, damping: 38 }}
-            className="relative flex max-h-[90dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-[28px] border-t border-zinc-200 bg-white p-5 pb-[calc(env(safe-area-inset-bottom,16px)+1.25rem)] shadow-2xl will-change-transform sm:rounded-3xl sm:border sm:p-7">
+            className="relative flex max-h-[90dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-[30px] border-t border-[#e8dfcc] bg-[#fbf9f4] p-5 pb-[calc(env(safe-area-inset-bottom,16px)+1.25rem)] shadow-2xl will-change-transform sm:rounded-[28px] sm:border sm:p-7">
             <SendingOverlay show={p.isSendingToKitchen} roomMode={room} />
             <CartReviewHeader tableNumber={tableNumber} itemCount={itemCount} hasActiveOrder={hasActiveOrder} onClose={onClose} />
 
             {/* Everything between the header and Place order scrolls together, so a short phone never squeezes the dishes. */}
             <div className="-mx-1 flex-1 overflow-y-auto overscroll-contain px-1 pb-2">
               <CashbackBanner amount={cashback} account={account} walletBalance={balance} onSignIn={() => setAuthFor('claim')} />
-              <div className="mt-5 divide-y divide-zinc-100">
+              <div className="mt-5 divide-y divide-[#e8dfcc]">
                 <AnimatePresence initial={false}>
                   {cartItems.map((item) => (
                     <motion.div key={item.cart_id} layout="position" exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.18 }}>
@@ -110,12 +110,12 @@ export const CartReviewModal: React.FC<CartReviewModalProps> = (p) => {
               )}
               <CartOffers venueId={cafeId} tableNumber={tableNumber} offers={offers} />
               <CartBillSummary subtotal={cartSubtotal} cashback={cashback} signedIn={Boolean(account)} gstApplicable={room ? false : gstApplicable} />
-              {room && <p className="mt-3 rounded-xl bg-zinc-50 px-3.5 py-2.5 text-xs leading-relaxed text-zinc-600">Brought to your door and added to your room bill. Nothing to pay now; you settle it at checkout, and your cashback is credited then.</p>}
+              {room && <p className="mt-3 rounded-2xl border border-[#e8dfcc] bg-[#f3ecdc] px-3.5 py-2.5 text-xs leading-relaxed text-[#10231a]/70">Brought to your door and added to your room bill. Nothing to pay now; you settle it at checkout, and your cashback is credited then.</p>}
             </div>
 
             {cafeId && !hasActiveOrder && !room && (
               <button type="button" onClick={() => setDeliveryOpen(true)} disabled={cartItems.length === 0 || p.isSendingToKitchen}
-                className="mb-3 h-10 w-full cursor-pointer rounded-2xl border border-zinc-200 text-xs font-semibold uppercase tracking-[0.12em] text-zinc-800 hover:bg-zinc-50 disabled:opacity-40">
+                className="mb-3 h-10 w-full cursor-pointer rounded-full border border-[#d9c193] text-[11px] font-semibold uppercase tracking-[0.18em] text-[#6f5631] hover:bg-[#f3ecdc] disabled:opacity-40">
                 Order for delivery instead
               </button>
             )}

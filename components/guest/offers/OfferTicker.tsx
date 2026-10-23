@@ -30,7 +30,7 @@ export function OfferTicker({ venueId, tableNumber }: OfferTickerProps) {
   if (offers.length === 0) return null;
 
   const drifting = offers.length > STILL_OFFERS_MAX;
-  const cols = offers.length === 1 ? 'mx-auto max-w-[230px] grid-cols-1' : offers.length === 2 ? 'grid-cols-2' : 'grid-cols-3';
+  const cols = offers.length === 1 ? 'grid-cols-1' : offers.length === 2 ? 'grid-cols-2' : 'grid-cols-3';
 
   return (
     <>
@@ -38,12 +38,12 @@ export function OfferTicker({ venueId, tableNumber }: OfferTickerProps) {
         <div className="mb-1.5 flex items-center justify-between px-0.5">
           <div className="flex items-center gap-2">
             <span aria-hidden className="relative flex h-1.5 w-1.5">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-70" />
-              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#d9c193] opacity-70" />
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#b08d57]" />
             </span>
-            <h2 className="text-[10px] font-semibold uppercase tracking-[0.26em] text-zinc-500">Live offers</h2>
+            <h2 className="text-[10px] font-semibold uppercase tracking-[0.28em] text-[#8a6d3f]">Live offers</h2>
           </div>
-          <span className="text-[10px] font-medium tracking-wide text-zinc-400">{offers.length} today</span>
+          <span className="text-[10px] font-medium tracking-wide text-[#10231a]/45">{offers.length} today</span>
         </div>
 
         {drifting ? (
@@ -51,12 +51,12 @@ export function OfferTicker({ venueId, tableNumber }: OfferTickerProps) {
           <div className="group relative overflow-hidden motion-reduce:overflow-x-auto motion-reduce:[scrollbar-width:none]">
             <div className="flex w-max animate-offers-rtl group-hover:[animation-play-state:paused] group-active:[animation-play-state:paused] motion-reduce:animate-none"
               style={{ animationDuration: `${Math.max(16, offers.length * SECONDS_PER_OFFER)}s` }}>
-              {loop.map((o, i) => <OfferTile key={`${o.id}-${i}`} offer={o} onOpen={() => setOpen(o)} className="mr-2 w-[148px] shrink-0 sm:w-[170px]" />)}
+              {loop.map((o, i) => <OfferTile key={`${o.id}-${i}`} offer={o} onOpen={() => setOpen(o)} className="mr-2 w-[236px] shrink-0 sm:w-[260px]" />)}
             </div>
           </div>
         ) : (
           <div className={`grid gap-2 ${cols}`}>
-            {offers.map((o) => <OfferTile key={o.id} offer={o} onOpen={() => setOpen(o)} className="min-w-0" />)}
+            {offers.map((o) => <OfferTile key={o.id} offer={o} onOpen={() => setOpen(o)} compact={offers.length === 3} className="min-w-0" />)}
           </div>
         )}
       </section>

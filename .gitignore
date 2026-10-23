@@ -41,3 +41,6 @@ git.cmd
 .next-prod-test/
 .next-*/
 scratch/
+
+# Local ledgers the pilot content scripts write so --remove can undo them (venue data, not code)
+scripts/content/*.json

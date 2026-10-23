@@ -13,6 +13,7 @@ import { LoungeViews } from '@/components/guest/lobby/LoungeViews';
 import { useLoungeIdentity } from '@/components/guest/lobby/useLoungeIdentity';
 import { GuestTabBar } from '@/components/guest/shell/GuestTabBar';
 import { resolveLoungeCafeId } from '@/lib/guest/lounge-params';
+import { LUXE_FONT_VAR } from '@/components/guest/luxe/luxe-theme';
 
 function GuestLobbyContent() {
   const searchParams = useSearchParams();
@@ -61,7 +62,7 @@ function GuestLobbyContent() {
   };
 
   return (
-    <div className="min-h-[100dvh] w-full max-w-full overflow-x-hidden bg-[#faf9f6] text-neutral-900 font-sans selection:bg-neutral-900 selection:text-white pb-[calc(env(safe-area-inset-bottom,0px)+7.5rem)]">
+    <div className={`${LUXE_FONT_VAR} min-h-[100dvh] w-full max-w-full overflow-x-hidden bg-[#f5f1e8] text-[#10231a] font-sans selection:bg-[#d9c193] selection:text-[#10231a] pb-[calc(env(safe-area-inset-bottom,0px)+7.5rem)]`}>
       <DynamicIslandNotification
         notifications={notifications}
         onAccept={handleAcceptNotification}

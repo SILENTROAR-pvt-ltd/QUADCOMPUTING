@@ -5,9 +5,9 @@ import { CheckCircle2, Clock3, XCircle } from 'lucide-react';
 import type { MyEventStatus } from '@/lib/services/live-events/my-event-status';
 
 const LOOK = {
-  INTERESTED: { Icon: Clock3, cls: 'border-amber-200 bg-amber-50 text-amber-900', title: 'Request sent', line: 'Waiting for the venue to confirm your place.' },
-  CONFIRMED: { Icon: CheckCircle2, cls: 'border-emerald-200 bg-emerald-50 text-emerald-900', title: "You're going", line: 'The venue confirmed your place. See you there!' },
-  DECLINED: { Icon: XCircle, cls: 'border-rose-200 bg-rose-50 text-rose-800', title: 'Not confirmed this time', line: 'The venue could not fit your party. You can ask again.' },
+  INTERESTED: { Icon: Clock3, cls: 'border-[#d9c193] bg-[#fbf6e8] text-[#6f5631]', title: 'Request sent', line: 'Waiting for the venue to confirm your place.' },
+  CONFIRMED: { Icon: CheckCircle2, cls: 'border-[#0f2a1e]/20 bg-[#eef3ee] text-[#173a2a]', title: "You're going", line: 'The venue confirmed your place. See you there!' },
+  DECLINED: { Icon: XCircle, cls: 'border-rose-200 bg-rose-50/80 text-rose-800', title: 'Not confirmed this time', line: 'The venue could not fit your party. You can ask again.' },
 } as const;
 
 /** The venue's answer to the guest's request to join this event, on the card itself. */

@@ -41,7 +41,7 @@ export function LobbyFilters({ kind, onKind, mine, onMine, onSearch, canSeeMine 
   return (
     <div className="space-y-2.5">
       <div className="flex items-center gap-2">
-        <div role="tablist" aria-label="Lobby filter" className="grid min-w-0 flex-1 grid-cols-3 rounded-full border border-neutral-200/80 bg-white p-1">
+        <div role="tablist" aria-label="Lobby filter" className="grid min-w-0 flex-1 grid-cols-3 rounded-full border border-[#e8dfcc] bg-[#fbf9f4] p-1">
           {FEED_FILTERS.map((f) => {
             const active = kind === f.id && !mine;
             return (
@@ -51,7 +51,7 @@ export function LobbyFilters({ kind, onKind, mine, onMine, onSearch, canSeeMine 
                 role="tab"
                 aria-selected={active}
                 onClick={() => { onKind(f.id); onMine(false); }}
-                className={`h-8 truncate rounded-full px-1 text-[12.5px] font-semibold transition-colors cursor-pointer ${active ? 'bg-zinc-950 text-white' : 'text-neutral-500 active:bg-neutral-100'}`}
+                className={`h-8 truncate rounded-full px-1 text-[12.5px] font-semibold transition-colors duration-300 cursor-pointer ${active ? 'bg-gradient-to-br from-[#0f2a1e] to-[#1d4632] text-[#f5f1e8]' : 'text-[#10231a]/55 active:bg-[#efe7d6]'}`}
               >
                 {f.label}
               </button>
@@ -65,7 +65,7 @@ export function LobbyFilters({ kind, onKind, mine, onMine, onSearch, canSeeMine 
             aria-pressed={mine}
             aria-label="Show only my posts"
             onClick={() => onMine(!mine)}
-            className={`${ROUND} ${mine ? 'border-zinc-950 bg-zinc-950 text-white' : 'border-neutral-200/80 bg-white text-neutral-600'}`}
+            className={`${ROUND} ${mine ? 'border-[#0f2a1e] bg-[#0f2a1e] text-[#d9c193]' : 'border-[#e8dfcc] bg-[#fbf9f4] text-[#10231a]/60'}`}
           >
             <UserRound className="h-4 w-4" />
           </button>
@@ -75,7 +75,7 @@ export function LobbyFilters({ kind, onKind, mine, onMine, onSearch, canSeeMine 
           aria-pressed={searching}
           aria-label={searching ? 'Close search' : 'Search the lobby'}
           onClick={() => (searching ? closeSearch() : setSearching(true))}
-          className={`${ROUND} ${searching ? 'border-zinc-950 bg-zinc-950 text-white' : 'border-neutral-200/80 bg-white text-neutral-600'}`}
+          className={`${ROUND} ${searching ? 'border-[#0f2a1e] bg-[#0f2a1e] text-[#d9c193]' : 'border-[#e8dfcc] bg-[#fbf9f4] text-[#10231a]/60'}`}
         >
           {searching ? <X className="h-4 w-4" /> : <Search className="h-4 w-4" />}
         </button>
@@ -92,7 +92,7 @@ export function LobbyFilters({ kind, onKind, mine, onMine, onSearch, canSeeMine 
             maxLength={60}
             onChange={(e) => setText(e.target.value)}
             placeholder="Search postcards and messages"
-            className="h-10 w-full rounded-full border border-neutral-200 bg-white pl-9 pr-3.5 text-[14px] text-neutral-900 placeholder:text-neutral-400 focus:border-neutral-900 focus:outline-none"
+            className="h-10 w-full rounded-full border border-[#e8dfcc] bg-[#fbf9f4] pl-9 pr-3.5 text-[14px] text-[#10231a] placeholder:text-[#10231a]/40 focus:border-[#b08d57] focus:outline-none"
           />
         </label>
       )}

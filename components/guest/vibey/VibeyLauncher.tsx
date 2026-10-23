@@ -33,9 +33,9 @@ export function VibeyLauncher({ state, venueId }: VibeyLauncherProps) {
     <>
       <motion.button type="button" {...press} onClick={() => setOpen(true)} aria-haspopup="dialog"
         initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-        className="pointer-events-auto absolute bottom-full left-0 mb-4 inline-flex h-11 cursor-pointer items-center gap-2 rounded-full bg-white/95 pl-1.5 pr-4 text-[13px] font-semibold text-zinc-900 shadow-[0_14px_30px_-14px_rgba(244,63,94,0.45)] ring-1 ring-black/10 hover:bg-white">
+        className="pointer-events-auto absolute bottom-full left-0 mb-4 inline-flex h-11 cursor-pointer items-center gap-2 rounded-full bg-[#fbf9f4]/95 pl-1.5 pr-4 text-[13px] font-semibold text-[#10231a] shadow-[0_14px_30px_-14px_rgba(16,35,26,0.5)] ring-1 ring-[#d9c193]/70 hover:bg-[#fbf9f4]">
         <VibeyAvatar size={32} mood="idle" />
-        <span>Ask Vibey <span className="font-normal text-zinc-500">· order by chat</span></span>
+        <span>Ask Vibey <span className="font-normal text-[#8a6d3f]">· order by chat</span></span>
       </motion.button>
       <AnimatePresence>
         {open && (

@@ -39,10 +39,10 @@ export function LoungeViews({ view, venueId, venueName, table, guestName, canPos
         venueId={venueId}
         tableNumber={table}
         emptyState={
-          <div className="rounded-3xl border border-neutral-200 bg-white px-6 py-14 text-center">
-            <Tag className="mx-auto h-6 w-6 text-neutral-300" />
-            <p className="mt-3 font-serif text-lg text-neutral-900">No offers right now</p>
-            <p className="mt-1 text-xs text-neutral-500">When {venueName || 'the venue'} runs an offer, it shows up here.</p>
+          <div className="rounded-[26px] border border-dashed border-[#d9c193] bg-[#fbf9f4] px-6 py-14 text-center">
+            <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-[#0f2a1e] text-[#d9c193]"><Tag className="h-5 w-5" /></span>
+            <p className="mt-4 text-[1.5rem] text-[#10231a]" style={{ fontFamily: "var(--font-luxe), 'Playfair Display', Georgia, serif" }}>No offers right now</p>
+            <p className="mt-1 text-xs text-[#10231a]/55">When {venueName || 'the venue'} runs an offer, it shows up here.</p>
           </div>
         }
       />

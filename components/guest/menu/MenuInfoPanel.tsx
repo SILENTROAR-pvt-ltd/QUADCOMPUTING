@@ -4,8 +4,9 @@ import React, { useEffect, useState } from 'react';
 import { Clock, MapPin, Phone, Bike } from 'lucide-react';
 import { sharedGet } from '@/lib/utils/shared-get';
 import { EMPTY_MENU_INFO, type MenuInfo } from '@/lib/services/menu-info/menu-info';
+import { LUXE_SERIF } from '@/components/guest/luxe/luxe-theme';
 
-const serif = { fontFamily: "'Playfair Display', Georgia, serif" };
+const serif = LUXE_SERIF;
 
 interface InfoPayload { info?: MenuInfo; gst_applicable?: boolean | null }
 
@@ -41,13 +42,13 @@ export function useVenueGst(venueId: string): boolean | null {
 }
 function InfoTile({ icon: Icon, label, children }: { icon: React.ComponentType<{ size?: number; className?: string }>; label: string; children: React.ReactNode }) {
   return (
-    <div className="flex gap-3.5 rounded-2xl border border-zinc-200/80 bg-white p-4">
-      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[#FBF4E2] text-[#7A6230] ring-1 ring-[#E4D5B0]">
+    <div className="flex gap-3.5 rounded-[20px] border border-[#e8dfcc] bg-[#f8f4ea] p-4">
+      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#0f2a1e] text-[#d9c193] ring-2 ring-[#fbf9f4]">
         <Icon size={16} />
       </span>
       <div className="min-w-0">
-        <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-zinc-400">{label}</p>
-        <div className="mt-1 text-[15px] leading-relaxed text-zinc-800" style={serif}>{children}</div>
+        <p className="text-[9.5px] font-semibold uppercase tracking-[0.24em] text-[#8a6d3f]">{label}</p>
+        <div className="mt-1 text-[17px] leading-relaxed text-[#10231a]" style={serif}>{children}</div>
       </div>
     </div>
   );
@@ -59,10 +60,10 @@ export function MenuInfoPanel({ info }: { info: MenuInfo }) {
   if (!hasAny) return null;
 
   return (
-    <section aria-labelledby="good-to-know" className="rounded-3xl border border-zinc-200/80 bg-white p-5 sm:p-7">
+    <section aria-labelledby="good-to-know" className="rounded-[28px] border border-[#e8dfcc] bg-[#fbf9f4] p-5 shadow-[0_24px_50px_-40px_rgba(16,35,26,0.5)] sm:p-7">
       <header className="mb-5 flex flex-col gap-1">
-        <p className="text-[10px] font-medium uppercase tracking-[0.24em] text-[#8A7040]">Venue information</p>
-        <h2 id="good-to-know" className="text-2xl text-zinc-950 sm:text-3xl" style={serif}>Good to know</h2>
+        <p className="flex items-center gap-2.5 text-[10px] font-semibold uppercase tracking-[0.28em] text-[#8a6d3f] before:h-px before:w-6 before:bg-[#b08d57]">Venue information</p>
+        <h2 id="good-to-know" className="text-[2rem] font-light leading-tight text-[#10231a] sm:text-[2.4rem]" style={serif}>Good to <em className="font-normal text-[#8a6d3f]">know</em></h2>
       </header>
 
       <div className="grid gap-3 sm:grid-cols-2">
@@ -80,19 +81,19 @@ export function MenuInfoPanel({ info }: { info: MenuInfo }) {
         {info.phones.length > 0 && (
           <InfoTile icon={Phone} label="Call us">
             {info.phones.map((p) => (
-              <a key={p} href={`tel:${p.replace(/[^+\d]/g, '')}`} className="block tabular-nums text-zinc-800 transition-colors hover:text-[#7A6230]">{p}</a>
+              <a key={p} href={`tel:${p.replace(/[^+\d]/g, '')}`} className="block tabular-nums text-[#10231a] transition-colors hover:text-[#8a6d3f]">{p}</a>
             ))}
           </InfoTile>
         )}
       </div>
 
       {info.notes.length > 0 && (
-        <div className="mt-6 border-t border-zinc-100 pt-5">
-          <p className="mb-3 text-[10px] font-medium uppercase tracking-[0.2em] text-zinc-400">A few notes from the kitchen</p>
+        <div className="mt-6 border-t border-[#e8dfcc] pt-5">
+          <p className="mb-3 text-[9.5px] font-semibold uppercase tracking-[0.24em] text-[#8a6d3f]">A few notes from the kitchen</p>
           <ol className="space-y-2.5">
             {info.notes.map((n, i) => (
-              <li key={n} className="flex gap-3 text-[15px] leading-relaxed text-zinc-700" style={serif}>
-                <span className="w-5 shrink-0 text-right text-sm italic text-[#8A7040] tabular-nums">{i + 1}.</span>
+              <li key={n} className="flex gap-3 text-[17px] leading-relaxed text-[#10231a]/85" style={serif}>
+                <span className="w-5 shrink-0 text-right text-[15px] italic text-[#b08d57] tabular-nums">{i + 1}.</span>
                 <span>{n}</span>
               </li>
             ))}

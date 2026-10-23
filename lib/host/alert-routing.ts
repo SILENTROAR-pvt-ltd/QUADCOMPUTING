@@ -1,6 +1,6 @@
 // Where a guest's call belongs on the host console: a room's call to Accommodations, a table's bill to the till, a
-// table's waiter or service call to Live Tables, a word for the chef to the kitchen. The bell tray opens that place,
-// and the sidebar lights the same place while the call waits.
+// table's waiter call to Live Tables, a table's request for a venue service to Reservations (its Services list), a word
+// for the chef to the kitchen. The bell tray opens that place, and the sidebar lights the same place while the call waits.
 
 import { roomNumberFromCall } from './open-room-request';
 
@@ -21,6 +21,8 @@ export function alertTarget(a: AlertLike): AlertTarget {
     case 'LOW_STOCK_ALERT': return { tab: 'inventory', place: 'Inventory' };
     case 'WALLET_SUSPENDED_LOW_BALANCE': return { tab: 'wallet', place: 'Wallet' };
     case 'EVENT_INTEREST': return { tab: 'reservations', place: 'Reservations' };
+    // No `table`: that would ask Live Tables to open the table the next time it mounts.
+    case 'SERVICE': return { tab: 'reservations', place: table ? `Table ${table}` : 'Reservations' };
     case 'STAY_BOOKING': return { tab: 'accommodations', place: 'Rooms', view: 'bookings' };
     default: return { tab: 'tables', table: table || undefined, place: table ? `Table ${table}` : 'Venue' };
   }

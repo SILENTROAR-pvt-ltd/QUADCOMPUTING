@@ -6,6 +6,8 @@ import type { VenueLiveOffer } from '@/types/offers';
 import { OfferActionSheet } from '@/components/guest/offers/OfferActionSheet';
 import { useLiveOffers } from './offers/useLiveOffers';
 import { LiveOfferCard } from './offers/LiveOfferCard';
+import { LUXE_SERIF } from '@/components/guest/luxe/luxe-theme';
+import s from '@/components/guest/luxe/luxe-guest.module.css';
 
 interface VenueLiveOffersProps {
   venueId?: string;
@@ -30,20 +32,20 @@ export function VenueLiveOffers({ venueId = '', tableNumber = 'T-01', emptyState
   if (!loading && offers.length === 0) return <>{emptyState}</>;
 
   return (
-    <section className="animate-in fade-in space-y-4 duration-300">
+    <section className="space-y-5">
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
         <div>
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-300/80 bg-amber-50 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-900">
-            <Sparkles className="h-3 w-3 animate-pulse fill-amber-500 text-amber-600" /> Live Venue Specials
-          </span>
-          <h2 className="mt-1 font-serif text-2xl font-medium tracking-tight text-neutral-900 sm:text-3xl">Exclusive Offers &amp; Deals</h2>
-          <p className="mt-0.5 text-xs font-light text-neutral-500 sm:text-sm">Active happy hours, complimentary perks &amp; discounts for dining and staying guests.</p>
+          <p className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.28em] text-[#8a6d3f]">
+            <Sparkles className="h-3 w-3" aria-hidden /> Live venue specials
+          </p>
+          <h2 className="mt-2 text-[2rem] font-light leading-[1.05] text-[#10231a] sm:text-[2.4rem]" style={LUXE_SERIF}>Exclusive offers &amp; <em className="font-normal text-[#8a6d3f]">deals</em></h2>
+          <p className="mt-1.5 text-[12.5px] leading-relaxed text-[#10231a]/60">Happy hours, complimentary perks and savings for dining and staying guests.</p>
         </div>
         <div className="flex items-center gap-1.5 overflow-x-auto py-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {CATEGORIES.map((c) => (
             <button key={c.key} type="button" aria-pressed={category === c.key} onClick={() => setCategory(c.key)}
-              className={`h-9 shrink-0 cursor-pointer whitespace-nowrap rounded-full border px-3.5 text-xs font-semibold transition-colors active:scale-95 ${
-                category === c.key ? 'border-neutral-900 bg-neutral-900 text-white' : 'border-neutral-200/90 bg-white text-neutral-600 hover:border-neutral-300 hover:text-neutral-900'
+              className={`h-9 shrink-0 cursor-pointer whitespace-nowrap rounded-full border px-4 text-xs font-semibold transition-colors duration-300 active:scale-95 ${
+                category === c.key ? 'border-[#0f2a1e] bg-gradient-to-br from-[#0f2a1e] to-[#1d4632] text-[#f5f1e8]' : 'border-[#e8dfcc] bg-[#fbf9f4] text-[#10231a]/65 hover:border-[#d9c193] hover:text-[#10231a]'
               }`}>
               {c.label}
             </button>
@@ -53,8 +55,12 @@ export function VenueLiveOffers({ venueId = '', tableNumber = 'T-01', emptyState
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
         {loading
-          ? [1, 2, 3].map((n) => <div key={n} className="shimmer h-48 rounded-3xl" />)
-          : shown.map((o) => <LiveOfferCard key={o.id} offer={o} tableNumber={tableNumber} onClaim={setOpen} />)}
+          ? [1, 2, 3].map((n) => <div key={n} className="shimmer h-56 rounded-[26px]" />)
+          : shown.map((o, i) => (
+            <div key={`${category}-${o.id}`} className={s.riseIn} style={{ ['--i' as string]: i } as React.CSSProperties}>
+              <LiveOfferCard offer={o} tableNumber={tableNumber} onClaim={setOpen} />
+            </div>
+          ))}
       </div>
 
       {open && <OfferActionSheet venueId={venueId} tableNumber={tableNumber} offer={open} onClose={() => setOpen(null)} />}

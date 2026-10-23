@@ -1,7 +1,8 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { MenuHeader } from './MenuHeader';
+import { bannerPhotos } from './hero/banner-photos';
 import { MenuJourneySteps } from './MenuJourneySteps';
 import { ServiceCallBar } from './ServiceCallBar';
 import { GuestAccountStrip } from '@/components/guest/account/GuestAccountStrip';
@@ -16,17 +17,20 @@ interface MenuTopProps {
   requestBill: () => void;
   /** Room mode: shown under the header, above the account bar; the table's service buttons give way to the room page. */
   roomBar?: React.ReactNode;
+  /** The host's top picks, shown first in the banner's photos. */
+  featured?: string[];
 }
 
 /** The top of the page: the header, then (on the menu tab) the journey steps, the account bar and the service buttons. */
-export function MenuTop({ state, venueId, guestName, tagline, onOpenBill, requestBill, roomBar }: MenuTopProps) {
+export function MenuTop({ state, venueId, guestName, tagline, onOpenBill, requestBill, roomBar, featured }: MenuTopProps) {
   const onMenu = state.activeTab === 'menu';
+  const photos = useMemo(() => bannerPhotos(state.diningItems, featured), [state.diningItems, featured]);
   return (
     <>
       <MenuHeader
         tableNo={state.tableNumber} guestName={guestName || state.currentGuestName} venueName={state.businessName}
         tagline={tagline} activeOrdersCount={state.sentItems.length} onOpenBill={onOpenBill}
-        billRequestedBanner={state.billRequestedBanner}
+        billRequestedBanner={state.billRequestedBanner} photos={photos}
       />
       {roomBar ? (
         // The same menu as at a table, with the room on top: the Vibers ID account bar and the journey stay, so cashback,

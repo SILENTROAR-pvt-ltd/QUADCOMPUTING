@@ -25,7 +25,7 @@ interface OrderSuccessModalProps {
   onTrackOrder?: () => void;
 }
 
-const SERIF = { fontFamily: "'Playfair Display', Georgia, serif" } as const;
+const SERIF = { fontFamily: "var(--font-luxe), 'Playfair Display', Georgia, serif" } as const;
 
 /**
  * A small, polite card over the menu the moment the kitchen has the order: a thank-you, then two gentle ways to spend the
@@ -50,24 +50,25 @@ export const OrderSuccessModal: React.FC<OrderSuccessModalProps> = ({ isOpen, ta
           className="fixed inset-0 z-[100] flex items-end justify-center bg-zinc-950/40 px-4 pb-[calc(env(safe-area-inset-bottom,0px)+1rem)] sm:items-center sm:pb-4">
           <motion.div role="dialog" aria-modal="true" aria-labelledby="order-success-title" onClick={(e) => e.stopPropagation()}
             initial={calm ? false : { opacity: 0, y: 32, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={calm ? undefined : { opacity: 0, y: 20 }} transition={SPRING}
-            className="relative w-full max-w-[380px] rounded-[26px] border border-neutral-200/80 bg-white p-6 text-center shadow-[0_30px_70px_-24px_rgba(0,0,0,0.5)]">
+            className="relative w-full max-w-[380px] overflow-hidden rounded-[28px] border border-[#e8dfcc] bg-[#fbf9f4] p-6 text-center shadow-[0_30px_70px_-24px_rgba(15,42,30,0.55)]">
+            <span aria-hidden className="pointer-events-none absolute -top-24 left-1/2 h-48 w-72 -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgba(217,193,147,0.38),transparent_68%)]" />
             <motion.button type="button" onClick={onClose} aria-label="Close" {...press}
-              className="absolute right-2 top-2 grid h-10 w-10 cursor-pointer place-items-center rounded-full text-zinc-400 hover:bg-zinc-100 hover:text-zinc-950">
+              className="absolute right-2 top-2 grid h-10 w-10 cursor-pointer place-items-center rounded-full text-[#10231a]/45 hover:bg-[#f3ecdc] hover:text-[#10231a]">
               <X className="h-4 w-4" />
             </motion.button>
 
             <motion.span initial={calm ? false : { scale: 0.4, rotate: -20 }} animate={{ scale: 1, rotate: 0 }} transition={{ ...SPRING, delay: 0.1 }}
-              className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-[#0A3222] text-white shadow-[0_12px_26px_-12px_rgba(10,50,34,0.8)]">
+              className="relative mx-auto grid h-14 w-14 place-items-center rounded-full bg-gradient-to-br from-[#0f2a1e] to-[#1d4632] text-[#d9c193] shadow-[0_0_0_4px_#fbf9f4,0_0_0_5px_rgba(176,141,87,0.5),0_14px_28px_-12px_rgba(15,42,30,0.8)]">
               <Check className="h-6 w-6" strokeWidth={2.2} aria-hidden />
             </motion.span>
 
-            <p className="mt-4 text-[10px] font-medium uppercase tracking-[0.24em] text-zinc-400">
+            <p className="relative mt-5 text-[9.5px] font-semibold uppercase tracking-[0.28em] text-[#8a6d3f]">
               {tableNumber ? tableLabel(tableNumber) : 'Your table'} · {isAddon ? 'Added to your order' : 'Order received'}
             </p>
-            <h2 id="order-success-title" className="mt-2 text-[24px] leading-[1.15] text-zinc-950 [text-wrap:balance]" style={SERIF}>
-              Thank you. {isAddon ? 'Your additions have been sent to the kitchen.' : 'Your order has been sent to the kitchen.'}
+            <h2 id="order-success-title" className="relative mt-2 text-[28px] font-medium leading-[1.08] text-[#10231a] [text-wrap:balance]" style={SERIF}>
+              Thank you. <em className="font-normal text-[#8a6d3f]">{isAddon ? 'Your additions have been sent to the kitchen.' : 'Your order has been sent to the kitchen.'}</em>
             </h2>
-            <p className="mx-auto mt-2.5 max-w-[300px] text-[13px] leading-relaxed text-zinc-500 [text-wrap:balance]">
+            <p className="relative mx-auto mt-2.5 max-w-[300px] text-[13px] leading-relaxed text-[#10231a]/60 [text-wrap:balance]">
               {roomCode
                 ? 'The kitchen has it. It will be brought to your room and added to your room bill; nothing to pay now.'
                 : 'The kitchen has it. Most orders reach the table in 15 to 25 minutes; the live status and your running bill are one tap away.'}

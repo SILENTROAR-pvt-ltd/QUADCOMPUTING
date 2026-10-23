@@ -13,6 +13,9 @@ function countingDb(tables: Record<string, any[]>, missing: string[] = []) {
         select: () => q,
         eq: (c: string, v: any) => { filters.push((r) => r[c] === v); return q; },
         gt: (c: string, v: any) => { filters.push((r) => r[c] > v); return q; },
+        gte: (c: string, v: any) => { filters.push((r) => r[c] >= v); return q; },
+        // Only the "not ilike 'ROOM %'" the service-request count uses.
+        not: (c: string, _op: string, v: string) => { filters.push((r) => !String(r[c] ?? '').toUpperCase().startsWith(v.replace('%', '').toUpperCase())); return q; },
         then: (ok: any, fail: any) => Promise.resolve(missing.includes(table)
           ? { count: null, error: { code: '42P01', message: 'relation does not exist' } }
           : { count: (tables[table] || []).filter((r) => filters.every((f) => f(r))).length, error: null }).then(ok, fail),
@@ -40,7 +43,21 @@ describe('the Reservations light', () => {
     expect(s.rooms).toEqual({ waiting: 1, fresh: 1 });
     expect(s.events).toEqual({ waiting: 1, fresh: 0 });
     expect(s.offers).toEqual({ waiting: 1, fresh: 1 });
+    expect(s.services).toEqual({ waiting: 0, fresh: 0 });
     expect(s).toMatchObject({ waiting: 4, unread: 3 });
+  });
+
+  it("counts a table's service request from the menu, not a room's own calls or a waiter call", async () => {
+    const recent = new Date(Date.now() - 3600_000).toISOString();
+    const old = new Date(Date.now() - 72 * 3600_000).toISOString();
+    const call = (table_number: string, notification_type: string, status = 'PENDING', created_at = recent) => ({ business_id: BIZ, table_number, notification_type, status, created_at });
+    const s = await reservationSummary(countingDb({
+      staff_notifications: [
+        call('T-03', 'SERVICE'), call('T-04', 'SERVICE', 'RESOLVED'), call('ROOM 204', 'SERVICE'),
+        call('T-05', 'WAITER'), call('T-06', 'SERVICE', 'PENDING', old),
+      ],
+    }), BIZ, null);
+    expect(s.services).toEqual({ waiting: 1, fresh: 0 });
   });
 
   it('counts nothing as new before the host has ever looked, and a missing table as zero', async () => {

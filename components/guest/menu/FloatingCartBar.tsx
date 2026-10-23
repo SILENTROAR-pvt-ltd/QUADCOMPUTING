@@ -63,28 +63,28 @@ export const FloatingCartBar: React.FC<FloatingCartBarProps> = ({ totalCartCount
             {open && <TrayPopover items={items} count={count} subtotal={subtotal} onClose={() => setOpen(false)} onReview={placeOrder} />}
           </AnimatePresence>
 
-          <div className="pointer-events-auto relative flex w-full items-center gap-2 rounded-2xl bg-zinc-950 p-1.5 text-white shadow-[0_18px_40px_-14px_rgba(0,0,0,0.7)] ring-1 ring-white/10">
+          <div className="pointer-events-auto relative flex w-full items-center gap-2 rounded-[22px] bg-gradient-to-br from-[#0f2a1e] via-[#143524] to-[#1d4632] p-1.5 text-[#f5f1e8] shadow-[0_20px_44px_-16px_rgba(15,42,30,0.85)] ring-1 ring-[#d9c193]/30">
             <motion.button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-controls="tray-items"
               aria-label={`${count} ${count === 1 ? 'item' : 'items'}, ${rupees(subtotal)}. Show what is in your tray`}
               whileTap={{ scale: 0.97 }} transition={SPRING}
               className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 rounded-xl px-1.5 py-1 text-left hover:bg-white/[0.06]">
-              <motion.span {...{ [CART_TARGET_ATTR]: '' }} animate={bag} className="relative grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/10">
-                <ShoppingBag className="h-[18px] w-[18px]" aria-hidden />
-                <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-white px-1 text-[10px] font-bold text-zinc-950 ring-2 ring-zinc-950">
+              <motion.span {...{ [CART_TARGET_ATTR]: '' }} animate={bag} className="relative grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white/10 ring-1 ring-[#d9c193]/25">
+                <ShoppingBag className="h-[18px] w-[18px] text-[#d9c193]" aria-hidden />
+                <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-[#d9c193] px-1 text-[10px] font-bold text-[#0f2a1e] ring-2 ring-[#0f2a1e]">
                   <AnimatedCount value={count} />
                 </span>
               </motion.span>
               <span className="min-w-0 flex-1">
                 <span className="flex items-center gap-1 leading-tight">
                   <AnimatedCount value={rupees(subtotal)} className="text-[15px] font-semibold" />
-                  <ChevronUp aria-hidden className={`h-3.5 w-3.5 shrink-0 text-zinc-400 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+                  <ChevronUp aria-hidden className={`h-3.5 w-3.5 shrink-0 text-[#d9c193]/70 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
                 </span>
-                {cashback > 0 && <span className="mt-0.5 block truncate text-[11px] font-medium leading-tight text-zinc-300">{rupees(cashback)} cashback</span>}
+                {cashback > 0 && <span className="mt-0.5 block truncate text-[11px] font-medium leading-tight text-[#d9c193]">{rupees(cashback)} cashback</span>}
               </span>
             </motion.button>
 
             <motion.button type="button" onClick={placeOrder} {...press}
-              className="inline-flex h-11 shrink-0 cursor-pointer items-center gap-1.5 rounded-xl bg-white px-4 text-[13px] font-semibold text-zinc-950 shadow-sm hover:bg-zinc-200">
+              className="inline-flex h-11 shrink-0 cursor-pointer items-center gap-1.5 rounded-full bg-[#f5f1e8] px-5 text-[13px] font-semibold text-[#0f2a1e] shadow-sm hover:bg-white">
               Place order <ArrowRight className="h-4 w-4" aria-hidden />
             </motion.button>
           </div>

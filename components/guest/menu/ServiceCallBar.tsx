@@ -66,9 +66,9 @@ export function ServiceCallBar({
         <button
           onClick={() => setSheetOpen(true)}
           disabled={loadingType === "WAITER"}
-          className="flex-[1.45] whitespace-nowrap py-2.5 px-3 bg-white hover:bg-zinc-50 border border-zinc-200/80 rounded-2xl text-xs font-semibold text-zinc-800 shadow-xs flex items-center justify-center gap-2 transition-all active:scale-95 cursor-pointer disabled:opacity-60"
+          className="flex-[1.45] whitespace-nowrap py-2.5 px-3 bg-[#fbf9f4] hover:bg-white border border-[#e8dfcc] rounded-full text-xs font-semibold text-[#10231a] shadow-[0_10px_24px_-20px_rgba(16,35,26,0.6)] flex items-center justify-center gap-2 transition-all active:scale-95 cursor-pointer disabled:opacity-60"
         >
-          <ConciergeBell className="text-neutral-700" size={14} />
+          <ConciergeBell className="text-[#8a6d3f]" size={14} />
           <span>{loadingType === "WAITER" ? "Sending..." : "Request table service"}</span>
         </button>
 
@@ -76,13 +76,13 @@ export function ServiceCallBar({
           <button
             onClick={handleRequestBillAction}
             disabled={isRequestingBill || billRequested || loadingType === "BILL"}
-            className={`flex-1 whitespace-nowrap py-2.5 px-3 rounded-2xl text-xs font-semibold shadow-xs flex items-center justify-center gap-2 transition-all active:scale-95 cursor-pointer ${
+            className={`flex-1 whitespace-nowrap py-2.5 px-3 rounded-full text-xs font-semibold flex items-center justify-center gap-2 transition-all active:scale-95 cursor-pointer ${
               billRequested
-                ? "bg-amber-500/10 border border-amber-500/30 text-amber-700 cursor-default"
-                : "bg-white hover:bg-zinc-50 border border-zinc-200/80 text-zinc-800 disabled:opacity-60"
+                ? "bg-[#fbf6e8] border border-[#d9c193] text-[#6f5631] cursor-default"
+                : "bg-[#fbf9f4] hover:bg-white border border-[#e8dfcc] text-[#10231a] shadow-[0_10px_24px_-20px_rgba(16,35,26,0.6)] disabled:opacity-60"
             }`}
           >
-            <Receipt className="text-amber-600" size={14} />
+            <Receipt className="text-[#8a6d3f]" size={14} />
             <span>
               {billRequested
                 ? "Bill Requested"
@@ -97,7 +97,7 @@ export function ServiceCallBar({
       {sheetOpen && <StaffCallSheet initial="WAITER" onSend={sendFromSheet} onClose={() => setSheetOpen(false)} />}
 
       {toastMessage && (
-        <div className="absolute -top-12 left-1/2 -translate-x-1/2 z-50 max-w-[92%] truncate bg-zinc-900 text-white px-4 py-2 rounded-xl text-xs font-medium shadow-xl animate-in fade-in zoom-in-95 duration-200">
+        <div className="absolute -top-12 left-1/2 -translate-x-1/2 z-50 max-w-[92%] truncate bg-[#0f2a1e] text-[#f5f1e8] px-4 py-2 rounded-full text-xs font-medium shadow-xl ring-1 ring-[#d9c193]/30 animate-in fade-in zoom-in-95 duration-200">
           {toastMessage}
         </div>
       )}

@@ -62,15 +62,15 @@ export function GuestTabBar({ active, tableNumber, cafeId, billTotal = 0, onSele
 
   return (
     <nav aria-label="Guest navigation" className="w-full flex justify-center pointer-events-none">
-      <div className={`pointer-events-auto w-full max-w-md grid ${tabs.length === 5 ? 'grid-cols-5' : 'grid-cols-4'} rounded-[26px] border border-neutral-200/80 bg-white/95 backdrop-blur-xl shadow-[0_10px_30px_rgba(0,0,0,0.08)] p-1.5`}>
+      <div className={`pointer-events-auto w-full max-w-md grid ${tabs.length === 5 ? 'grid-cols-5' : 'grid-cols-4'} rounded-[28px] border border-[#e8dfcc] bg-[#fbf9f4]/95 backdrop-blur-xl shadow-[0_14px_34px_-14px_rgba(16,35,26,0.35)] p-1.5`}>
         {tabs.map(({ id, label, icon: Icon }) => {
           const isActive = active === id;
           const content = (
             <>
               <span className="relative">
-                <Icon className={`h-5 w-5 ${isActive ? 'text-white' : 'text-neutral-500'}`} />
+                <Icon className={`h-5 w-5 ${isActive ? 'text-[#d9c193]' : 'text-[#10231a]/50'}`} />
                 {id === 'lounge' && !isActive && (
-                  <span className="absolute -top-0.5 -right-1 h-2 w-2 rounded-full bg-emerald-500 ring-2 ring-white" />
+                  <span className="absolute -top-0.5 -right-1 h-2 w-2 rounded-full bg-[#b08d57] ring-2 ring-[#fbf9f4]" />
                 )}
               </span>
               <span className="text-[11px] font-medium leading-none">
@@ -78,8 +78,8 @@ export function GuestTabBar({ active, tableNumber, cafeId, billTotal = 0, onSele
               </span>
             </>
           );
-          const className = `flex flex-col items-center justify-center gap-1 rounded-[20px] py-2 min-h-[52px] transition-colors active:scale-95 cursor-pointer ${
-            isActive ? 'bg-neutral-950 text-white shadow-sm' : 'text-neutral-600 hover:bg-neutral-100'
+          const className = `flex flex-col items-center justify-center gap-1 rounded-[22px] py-2 min-h-[52px] transition-colors duration-300 active:scale-95 cursor-pointer ${
+            isActive ? 'bg-gradient-to-br from-[#0f2a1e] to-[#1d4632] text-[#f5f1e8] shadow-[0_10px_20px_-12px_rgba(15,42,30,0.8)]' : 'text-[#10231a]/60 hover:bg-[#efe7d6]'
           }`;
 
           if (id !== 'lounge' && id !== 'stay' && onSelect) {

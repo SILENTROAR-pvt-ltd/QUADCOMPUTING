@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#faf9f6',
+  themeColor: '#f5f1e8',
 };
 
 export default function GuestMenuLayout({ children }: { children: React.ReactNode }) {

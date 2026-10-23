@@ -25,17 +25,17 @@ export function ReviewFilterBar({ filter, onFilter, sort, onSort, hasPhotos }: R
   const filters = hasPhotos ? [...BASE, { id: 'photos' as const, label: 'Photos' }] : BASE;
   return (
     <div className="flex items-center gap-2">
-      <div role="tablist" aria-label="Filter reviews" className="flex min-w-0 flex-1 gap-1 overflow-x-auto rounded-full border border-neutral-200/80 bg-white p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div role="tablist" aria-label="Filter reviews" className="flex min-w-0 flex-1 gap-1 overflow-x-auto rounded-full border border-[#e8dfcc] bg-[#fbf9f4] p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {filters.map((f) => (
           <button key={f.id} type="button" role="tab" aria-selected={filter === f.id} onClick={() => onFilter(f.id)}
-            className={`h-9 shrink-0 cursor-pointer rounded-full px-3.5 text-[12.5px] font-semibold transition-colors ${filter === f.id ? 'bg-zinc-950 text-white' : 'text-neutral-500 active:bg-neutral-100'}`}>
+            className={`h-9 shrink-0 cursor-pointer rounded-full px-3.5 text-[12.5px] font-semibold transition-colors duration-300 ${filter === f.id ? 'bg-gradient-to-br from-[#0f2a1e] to-[#1d4632] text-[#f5f1e8]' : 'text-[#10231a]/55 active:bg-[#efe7d6]'}`}>
             {f.label}
           </button>
         ))}
       </div>
       <button type="button" onClick={onSort}
         aria-label={sort === 'latest' ? 'Showing newest first. Show top rated first' : 'Showing top rated first. Show newest first'}
-        className="inline-flex h-11 shrink-0 cursor-pointer items-center gap-1.5 rounded-full border border-neutral-200/80 bg-white px-3.5 text-[12px] font-semibold text-neutral-700 active:scale-95">
+        className="inline-flex h-11 shrink-0 cursor-pointer items-center gap-1.5 rounded-full border border-[#e8dfcc] bg-[#fbf9f4] px-3.5 text-[12px] font-semibold text-[#10231a]/75 active:scale-95">
         <ArrowDownUp className="h-3.5 w-3.5" aria-hidden /> {sort === 'latest' ? 'Newest' : 'Top rated'}
       </button>
     </div>

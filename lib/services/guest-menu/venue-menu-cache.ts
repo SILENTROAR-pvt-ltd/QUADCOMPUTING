@@ -34,7 +34,8 @@ async function readFromDatabase(db: any, businessId: string): Promise<VenueMenuD
   const [biz, tables, items] = await Promise.all([
     db.from('businesses').select('*').eq('id', businessId).maybeSingle(),
     db.from('restaurant_tables').select('id, table_number, business_id, seating_capacity, status').eq('business_id', businessId),
-    db.from('catalog_items').select('id, name, description, price, category, item_type, image_url')
+    // Only the diet is read out of metadata (for the veg mark), not the whole column.
+    db.from('catalog_items').select('id, name, description, price, category, item_type, image_url, dietary:metadata->>dietary')
       .or(`business_id.eq.${businessId},location_id.eq.${businessId}`).eq('is_available', true),
   ]);
   // A failed read is an error, not "no menu": it must never be remembered as a venue with no dishes.

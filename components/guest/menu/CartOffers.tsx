@@ -41,13 +41,13 @@ export function CartOffers({ venueId, tableNumber, offers }: CartOffersProps) {
   if (offers.length === 0) return null;
 
   return (
-    <div className="space-y-2 border-t border-zinc-100 pt-3">
+    <div className="space-y-2 border-t border-[#e8dfcc] pt-3">
       <div className="flex items-center justify-between">
-        <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">Venue offers</span>
-        <span className="text-[10px] font-medium text-[#4a3a8c]">Live now</span>
+        <span className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#8a6d3f]">Venue offers</span>
+        <span className="text-[10px] font-medium text-[#10231a]/45">Live now</span>
       </div>
-      {/* Small rectangular tiles, the same as on the menu: two across, each opens its offer. */}
-      <ul className={`grid gap-2 ${offers.length === 1 ? 'mx-auto max-w-[230px] grid-cols-1' : 'grid-cols-2'}`}>
+      {/* The same cards as on the menu: one across, or two side by side; each opens its offer. */}
+      <ul className={`grid gap-2 ${offers.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
         {offers.map((o) => (
           <li key={o.id} className="min-w-0">
             <OfferTile offer={o} onOpen={() => setOpen(o)} className="w-full" />

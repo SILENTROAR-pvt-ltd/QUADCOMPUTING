@@ -14,12 +14,12 @@ const toList = (s: string) => s.split('\n').map((x) => x.trim()).filter(Boolean)
 
 type Draft = { tagline: string; address: string; delivery: string; phones: string; timings: string; notes: string };
 // Same key order as MenuInfo, so the change check compares like with like.
-type Core = Omit<MenuInfo, 'featured'>;
+type Core = Omit<MenuInfo, 'featured' | 'gallery'>;
 const fromDraft = (d: Draft): Core => ({
   tagline: d.tagline.trim(), address: d.address.trim(), delivery: d.delivery.trim(),
   phones: toList(d.phones), timings: toList(d.timings), notes: toList(d.notes),
 });
-// The top picks are saved by their own card; this form never sends or compares them.
+// The top picks and the memory vault are saved by their own cards; this form never sends or compares them.
 const core = (i: MenuInfo): Core => ({ tagline: i.tagline, address: i.address, delivery: i.delivery, phones: i.phones, timings: i.timings, notes: i.notes });
 
 /** What guests read on the menu: tagline, address, delivery, phones, timings and house notes. */

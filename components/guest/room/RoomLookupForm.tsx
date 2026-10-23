@@ -46,14 +46,14 @@ export function RoomLookupForm({ cafeId, onFound, askRoom = true }: Props) {
     } catch { setError('Network error. Check your connection and try again.'); } finally { setBusy(false); }
   };
 
-  const field = 'h-12 w-full rounded-2xl border border-zinc-200 bg-white px-4 text-[15px] text-zinc-950 outline-none focus:border-zinc-900';
+  const field = 'h-12 w-full rounded-2xl border border-[#e8dfcc] bg-[#fbf9f4] px-4 text-[15px] text-[#10231a] placeholder-[#10231a]/40 outline-none transition focus:border-[#b08d57] focus:ring-4 focus:ring-[#d9c193]/20';
   return (
     <form onSubmit={(e) => void submit(e)} className="space-y-3">
       <input aria-label="Last four digits of your mobile number" inputMode="numeric" autoFocus maxLength={4} value={digits} onChange={(e) => setDigits(e.target.value.replace(/\D/g, '').slice(0, 4))} placeholder="Last 4 digits of your mobile" className={`${field} font-mono tracking-[0.3em] placeholder:font-sans placeholder:tracking-normal`} />
       {needRoom && <input aria-label="Room number" value={room} onChange={(e) => setRoom(e.target.value.slice(0, 20))} placeholder="Room number" autoComplete="off" className={field} />}
-      {error && <p role="alert" className="text-[12.5px] font-medium text-rose-600">{error}</p>}
+      {error && <p role="alert" className="text-[12.5px] font-medium text-[#8a2d1c]">{error}</p>}
       <button type="submit" disabled={busy || digits.length !== 4 || (needRoom && !room.trim())}
-        className="inline-flex h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-full bg-zinc-950 text-[14px] font-semibold text-white hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50">
+        className="inline-flex h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-full bg-gradient-to-br from-[#0f2a1e] to-[#1d4632] text-[14px] font-semibold text-[#f5f1e8] shadow-[0_12px_28px_-14px_rgba(15,42,30,0.8)] ring-1 ring-[#d9c193]/30 disabled:cursor-not-allowed disabled:opacity-50">
         {busy && <Loader2 className="h-4 w-4 animate-spin" />}{busy ? 'One moment…' : 'Open my room'}
       </button>
     </form>

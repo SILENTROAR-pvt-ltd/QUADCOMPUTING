@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { KeyRound, BedDouble } from 'lucide-react';
 import { GuestAuthSheet } from '@/components/guest/account/GuestAuthSheet';
@@ -17,7 +17,7 @@ import { RoomTypeCard } from './RoomTypeCard';
 import { BookingSheet } from './BookingSheet';
 import { nightsBetween } from './stay-format';
 
-const serif = { fontFamily: "'Playfair Display', Georgia, serif" };
+const serif = { fontFamily: "var(--font-luxe), 'Playfair Display', Georgia, serif" };
 
 /** /stay/[venue]: the rooms on offer, free-for-your-dates counts, reservation through the Vibers ID, and the door to self check-in. */
 export function StayShowcasePage({ venueParam }: { venueParam: string }) {
@@ -28,14 +28,21 @@ export function StayShowcasePage({ venueParam }: { venueParam: string }) {
   const myRoom = hub?.my_room || null;
   const nights = nightsBetween(s.checkIn, s.checkOut);
   const cover = useMemo(() => s.types.find((t) => t.photos.length > 0)?.photos[0] || null, [s.types]);
+  // Opened from a room card on the menu (#room-<id>): glide to that room once the rooms are on the page.
+  const hasTypes = s.types.length > 0;
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (!hasTypes || !hash.startsWith('#room-')) return;
+    requestAnimationFrame(() => document.getElementById(hash.slice(1))?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  }, [hasTypes]);
 
   if (s.loading && !s.venue) return <StayShell eyebrow="Stay"><StaySkeleton rows={3} /></StayShell>;
   if (s.error || !s.venue) {
     return (
       <StayShell>
         <div className="mx-auto max-w-md py-16 text-center">
-          <h2 className="text-2xl font-medium text-neutral-950" style={serif}>We could not open this venue</h2>
-          <p className="mt-2 text-sm text-neutral-500">{s.error}</p>
+          <h2 className="text-[2rem] font-medium text-[#10231a]" style={serif}>We could not open this venue</h2>
+          <p className="mt-2 text-sm text-[#10231a]/55">{s.error}</p>
           <button type="button" onClick={() => void s.reload()} className={`${stayButton.ghost} mt-6`}>Try again</button>
         </div>
       </StayShell>
@@ -61,12 +68,12 @@ export function StayShowcasePage({ venueParam }: { venueParam: string }) {
           <section id="rooms" aria-labelledby="stay-rooms" className="scroll-mt-20">
             <div className="mb-3 flex items-end justify-between gap-3">
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-amber-700">Choose a room</p>
-                <h3 id="stay-rooms" className="mt-1 text-2xl font-medium text-neutral-950" style={serif}>Rooms</h3>
+                <p className="flex items-center gap-2.5 text-[10px] font-semibold uppercase tracking-[0.28em] text-[#8a6d3f] before:h-px before:w-6 before:bg-[#b08d57]">Choose a room</p>
+                <h3 id="stay-rooms" className="mt-2 text-[2.2rem] font-light leading-none text-[#10231a]" style={serif}>Rooms &amp; <em className="font-normal text-[#8a6d3f]">suites</em></h3>
               </div>
-              <p className="text-xs text-neutral-500" aria-live="polite">{s.loading ? 'Checking availability…' : `${freeCount} free for your dates`}</p>
+              <p className="text-xs text-[#8a6d3f]" aria-live="polite">{s.loading ? 'Checking availability…' : `${freeCount} free for your dates`}</p>
             </div>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
               {s.types.map((t) => <RoomTypeCard key={t.id} type={t} nights={nights} onBook={gate.reserve} />)}
             </div>
           </section>

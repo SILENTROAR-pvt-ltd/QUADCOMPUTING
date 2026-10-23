@@ -18,7 +18,7 @@ interface VenueServicesMarqueeProps {
   onSelectService?: (service: VenueService) => void;
 }
 
-const SERIF = { fontFamily: "'Playfair Display', Georgia, serif" } as const;
+const SERIF = { fontFamily: "var(--font-luxe), 'Playfair Display', Georgia, serif" } as const;
 
 function normalizeServiceItem(item: any): VenueService {
   return {
@@ -86,9 +86,9 @@ export function VenueServicesMarquee({ services: propServices, onSelectService }
 
   return (
     <section aria-label="Venue experiences and services" className="my-5 w-full">
-      <div className="mb-3 px-0.5">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-[#8a6d2b]">At your service</p>
-        <h3 className="mt-1 text-[21px] leading-tight text-zinc-950" style={SERIF}>Experiences &amp; services</h3>
+      <div className="mb-4 px-0.5">
+        <p className="flex items-center gap-2.5 text-[10px] font-semibold uppercase tracking-[0.28em] text-[#8a6d3f] before:h-px before:w-6 before:bg-[#b08d57]">At your service</p>
+        <h3 className="mt-2 text-[1.9rem] font-light leading-[1.05] text-[#10231a]" style={SERIF}>Experiences &amp; <em className="font-normal text-[#8a6d3f]">services</em></h3>
       </div>
 
       {/* Drifts from right to left and loops. It stops under a finger or the pointer; with reduced motion it is a row to swipe. */}
@@ -109,8 +109,8 @@ export function VenueServicesMarquee({ services: propServices, onSelectService }
             />
           ))}
         </div>
-        <div aria-hidden className="pointer-events-none absolute inset-y-0 left-0 w-6 bg-gradient-to-r from-[#faf9f6] to-transparent" />
-        <div aria-hidden className="pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-[#faf9f6] to-transparent" />
+        <div aria-hidden className="pointer-events-none absolute inset-y-0 left-0 w-6 bg-gradient-to-r from-[#f5f1e8] to-transparent" />
+        <div aria-hidden className="pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-[#f5f1e8] to-transparent" />
       </div>    </section>
   );
 }

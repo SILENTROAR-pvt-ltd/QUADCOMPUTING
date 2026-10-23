@@ -15,6 +15,8 @@ export interface MenuItem {
   type?: 'food' | 'drink' | 'accommodation' | 'service' | string;
   item_type?: string;
   image_url?: string;
+  /** The diet the host chose ('veg' | 'non_veg' | 'vegan' | 'egg'); see lib/guest/dish-mark for how it is shown. */
+  dietary?: string | null;
   available?: boolean;
   item_options?: ItemOption[];
   options?: ItemOption[];

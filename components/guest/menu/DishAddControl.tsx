@@ -28,14 +28,14 @@ export function DishAddControl({ name, quantity, onIncrement, onDecrement }: Dis
   if (quantity === 0) {
     return (
       <motion.button type="button" onClick={add} aria-label={`Add ${name}`} {...press}
-        className="grid h-10 w-10 cursor-pointer place-items-center rounded-full bg-black text-white shadow-sm hover:bg-zinc-800">
+        className="grid h-10 w-10 cursor-pointer place-items-center rounded-full bg-gradient-to-br from-[#0f2a1e] to-[#1d4632] text-[#f5f1e8] shadow-[0_10px_20px_-10px_rgba(15,42,30,0.8)] ring-1 ring-[#d9c193]/35 hover:to-[#24573e]">
         <Plus size={18} strokeWidth={2.5} />
       </motion.button>
     );
   }
   return (
     <motion.div layout initial={{ scale: 0.85, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} onClick={(e) => e.stopPropagation()}
-      className="flex items-center gap-0.5 rounded-full bg-black p-1 text-white shadow-[0_8px_18px_-10px_rgba(0,0,0,0.7)]">
+      className="flex items-center gap-0.5 rounded-full bg-gradient-to-br from-[#0f2a1e] to-[#1d4632] p-1 text-[#f5f1e8] shadow-[0_10px_20px_-10px_rgba(15,42,30,0.8)] ring-1 ring-[#d9c193]/35">
       <motion.button type="button" onClick={(e) => { e.stopPropagation(); onDecrement(); }} {...press}
         aria-label={quantity === 1 ? `Remove ${name}` : `One fewer ${name}`}
         className={`grid h-8 w-8 cursor-pointer place-items-center rounded-full hover:bg-white/15 ${quantity === 1 ? 'text-rose-300' : ''}`}>

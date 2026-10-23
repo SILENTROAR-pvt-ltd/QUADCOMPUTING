@@ -94,6 +94,7 @@ export const GET = withApiErrorBoundary(async function GET(request: Request) {
         // service without its own picture, misrepresenting what guests order.
         // The cards render a neutral initial-letter tile instead.
         image_url: item.image_url || null,
+        dietary: typeof item.dietary === 'string' ? item.dietary : null,
       }));
     }
 

@@ -4,7 +4,8 @@ import React, { useState } from 'react';
 import { Heart } from 'lucide-react';
 import { postmarkDate, postmarkName } from './postcard-look';
 
-export const POSTCARD_SERIF = { fontFamily: "'Playfair Display', Georgia, serif" } as const;
+// The house serif of the guest app (var(--font-luxe), set on the page), with Playfair standing in until it loads.
+export const POSTCARD_SERIF = { fontFamily: "var(--font-luxe), 'Playfair Display', Georgia, serif" } as const;
 
 /** The postmark over the corner of the photo: wavy cancelling lines, and a ring with the venue and the day. */
 export function Postmark({ venue, dateIso, id }: { venue: string; dateIso: string; id: string }) {

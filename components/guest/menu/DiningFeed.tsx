@@ -31,7 +31,7 @@ interface DiningFeedProps {
 
 /** The first few tiles load their photos at once so the top of the menu is never grey. */
 const EAGER = 4;
-const CHIP = 'cursor-pointer rounded-full border border-zinc-200 bg-white px-3.5 py-2 text-[11px] font-medium text-zinc-600 transition-colors hover:border-zinc-400 hover:text-zinc-900 active:scale-95';
+const CHIP = 'cursor-pointer rounded-full border border-[#e8dfcc] bg-[#fbf9f4] px-3.5 py-2 text-[11px] font-medium text-[#10231a]/70 transition-colors hover:border-[#b08d57]/60 hover:text-[#10231a] active:scale-95';
 
 /**
  * The menu as a list of category bars, in the same order as the chips (which open and scroll to them, and follow along as the
@@ -76,7 +76,7 @@ export function DiningFeed({ items, isLoading, categoryOrder, getItemCartQuantit
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between px-1 pb-1">
-        <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-[#8A7040]">{groups.length} categories</p>
+        <p className="flex items-center gap-2.5 text-[10px] font-semibold uppercase tracking-[0.28em] text-[#8a6d3f] before:h-px before:w-6 before:bg-[#b08d57]">{groups.length} categories</p>
         <div className="flex gap-1.5">
           <button type="button" className={CHIP} onClick={() => onOpenAll(groups.map((g) => g.category))}>Open all</button>
           <button type="button" className={CHIP} onClick={onCloseAll}>Close all</button>

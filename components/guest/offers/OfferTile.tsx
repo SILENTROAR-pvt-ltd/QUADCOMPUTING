@@ -2,26 +2,38 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Ticket } from 'lucide-react';
 import type { VenueLiveOffer } from '@/types/offers';
 import { press } from '@/components/guest/menu/motion';
+import { LUXE_SERIF } from '@/components/guest/luxe/luxe-theme';
 
-/** One offer as a small rectangular tile: the saving in serif type, the offer's name beneath, and an arrow. */
-export function OfferTile({ offer, onOpen, className = '' }: { offer: VenueLiveOffer; onOpen: () => void; className?: string }) {
+/**
+ * One offer as a quiet ivory card: its photo (or a forest coin), what it is in small gold capitals, the saving in the
+ * house serif, and a forest arrow. `compact` drops the photo, for three offers side by side.
+ */
+export function OfferTile({ offer, onOpen, className = '', compact = false }: { offer: VenueLiveOffer; onOpen: () => void; className?: string; compact?: boolean }) {
   return (
     <motion.button
       type="button"
       onClick={onOpen}
       aria-label={`${offer.discount_badge}: ${offer.title}. Open offer`}
       {...press}
-      className={`group relative flex h-[68px] cursor-pointer flex-col justify-between overflow-hidden rounded-xl border border-[#d9d0f2] bg-gradient-to-br from-[#f6f2ff] via-[#efe9fd] to-[#e7defa] px-3 py-2 text-left shadow-[0_8px_22px_-10px_rgba(139,112,214,0.55),inset_0_1px_0_rgba(255,255,255,0.85)] hover:border-[#b9a8ec] ${className}`}
+      className={`group relative flex h-[72px] cursor-pointer items-center gap-3 overflow-hidden rounded-[20px] border border-[#e8dfcc] bg-[#fbf9f4] text-left shadow-[0_14px_28px_-22px_rgba(15,42,30,0.55)] transition-colors hover:border-[#d9c193] ${compact ? 'px-3' : 'pl-2.5 pr-3'} ${className}`}
     >
-      {/* A soft glow in the corner, the lavender light behind the tile. */}
-      <span aria-hidden className="pointer-events-none absolute -right-8 -top-10 h-24 w-24 rounded-full bg-[radial-gradient(circle,rgba(196,176,245,0.75),rgba(196,176,245,0)_70%)]" />
-      <span className="relative line-clamp-2 pr-5 font-sans text-[12.5px] font-bold uppercase leading-[1.15] tracking-[0.02em] text-[#2e2358] antialiased">{offer.discount_badge}</span>
-      <span className="relative truncate font-sans text-[11px] font-medium capitalize leading-none text-[#6b5f94] antialiased">{offer.title.toLowerCase()}</span>
-      <span aria-hidden className="absolute right-2 top-2 grid h-4 w-4 place-items-center rounded-full bg-[#4a3a8c] text-white transition-transform duration-200 group-hover:translate-x-0.5">
-        <ArrowRight className="h-2.5 w-2.5" />
+      {!compact && (
+        <span className="relative h-[52px] w-[52px] shrink-0 overflow-hidden rounded-[14px] bg-[radial-gradient(circle_at_30%_20%,#1d4632,#0f2a1e)]">
+          {offer.image_url
+            // eslint-disable-next-line @next/next/no-img-element -- the offer's photo, stored by the venue
+            ? <img src={offer.image_url} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
+            : <Ticket aria-hidden className="absolute inset-0 m-auto h-5 w-5 text-[#d9c193]" />}
+        </span>
+      )}
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[9px] font-semibold uppercase tracking-[0.22em] text-[#8a6d3f]">{offer.title}</span>
+        <span className="mt-0.5 line-clamp-2 block text-[1.05rem] font-medium leading-[1.1] text-[#10231a]" style={LUXE_SERIF}>{offer.discount_badge}</span>
+      </span>
+      <span aria-hidden className={`grid shrink-0 place-items-center rounded-full bg-gradient-to-br from-[#0f2a1e] to-[#1d4632] text-[#d9c193] transition-transform duration-200 group-hover:translate-x-0.5 ${compact ? 'h-6 w-6' : 'h-8 w-8'}`}>
+        <ArrowRight className={compact ? 'h-3 w-3' : 'h-3.5 w-3.5'} />
       </span>
     </motion.button>
   );

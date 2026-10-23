@@ -27,7 +27,7 @@ export function CartSuggestions({ cartItems, menuItems, featuredIds = [], onAdd 
     <div className="mt-3 space-y-3 border-t border-zinc-100 pt-3">
       {sections.map((section) => (
         <section key={section.id} aria-label={section.title}>
-          <h4 className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-neutral-400">{section.title}</h4>
+          <h4 className="mb-1.5 text-[9.5px] font-semibold uppercase tracking-[0.24em] text-[#8a6d3f]">{section.title}</h4>
           <ul className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {section.items.map((dish) => {
               const item = byId.get(dish.id);
@@ -38,19 +38,19 @@ export function CartSuggestions({ cartItems, menuItems, featuredIds = [], onAdd 
                     type="button"
                     onClick={() => onAdd(item)}
                     aria-label={`Add ${item.name}, ₹${item.price}`}
-                    className="flex h-[58px] w-[168px] cursor-pointer items-center gap-2 rounded-xl border border-zinc-200 bg-white p-1.5 text-left transition-colors active:scale-[0.98] active:bg-zinc-50"
+                    className="flex h-[58px] w-[168px] cursor-pointer items-center gap-2 rounded-[16px] border border-[#e8dfcc] bg-[#f8f4ea] p-1.5 text-left transition-colors active:scale-[0.98] active:bg-[#f3ecdc]"
                   >
-                    <span className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-zinc-100">
+                    <span className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full bg-[#efe7d6] ring-1 ring-[#d9c193]/60">
                       {item.image_url
                         // eslint-disable-next-line @next/next/no-img-element -- the venue's own dish photo; images.unoptimized is set
                         ? <img src={item.image_url} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
-                        : <span aria-hidden className="grid h-full w-full place-items-center font-sans text-sm font-semibold text-zinc-400">{item.name.charAt(0)}</span>}
+                        : <span aria-hidden className="grid h-full w-full place-items-center font-sans text-sm font-semibold text-[#b08d57]">{item.name.charAt(0)}</span>}
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate font-sans text-[12px] font-semibold leading-tight text-zinc-900">{item.name}</span>
-                      <span className="block font-sans text-[11px] font-medium text-zinc-500">₹{item.price}</span>
+                      <span className="block truncate text-[15px] font-semibold leading-tight text-[#10231a]" style={{ fontFamily: "var(--font-luxe), 'Playfair Display', Georgia, serif" }}>{item.name}</span>
+                      <span className="block font-sans text-[11px] font-medium text-[#8a6d3f]">₹{item.price}</span>
                     </span>
-                    <span aria-hidden className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[#0A3222] text-white"><Plus size={13} strokeWidth={2.5} /></span>
+                    <span aria-hidden className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-gradient-to-br from-[#0f2a1e] to-[#1d4632] text-[#f5f1e8]"><Plus size={13} strokeWidth={2.5} /></span>
                   </button>
                 </li>
               );

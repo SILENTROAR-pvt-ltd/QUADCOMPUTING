@@ -1,6 +1,9 @@
 // The venue's public menu information: tagline, address, delivery, phones, timings and house notes.
 // Stored as JSON on businesses.menu_info. Validated on every save, and read leniently so a bad
 // stored value never breaks the guest menu.
+import { galleryPhotos, type GalleryPhoto } from './gallery';
+
+export type { GalleryPhoto } from './gallery';
 
 export interface MenuInfo {
   tagline: string;
@@ -11,9 +14,11 @@ export interface MenuInfo {
   notes: string[];
   /** Catalogue item ids the host has picked to show first on the guest menu, in this order. */
   featured: string[];
+  /** The memory vault: photos of the venue itself, in the host's order (see gallery.ts). */
+  gallery: GalleryPhoto[];
 }
 
-export const EMPTY_MENU_INFO: MenuInfo = { tagline: '', address: '', delivery: '', phones: [], timings: [], notes: [], featured: [] };
+export const EMPTY_MENU_INFO: MenuInfo = { tagline: '', address: '', delivery: '', phones: [], timings: [], notes: [], featured: [], gallery: [] };
 
 /** Up to this many dishes can be picked as the venue's top picks. */
 export const FEATURED_MAX = 5;
@@ -55,6 +60,7 @@ export function normalizeMenuInfo(input: unknown): { ok: true; value: MenuInfo }
       timings: list(i.timings, LIMITS.timing, LIMITS.timings),
       notes: list(i.notes, LIMITS.note, LIMITS.notes),
       featured: featuredIds(i.featured),
+      gallery: galleryPhotos(i.gallery),
     },
   };
 }
@@ -93,6 +99,8 @@ export async function saveMenuInfo(db: any, businessId: string, input: unknown):
     const real = new Set((found || []).map((r: any) => String(r.id).toLowerCase()));
     parsed.value.featured = parsed.value.featured.filter((id) => real.has(id));
   }
+  // A gallery photo must sit in this venue's own folder: one stored by another venue is dropped, not saved.
+  if ('gallery' in sent) parsed.value.gallery = galleryPhotos(parsed.value.gallery, businessId);
   const { error } = await db.from('businesses').update({ menu_info: parsed.value }).eq('id', businessId);
   if (error) {
     if (MISSING_COLUMN.has(error.code)) {

@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { Eye, EyeOff, KeyRound, type LucideIcon } from 'lucide-react';
 
 export const authField =
-  'w-full bg-zinc-50 border border-zinc-200 rounded-xl pl-10 pr-3.5 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-zinc-900 focus:bg-white transition-all';
+  'w-full bg-[#f8f4ea] border border-[#e8dfcc] rounded-2xl pl-10 pr-3.5 py-2.5 text-sm text-[#10231a] placeholder:text-[#10231a]/40 focus:outline-none focus:border-[#b08d57] focus:bg-white focus:shadow-[0_0_0_3px_rgba(217,193,147,0.2)] transition-all';
 
 type InputProps = Omit<React.InputHTMLAttributes<HTMLInputElement>, 'className'>;
 
@@ -59,7 +59,7 @@ export function FormError({ message }: { message: string }) {
 
 export function SubmitButton({ busy, children }: { busy: boolean; children: React.ReactNode }) {
   return (
-    <button type="submit" disabled={busy} className="w-full py-3 rounded-2xl bg-zinc-950 text-white font-semibold text-sm hover:bg-zinc-800 active:scale-[0.98] transition-all shadow-lg shadow-zinc-950/10 cursor-pointer disabled:opacity-50 disabled:cursor-wait">
+    <button type="submit" disabled={busy} className="w-full py-3 rounded-full bg-gradient-to-br from-[#0f2a1e] to-[#1d4632] text-[#f5f1e8] font-semibold text-sm ring-1 ring-[#d9c193]/30 active:scale-[0.98] transition-all shadow-[0_14px_28px_-16px_rgba(15,42,30,0.85)] cursor-pointer disabled:opacity-50 disabled:cursor-wait">
       {busy ? 'Please wait…' : children}
     </button>
   );
@@ -67,7 +67,7 @@ export function SubmitButton({ busy, children }: { busy: boolean; children: Reac
 
 export function QuietButton({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
   return (
-    <button type="button" onClick={onClick} className="w-full py-2.5 rounded-2xl text-zinc-600 font-medium text-sm hover:text-zinc-950 hover:bg-zinc-50 transition-all cursor-pointer">
+    <button type="button" onClick={onClick} className="w-full py-2.5 rounded-full text-[#10231a]/70 font-medium text-sm hover:text-[#10231a] hover:bg-[#f3ecdc] transition-all cursor-pointer">
       {children}
     </button>
   );

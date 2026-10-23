@@ -66,7 +66,7 @@ export function useGuestMenuState({ tableParam, cafeParam, roomParam = '' }: { t
     ui.setServiceNotificationSent(false);
     ui.setSelectedService(null);
     ui.showToast(result.ok
-      ? `Request sent: ${service.name} for Table ${sessionData.tableNumber}`
+      ? `${service.name} is requested. The host will confirm with you shortly.`
       : "Couldn't reach the venue. Please try again, or ask your waiter.");
   };
 

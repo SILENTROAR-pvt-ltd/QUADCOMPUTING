@@ -57,13 +57,14 @@ export function GuestAuthSheet({ isOpen, venueId, tableNumber, initialMode = 'cr
   return (
     <div role="dialog" aria-modal="true" aria-labelledby="guest-auth-title" className="fixed inset-0 z-[300] flex items-end justify-center bg-black/50 p-0 backdrop-blur-sm sm:items-center sm:p-4">
       <motion.div initial={{ y: 48, opacity: 0.6 }} animate={{ y: 0, opacity: 1 }} transition={{ type: 'spring', stiffness: 420, damping: 38 }}
-        className="max-h-[92dvh] w-full max-w-md overflow-y-auto overscroll-contain rounded-t-[32px] border border-zinc-200/80 bg-white p-6 shadow-2xl sm:rounded-3xl">
+        className="max-h-[92dvh] w-full max-w-md overflow-y-auto overscroll-contain rounded-t-[32px] border border-[#e8dfcc] bg-[#fbf9f4] p-6 shadow-2xl sm:rounded-[28px]">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h2 id="guest-auth-title" className="font-serif text-xl leading-tight text-zinc-950">{title}</h2>
-            <p className="mt-1 text-xs text-zinc-500">{subtitle(tableNumber)}</p>
+            <p className="text-[9.5px] font-semibold uppercase tracking-[0.28em] text-[#8a6d3f]">{GUEST_BRAND.name}</p>
+            <h2 id="guest-auth-title" className="mt-1 text-[27px] font-medium leading-[1.05] text-[#10231a]" style={{ fontFamily: "var(--font-luxe), 'Playfair Display', Georgia, serif" }}>{title}</h2>
+            <p className="mt-1.5 text-xs leading-relaxed text-[#10231a]/55">{subtitle(tableNumber)}</p>
           </div>
-          <button type="button" onClick={onClose} aria-label="Close" className="-mr-1 grid h-10 w-10 cursor-pointer place-items-center rounded-full text-zinc-400 hover:bg-zinc-100 hover:text-black"><X className="h-5 w-5" /></button>
+          <button type="button" onClick={onClose} aria-label="Close" className="-mr-1 grid h-10 w-10 cursor-pointer place-items-center rounded-full text-[#10231a]/45 hover:bg-[#f3ecdc] hover:text-[#10231a]"><X className="h-5 w-5" /></button>
         </div>
 
         {(step === 'create' || step === 'signin' || step === 'pin') && (
@@ -98,7 +99,7 @@ export function GuestAuthSheet({ isOpen, venueId, tableNumber, initialMode = 'cr
         )}
 
         {onBrowse && step !== 'profile' && <div className="mt-1"><QuietButton onClick={onBrowse}>Continue without an account</QuietButton></div>}
-        <p className="mt-2 text-center text-[10.5px] leading-relaxed text-zinc-400">Your password is never stored by the venue. {GUEST_BRAND.name} never asks for it by message.</p>
+        <p className="mt-2 text-center text-[10.5px] leading-relaxed text-[#10231a]/40">Your password is never stored by the venue. {GUEST_BRAND.name} never asks for it by message.</p>
       </motion.div>
     </div>
   );

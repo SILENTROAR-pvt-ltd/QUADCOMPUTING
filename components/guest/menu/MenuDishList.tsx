@@ -45,7 +45,7 @@ export function MenuDishList({ state, likes }: { state: GuestMenuState; likes?: 
 
   return (
     <div id="menu-dishes" className="space-y-4 sm:space-y-5">
-      <div ref={bar} className="sticky top-0 z-30 -mx-4 bg-[#faf9f6]/[0.97] px-4 pb-2 pt-1 sm:-mx-6 sm:px-6">
+      <div ref={bar} className="sticky top-0 z-30 -mx-4 bg-[#f5f1e8]/95 px-4 pb-2 pt-2 shadow-[0_14px_24px_-26px_rgba(16,35,26,0.6)] sm:-mx-6 sm:px-6">
         <DiningFilters
           searchQuery={searchQuery} setSearchQuery={setSearchQuery} categories={culinaryCategories}
           selectedCategory={selectedCategory} onSelectCategory={select} counts={counts} covers={covers}
