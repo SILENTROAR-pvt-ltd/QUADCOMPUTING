@@ -70,7 +70,7 @@ export const FloatingCartBar: React.FC<FloatingCartBarProps> = ({ totalCartCount
               className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 rounded-xl px-1.5 py-1 text-left hover:bg-white/[0.06]">
               <motion.span {...{ [CART_TARGET_ATTR]: '' }} animate={bag} className="relative grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white/10 ring-1 ring-[#d9c193]/25">
                 <ShoppingBag className="h-[18px] w-[18px] text-[#d9c193]" aria-hidden />
-                <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-[#d9c193] px-1 text-[10px] font-bold text-[#0f2a1e] ring-2 ring-[#0f2a1e]">
+                <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-[#fffaf0] px-1 text-[11px] font-bold leading-none text-[#0f2a1e] shadow-[0_2px_6px_rgba(0,0,0,0.35)] ring-2 ring-[#0f2a1e]">
                   <AnimatedCount value={count} />
                 </span>
               </motion.span>
@@ -79,7 +79,11 @@ export const FloatingCartBar: React.FC<FloatingCartBarProps> = ({ totalCartCount
                   <AnimatedCount value={rupees(subtotal)} className="text-[15px] font-semibold" />
                   <ChevronUp aria-hidden className={`h-3.5 w-3.5 shrink-0 text-[#d9c193]/70 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
                 </span>
-                {cashback > 0 && <span className="mt-0.5 block truncate text-[11px] font-medium leading-tight text-[#d9c193]">{rupees(cashback)} cashback</span>}
+                {cashback > 0 && (
+                  <span className="mt-0.5 block truncate text-[11.5px] leading-tight text-[#f5f1e8]/80">
+                    <span className="font-semibold text-[#f3dca6]">{rupees(cashback)}</span> cashback
+                  </span>
+                )}
               </span>
             </motion.button>
 

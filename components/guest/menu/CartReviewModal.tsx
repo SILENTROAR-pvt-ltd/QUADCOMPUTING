@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Truck } from 'lucide-react';
 import { CartItem, useCartStore } from '@/lib/store/cart.store';
 import { useGuestAccount } from '@/lib/guest/use-guest-account';
 import { useGuestWallet } from '@/components/guest/lobby/useGuestWallet';
@@ -114,9 +115,11 @@ export const CartReviewModal: React.FC<CartReviewModalProps> = (p) => {
             </div>
 
             {cafeId && !hasActiveOrder && !room && (
+              // A quiet alternative, not a second main button: one small line above the total.
               <button type="button" onClick={() => setDeliveryOpen(true)} disabled={cartItems.length === 0 || p.isSendingToKitchen}
-                className="mb-3 h-10 w-full cursor-pointer rounded-full border border-[#d9c193] text-[11px] font-semibold uppercase tracking-[0.18em] text-[#6f5631] hover:bg-[#f3ecdc] disabled:opacity-40">
-                Order for delivery instead
+                className="mx-auto mb-2 inline-flex h-8 shrink-0 cursor-pointer items-center gap-1.5 self-center rounded-full px-3 text-[12px] font-medium text-[#8a6d3f] transition-colors hover:bg-[#f3ecdc] hover:text-[#5c4626] disabled:opacity-40">
+                <Truck className="h-3.5 w-3.5" aria-hidden />
+                <span className="underline decoration-[#d9c193] decoration-1 underline-offset-[3px]">Order for delivery instead</span>
               </button>
             )}
             <CartReviewFooter total={cartSubtotal} sending={p.isSendingToKitchen} disabled={cartItems.length === 0} hasActiveOrder={hasActiveOrder} roomMode={room} onPlace={place} />
