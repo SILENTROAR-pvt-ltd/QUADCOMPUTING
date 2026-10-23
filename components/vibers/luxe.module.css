@@ -1,0 +1,125 @@
+/* Motion for the Vibers Connect page: slow, settled, never bouncy. Everything stops for people who prefer reduced motion. */
+
+/* The hero's words arrive one after another, softly out of focus. */
+.enter { opacity: 0; animation: enter 1.4s cubic-bezier(0.2, 0.7, 0.1, 1) forwards; animation-delay: var(--d, 0s); }
+@keyframes enter { from { opacity: 0; transform: translateY(18px); filter: blur(6px); } to { opacity: 1; transform: none; filter: blur(0); } }
+
+/* Sections rise into place as they reach the reader (Reveal.tsx sets data-shown); children stagger by --i. */
+.reveal { opacity: 0; transform: translateY(34px); transition: opacity 1.1s cubic-bezier(0.2, 0.7, 0.1, 1), transform 1.1s cubic-bezier(0.2, 0.7, 0.1, 1); transition-delay: calc(var(--i, 0) * 110ms); }
+.reveal[data-shown='true'] { opacity: 1; transform: none; }
+
+/* A row whose children arrive one after another (Reveal with stagger); each child sets --i. */
+.stagger > * { opacity: 0; transform: translateY(30px); transition: opacity 1.1s cubic-bezier(0.2, 0.7, 0.1, 1), transform 1.1s cubic-bezier(0.2, 0.7, 0.1, 1); transition-delay: calc(var(--i, 0) * 120ms); }
+.stagger[data-shown='true'] > * { opacity: 1; transform: none; }
+
+/* A photo settles from a slight zoom as it appears, then holds. */
+.settle { transform: scale(1.12); transition: transform 2.4s cubic-bezier(0.2, 0.7, 0.1, 1); }
+[data-shown='true'] .settle, .settle[data-shown='true'] { transform: scale(1); }
+
+/* Cards lift and their photo leans in on hover. */
+.lift { transition: transform 0.8s cubic-bezier(0.2, 0.7, 0.1, 1); }
+.lift:hover { transform: translateY(-6px); }
+.lift img { transition: transform 1.6s cubic-bezier(0.2, 0.7, 0.1, 1); }
+.lift:hover img { transform: scale(1.06); }
+
+/* The welcome's cards: on wider screens they start as a tilted stack and fan into a row as --p goes 0 -> 1 with the
+   scroll (WelcomeFan.tsx sets it). Each card carries its own --x, --y, --r (stack) and --r2 (resting tilt). */
+@media (min-width: 768px) {
+  .fanCard {
+    transform: translate3d(calc((1 - var(--p, 1)) * var(--x, 0%)), calc(var(--y, 0px) + (1 - var(--p, 1)) * 36px), 0)
+      rotate(calc(var(--r, 0deg) * (1 - var(--p, 1)) + var(--r2, 0deg)));
+    transition: transform 0.18s linear;
+    will-change: transform;
+  }
+}
+
+/* A slow drift for full-bleed photography. */
+.drift { animation: drift 24s ease-in-out infinite alternate; }
+/* Phones keep the photo still: an endless transform on a full-screen image costs battery and memory there. */
+@media (max-width: 767px) { .drift { animation: none; } }
+@keyframes drift { from { transform: scale(1.04); } to { transform: scale(1.14) translate3d(-1.2%, -1%, 0); } }
+
+/* The hero's progress: the running clip's bar fills over its length. */
+.fill { transform-origin: left center; animation: fill linear forwards; animation-duration: var(--len, 5s); }
+@keyframes fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+/* The scroll cue: a thin line that keeps travelling down. */
+.cue { animation: cue 2.4s cubic-bezier(0.6, 0, 0.2, 1) infinite; transform-origin: top center; }
+@keyframes cue { 0% { transform: scaleY(0); opacity: 1; } 55% { transform: scaleY(1); opacity: 1; } 100% { transform: scaleY(1); opacity: 0; } }
+
+/* Film grain over dark sections, so flat colour feels like paper and print. */
+.grain::after {
+  /* No blend mode: blending a full-section layer repaints on every scroll frame. A faint plain layer reads the same. */
+  content: ''; position: absolute; inset: 0; pointer-events: none; opacity: 0.045;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+
+/* Where the browser supports scroll-driven animation, large photos drift against the scroll. */
+@supports (animation-timeline: view()) {
+  .parallax { animation: parallax linear both; animation-timeline: view(); animation-range: cover 0% cover 100%; }
+  @keyframes parallax { from { transform: translateY(-6%) scale(1.12); } to { transform: translateY(6%) scale(1.12); } }
+}
+
+/* "When the vibe breaks": --p (0 -> 1) is the reader's way through the section (VibeBreaks.tsx). Each line lights up
+   from its own start (--s), the gold rail fills, and the grey photo warms into colour as the last line arrives. */
+.breakLine { opacity: clamp(0.16, calc((var(--p, 1) - var(--s, 0)) * 6), 1); transition: opacity 0.2s linear; }
+.breakColor { opacity: clamp(0, calc((var(--p, 1) - 0.6) * 4.5), 1); }
+.breakZoom { transform: scale(calc(1.12 - var(--p, 1) * 0.12)); will-change: transform; }
+.breakRail { transform: scaleY(var(--p, 1)); transform-origin: top center; }
+
+/* The ecosystem deck: the chosen card comes to the front; the others wait behind it, smaller and turned. */
+.deckCard { transform-origin: 50% 100%; transition: transform 0.95s cubic-bezier(0.2, 0.7, 0.1, 1); }
+.deckCard[data-depth='0'] { transform: none; z-index: 3; }
+.deckCard[data-depth='1'] { transform: translate3d(11%, -6%, 0) rotate(5deg) scale(0.92); z-index: 2; }
+.deckCard[data-depth='2'] { transform: translate3d(21%, -11%, 0) rotate(10deg) scale(0.84); z-index: 1; }
+.deckShade { transition: opacity 0.95s cubic-bezier(0.2, 0.7, 0.1, 1); }
+.deckCard[data-depth='0'] .deckShade { opacity: 0; }
+
+/* Cards slide in one after another after a filter change. Two identical animations take turns, so a card that stays in
+   the row (same element, photo already painted) replays the slide by switching names, without being rebuilt. */
+.swapA, .swapB { animation: swapA 0.85s cubic-bezier(0.2, 0.7, 0.1, 1) both; animation-delay: calc(var(--i, 0) * 70ms); }
+.swapB { animation-name: swapB; }
+@keyframes swapA { from { opacity: 0; transform: translate3d(32px, 0, 0) scale(0.97); } to { opacity: 1; transform: none; } }
+@keyframes swapB { from { opacity: 0; transform: translate3d(32px, 0, 0) scale(0.97); } to { opacity: 1; transform: none; } }
+
+/* A line that draws itself from one end to the other when its Reveal arrives. */
+.route { transform: scaleX(0); transform-origin: left center; transition: transform 2.4s cubic-bezier(0.6, 0, 0.2, 1) 0.3s; }
+[data-shown='true'] .route { transform: scaleX(1); }
+
+/* Experience cards drift gently up and down, each on its own beat (--fd duration, --fdl delay); the round photos behind
+   the heading wander a little further (--ox, --oy). */
+.float { animation: float var(--fd, 7s) ease-in-out var(--fdl, 0s) infinite alternate; }
+@keyframes float { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(0, -16px, 0); } }
+.orbit { animation: orbit var(--fd, 11s) ease-in-out var(--fdl, 0s) infinite alternate; }
+@keyframes orbit { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(var(--ox, 10px), var(--oy, -14px), 0); } }
+
+/* A slow ticker of words (the content is doubled, so moving it half its width loops seamlessly). */
+.marquee { display: flex; width: max-content; animation: marquee 60s linear infinite; }
+.marquee:hover { animation-play-state: paused; }
+@keyframes marquee { to { transform: translate3d(-50%, 0, 0); } }
+
+/* A small live dot that keeps breathing. */
+.pulse { position: relative; }
+.pulse::after { content: ''; position: absolute; inset: 0; border-radius: 9999px; background: inherit; animation: pulse 2.2s ease-out infinite; }
+@keyframes pulse { from { transform: scale(1); opacity: 0.7; } to { transform: scale(3); opacity: 0; } }
+
+/* The 7% explainer (CashbackFlow.tsx): a ledger row slides in, its 7% follows, and a gold dot carries it to the wallet
+   (or, when the wallet pays, back up to the ledger). */
+.rowIn, .fadeUp { animation: rowIn 0.7s cubic-bezier(0.2, 0.7, 0.1, 1) both; }
+/* A photo that slowly settles while it is the one showing (PlanFlow.tsx). */
+.kenburns { animation: kenburns 7s cubic-bezier(0.2, 0.7, 0.1, 1) both; }
+@keyframes kenburns { from { transform: scale(1.1); } to { transform: scale(1); } }
+@keyframes rowIn { from { opacity: 0; transform: translate3d(0, 14px, 0); } to { opacity: 1; transform: none; } }
+.chipIn { animation: chipIn 0.6s cubic-bezier(0.2, 0.7, 0.1, 1) 0.45s both; }
+@keyframes chipIn { from { opacity: 0; transform: translate3d(0, -6px, 0) scale(0.9); } to { opacity: 1; transform: none; } }
+.flowDown, .flowUp { animation: flowDown 0.7s cubic-bezier(0.6, 0, 0.3, 1) 0.55s both; }
+.flowUp { animation-name: flowUp; }
+@keyframes flowDown { 0% { transform: translate3d(0, 0, 0); opacity: 0; } 15%, 85% { opacity: 1; } 100% { transform: translate3d(0, 41px, 0); opacity: 0; } }
+@keyframes flowUp { 0% { transform: translate3d(0, 41px, 0); opacity: 0; } 15%, 85% { opacity: 1; } 100% { transform: translate3d(0, 0, 0); opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .enter, .drift, .fill, .cue, .parallax, .swapA, .swapB, .marquee, .pulse::after, .rowIn, .chipIn, .fadeUp, .kenburns, .float, .orbit { animation: none !important; opacity: 1; filter: none; }
+  .flowDown, .flowUp { animation: none !important; opacity: 0; }
+  .reveal, .settle, .lift, .lift img, .stagger > *, .deckCard, .route { transition: none !important; opacity: 1; }
+  .reveal, .settle, .lift, .lift img, .stagger > *, .route { transform: none !important; }
+}

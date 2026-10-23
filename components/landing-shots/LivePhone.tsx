@@ -10,15 +10,17 @@ interface Props {
   /** The address in Safari's bar. */
   url?: string;
   className?: string;
+  /** Wait this long after it comes into view before playing (to stagger recordings shown side by side). */
+  startDelayMs?: number;
 }
 
 /**
  * A recording of the product playing on an iPhone, as if someone were using it. It loads and plays only while on screen,
  * and for people who prefer reduced motion it stays on its first frame.
  */
-export function LivePhone({ id, url = 'vibersconnect.com', className = 'w-[260px]' }: Props) {
+export function LivePhone({ id, url = 'vibersconnect.com', className = 'w-[260px]', startDelayMs = 0 }: Props) {
   const v = VIDEOS[id];
-  const ref = useInViewVideo();
+  const ref = useInViewVideo(startDelayMs);
   return (
     <figure className={className}>
       <IPhoneFrame url={url}>

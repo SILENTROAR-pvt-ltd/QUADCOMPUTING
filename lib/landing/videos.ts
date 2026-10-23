@@ -1,15 +1,15 @@
 // Written by scripts/record-landing-videos.mjs. Recordings of the product with a fictional café's data.
 export const VIDEOS = {
   "guest-menu": {
-    "src": "/media/landing/guest-menu-v1.mp4",
-    "poster": "/media/landing/guest-menu-poster-v1.webp",
+    "src": "/media/landing/guest-menu-v2.mp4",
+    "poster": "/media/landing/guest-menu-poster-v2.webp",
     "width": 600,
     "height": 1111,
     "alt": "The guest menu in use: scrolling the dishes and adding them to the tray"
   },
   "guest-tracker": {
-    "src": "/media/landing/guest-tracker-v1.mp4",
-    "poster": "/media/landing/guest-tracker-poster-v1.webp",
+    "src": "/media/landing/guest-tracker-v2.mp4",
+    "poster": "/media/landing/guest-tracker-poster-v2.webp",
     "width": 600,
     "height": 1111,
     "alt": "The live order tracker moving from received to ready, then the bill and wallet"
@@ -27,6 +27,20 @@ export const VIDEOS = {
     "width": 1280,
     "height": 760,
     "alt": "The analytics dashboard: totals, sales by hour, channels, categories and guests"
+  },
+  "guest-vibey": {
+    "src": "/media/landing/guest-vibey-v2.mp4",
+    "poster": "/media/landing/guest-vibey-poster-v2.webp",
+    "width": 600,
+    "height": 1111,
+    "alt": "Vibey, the ordering chat: one message fills the tray and suggests dishes to share"
+  },
+  "guest-lounge": {
+    "src": "/media/landing/guest-lounge-v2.mp4",
+    "poster": "/media/landing/guest-lounge-poster-v2.webp",
+    "width": 600,
+    "height": 1111,
+    "alt": "The Vibers Lounge: memory postcards from guests, liked with a double tap"
   }
 } as const;
 

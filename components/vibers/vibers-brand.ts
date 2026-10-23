@@ -1,34 +1,36 @@
-// Vibers Connect brand, aligned with Vibers Club: soft luxury. Warm ivory pages, white cards, deep forest-green ink and
-// actions, a chartreuse highlight for the moments that matter, and mint for quiet panels. Photos carry the colour.
-// (Fonts live in vibers-fonts.ts.)
+// Vibers Connect, quiet luxury: warm ivory paper, deep forest ink, champagne gold used sparingly (hairlines, numerals,
+// the script signature), and photography and film carrying the colour. No neon, no loud highlights.
+// (Fonts live in vibers-fonts.ts; media in vibers-media.ts.)
 export const COLORS = {
-  ivory: '#f1efe6',
-  card: '#fbfaf6',
-  mint: '#e1efe3',
-  ink: '#14261b',
-  forest: '#17301f',
-  forestHover: '#22432c',
-  chartreuse: '#c8da4a',
-  olive: '#3c6b2b',
+  paper: '#f5f1e8',
+  paperDeep: '#ece5d6',
+  ink: '#10231a',
+  forest: '#0f2a1e',
+  forestSoft: '#173a2a',
+  gold: '#b08d57',
+  goldLight: '#d9c193',
 } as const;
 
-/** The main action: forest green with ivory text. */
-export const PRIMARY = 'bg-[#17301f] text-[#f6f4ec] hover:bg-[#22432c]';
-/** The celebratory action: chartreuse with forest text. */
-export const HIGHLIGHT = 'bg-[#c8da4a] text-[#14261b] hover:bg-[#bccf3b]';
-/** A white card on the ivory page. */
-export const SURFACE = 'rounded-[28px] border border-[#14261b]/[0.06] bg-[#fbfaf6] shadow-[0_18px_40px_-30px_rgba(20,38,27,0.45)]';
-/** The italic accent word inside a headline. */
-export const ACCENT = 'font-normal italic text-[#3c6b2b]';
-/** A chartreuse highlighter stroke under a word. */
-export const MARK = 'bg-[linear-gradient(transparent_64%,#c8da4a_64%,#c8da4a_92%,transparent_92%)] px-1';
-
-export const CONTAINER ='mx-auto w-full max-w-6xl px-4 sm:px-6';
+export const CONTAINER = 'mx-auto w-full max-w-[1240px] px-4 sm:px-8';
 export const SECTION = 'relative scroll-mt-20 py-20 sm:py-28';
-export const KICKER = 'text-[11px] font-bold uppercase tracking-[0.24em] text-[#3c6b2b]';
-export const LEAD = 'text-[15px] leading-relaxed text-[#14261b]/70 sm:text-[17px]';
-export const H2 = 'mt-4 text-[2.4rem] leading-[1.04] tracking-[-0.02em] text-[#14261b] sm:text-[3.4rem]';
-export const BTN = 'inline-flex h-12 items-center justify-center gap-2 rounded-full px-7 text-sm font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#17301f]';
+/** Small capitals above a headline, with a gold hairline. */
+export const KICKER = 'inline-flex items-center gap-3 text-[10.5px] font-semibold uppercase tracking-[0.34em] text-[#8a6d3f] before:h-px before:w-8 before:bg-[#b08d57]';
+export const KICKER_LIGHT = 'inline-flex items-center gap-3 text-[10.5px] font-semibold uppercase tracking-[0.34em] text-[#d9c193] before:h-px before:w-8 before:bg-[#d9c193]';
+/** Section headline, in the display face (add DISPLAY). */
+export const H2 = 'mt-5 text-[2.25rem] font-light leading-[1.08] tracking-[-0.005em] sm:text-[2.9rem] lg:text-[3.3rem]';
+/** The italic turn inside a headline. */
+export const TURN = 'italic font-normal text-[#8a6d3f]';
+export const TURN_LIGHT = 'italic font-normal text-[#d9c193]';
+export const LEAD = 'text-[15.5px] leading-[1.85] text-[#10231a]/70 sm:text-[16px]';
+export const LEAD_LIGHT = 'text-[15.5px] leading-[1.85] text-[#f5f1e8]/70 sm:text-[16px]';
+
+const BTN = 'inline-flex h-12 items-center justify-center gap-2 rounded-full px-7 text-[13px] font-semibold tracking-[0.04em] transition-all duration-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2';
+/** On a photo or film: ivory, then a quiet outline. */
+export const BTN_IVORY = `${BTN} bg-[#f5f1e8] text-[#10231a] hover:bg-white focus-visible:outline-[#f5f1e8]`;
+export const BTN_GHOST_LIGHT = `${BTN} border border-[#f5f1e8]/45 text-[#f5f1e8] hover:border-[#f5f1e8] hover:bg-white/5 focus-visible:outline-[#f5f1e8]`;
+/** On paper: forest, then a quiet outline. */
+export const BTN_FOREST = `${BTN} bg-[#0f2a1e] text-[#f5f1e8] hover:bg-[#173a2a] focus-visible:outline-[#0f2a1e]`;
+export const BTN_GHOST = `${BTN} border border-[#10231a]/25 text-[#10231a] hover:border-[#10231a] focus-visible:outline-[#0f2a1e]`;
 
 export const SITE = {
   name: 'Vibers Connect',

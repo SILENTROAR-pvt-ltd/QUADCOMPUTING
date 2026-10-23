@@ -7,6 +7,8 @@ import { BillTotals } from '@/components/guest/menu/bill/BillTotals';
 import { WalletBalanceCard } from '@/components/guest/lobby/wallet/WalletBalanceCard';
 import { DEMO_VENUE } from '@/lib/showcase/demo-orders';
 import { GuestMenuScreen } from './GuestMenuScreen';
+import { VibeyScreen } from './VibeyScreen';
+import { LoungeScreen } from './LoungeScreen';
 
 const lines = [
   { id: 'l1', itemName: 'Cappuccino', quantity: 2, unitPrice: 180, lineTotal: 360, notes: null },
@@ -39,4 +41,6 @@ const Tracker = () => {
 };
 
 /** Each guest (phone) screen, by its id. */
-export const GUEST_SCREENS: Record<string, () => React.ReactElement> = { 'guest-menu': GuestMenuScreen, 'guest-tracker': Tracker };
+export const GUEST_SCREENS: Record<string, () => React.ReactElement> = {
+  'guest-menu': GuestMenuScreen, 'guest-tracker': Tracker, 'guest-vibey': VibeyScreen, 'guest-lounge': LoungeScreen,
+};

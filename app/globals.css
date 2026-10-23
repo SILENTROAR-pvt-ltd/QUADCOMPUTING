@@ -25,6 +25,11 @@ html {
   overflow-x: clip;
 }
 
+/* The Vibers Connect home glides between its chapters; everywhere else keeps instant jumps. */
+@media (prefers-reduced-motion: no-preference) {
+  html:has(#vc-home) { scroll-behavior: smooth; }
+}
+
 body {
   min-height: 100%;
   max-width: 100vw;
