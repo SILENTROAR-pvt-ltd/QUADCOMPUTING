@@ -1,7 +1,9 @@
+import Link from 'next/link';
+import { ArrowUpRight } from 'lucide-react';
 import { PhoneReel } from '@/components/landing-shots/PhoneReel';
 import { Reveal } from './Reveal';
 import { PHOTOS } from './vibers-media';
-import { CONTAINER, H2, KICKER, LEAD, SECTION, TURN } from './vibers-brand';
+import { BTN_IVORY, CONTAINER, H2, KICKER, LEAD, SECTION, TURN } from './vibers-brand';
 import { DISPLAY } from './vibers-fonts';
 import s from './luxe.module.css';
 
@@ -40,6 +42,10 @@ export function YourStay() {
                 Scan the table or room QR: the menu opens and your order goes straight to the kitchen. Or just tell Vibey what
                 you feel like, and leave a postcard on the lounge wall before you go.
               </p>
+              {/* The venue side of these screens: the system the venue runs on. */}
+              <Link href="/quad-computing" className={`${BTN_IVORY} mt-7`}>
+                Visit Quad Computing <ArrowUpRight aria-hidden="true" className="h-4 w-4" />
+              </Link>
             </div>
             <div className="relative flex justify-center gap-4 text-[#f5f1e8]/75 sm:gap-6 lg:justify-end">
               <PhoneReel ids={['guest-menu', 'guest-tracker']} captions={['The menu', 'Your order, live']} className="w-[46%] max-w-[230px] translate-y-6" />

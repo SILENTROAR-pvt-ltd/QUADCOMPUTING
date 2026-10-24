@@ -1,6 +1,6 @@
 // Records the product in use for the landing pages: the guest menu (scrolling, adding dishes, the tray filling), the
-// live order tracker, Vibey filling a tray from one message, the lounge wall of memory postcards, Dues on a phone, and
-// the analytics dashboard. Each is a real screen at /showcase/<id> with a fictional café's data, driven by a short
+// live order tracker, Vibey filling a tray from one message, the lounge wall of memory postcards, Dues on a phone, the
+// analytics dashboard, the POS taking a table's order, and the live kitchen board. Each is a real screen at /showcase/<id> with a fictional café's data, driven by a short
 // script. Recording is frame-exact (scripts/lib/frame-clock.mjs): the page's clock moves 1/30 s between screenshots, so
 // every frame is a real, distinct frame and scrolls are as smooth as the frame rate, however slowly Edge renders.
 // Encoded with ffmpeg to H.264 MP4 plus a WebP poster; lib/landing/videos.ts holds their sizes.
@@ -17,7 +17,7 @@ import { launchEdge } from './lib/edge-cdp.mjs';
 import { FRAME_CLOCK } from './lib/frame-clock.mjs';
 
 const [BASE = 'http://localhost:3000', ...ONLY] = process.argv.slice(2);
-const VERSION = 'v2';
+const VERSION = 'v3';
 const FPS = 30;
 const OUT = join(process.cwd(), 'public', 'media', 'landing');
 const MANIFEST = join(process.cwd(), 'lib', 'landing', 'videos.ts');
@@ -41,9 +41,12 @@ const HELPERS = `
   const bottom = () => document.scrollingElement.scrollHeight;
   const glideTo = (sel, ms, at = 0.42) => { const e = document.querySelector(sel); return glide(e.getBoundingClientRect().top + scrollY - innerHeight * at, ms); };
   const tap = (sel) => document.querySelector(sel)?.click();
+  // The first element matching sel whose text contains text (for buttons that carry no label of their own).
+  const tapText = (sel, text) => [...document.querySelectorAll(sel)].find((e) => e.textContent.includes(text))?.click();
   const doubleTap = (sel) => document.querySelector(sel)?.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
   const type = async (sel, text, perChar = 45) => {
-    const input = document.querySelector(sel), set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+    const input = document.querySelector(sel);
+    const set = Object.getOwnPropertyDescriptor(input instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype, 'value').set;
     input.focus();
     for (let i = 1; i <= text.length; i += 1) { set.call(input, text.slice(0, i)); input.dispatchEvent(new Event('input', { bubbles: true })); await wait(perChar); }
   };
@@ -51,13 +54,16 @@ const HELPERS = `
 
 const PHONE = { width: 393, height: 728, scale: 2, out: 600 };
 const VIDEOS = [
-  { id: 'guest-menu', ...PHONE, alt: 'The guest menu in use: scrolling the dishes and adding them to the tray', script: `
-    await wait(600); await glideTo('[aria-label="Add Grilled Skewers"]', 1300); await wait(250);
-    tap('[aria-label="Add Grilled Skewers"]'); await wait(650);
-    await glideTo('[aria-label="Add Big Breakfast Board"]', 1000); await wait(250);
-    tap('[aria-label="Add Big Breakfast Board"]'); await wait(500);
-    tap('[aria-label="One more Big Breakfast Board"]'); await wait(750);
-    await glide(bottom(), 900); await wait(650); await glide(0, 1400); await wait(600);` },
+  { id: 'guest-menu', ...PHONE, alt: 'The guest menu in use: the venue banner, top picks, category bars opening to dishes, and the tray filling', script: `
+    await wait(1700); await glideTo('[aria-label="Top picks"]', 1300, 0.22); await wait(500);
+    tap('[aria-label="Top picks"] [aria-label="Add Seafood Paella"]'); await wait(700);
+    await glideTo('section[data-category="Coffee"]', 1100, 0.1); await wait(300);
+    tap('section[data-category="Coffee"] [aria-label="Add Cappuccino"]'); await wait(450);
+    tap('section[data-category="Coffee"] [aria-label="One more Cappuccino"]'); await wait(600);
+    tap('section[data-category="Mains"] > button'); await wait(500);
+    await glideTo('section[data-category="Mains"]', 1100, 0.12); await wait(300);
+    tap('section[data-category="Mains"] [aria-label="Add Grilled Skewers"]'); await wait(900);
+    await glideTo('#memory-vault-title', 1400, 0.18); await wait(1100); await glide(0, 1700); await wait(700);` },
   { id: 'guest-tracker', ...PHONE, alt: 'The live order tracker moving from received to ready, then the bill and wallet', script: `
     window.__showcaseStep(0); await wait(1000); window.__showcaseStep(1); await wait(1500); window.__showcaseStep(2); await wait(1200);
     await glide(bottom(), 1500); await wait(1200); await glide(0, 1200); await wait(300); window.__showcaseStep(0); await wait(300);` },
@@ -78,6 +84,49 @@ const VIDEOS = [
     await wait(1100); await glide(bottom(), 3200); await wait(1200); await glide(0, 2300); await wait(900);` },
   { id: 'overview', width: 1280, height: 760, scale: 1, out: 1280, alt: 'The analytics dashboard: totals, sales by hour, channels, categories and guests', script: `
     await wait(1100); await glide(bottom(), 4400); await wait(1400); await glide(0, 3000); await wait(800);` },
+  { id: 'pos-billing', width: 1280, height: 760, scale: 1, out: 1280, alt: 'The POS in use: picking table T-04, tapping dishes, searching the menu, and the receipt adding GST and cashback', script: `
+    await wait(900); tapText('button', 'T-04'); await wait(800);
+    tapText('[data-demo="catalog"] button', 'Cappuccino'); await wait(450);
+    tapText('[data-demo="catalog"] button', 'Cappuccino'); await wait(450);
+    tapText('[data-demo="catalog"] button', 'Avocado Toast'); await wait(600);
+    await type('[data-demo="catalog"] input[placeholder="Search the menu"]', 'pan', 120); await wait(700);
+    tapText('[data-demo="catalog"] button', 'Paneer Tikka'); await wait(600);
+    tap('[data-demo="catalog"] [aria-label="Clear search"]'); await wait(500);
+    tapText('[data-demo="catalog"] button', 'Tiramisu'); await wait(700);
+    tap('[aria-label="One more Avocado Toast"]'); await wait(1000);
+    await glide(bottom(), 1600); await wait(1200); await glide(0, 1400); await wait(700);` },
+  { id: 'host-events', width: 1280, height: 760, scale: 1, out: 1280, alt: 'My Guests: publishing a live event, then the interested guest list filling up and a party confirmed', script: `
+    await wait(1300); tapText('[role="tab"]', 'Live Events'); await wait(1800);
+    tapText('button', 'New live event'); await wait(700);
+    await type('input[placeholder^="e.g. Sunset"]', 'Sunset Acoustics & Cocktails', 50); await wait(250);
+    await type('input[placeholder^="Free welcome"]', 'Free welcome drink, Reserved seating', 30); await wait(400);
+    tapText('button[type="submit"]', 'Publish event'); await wait(500); await glide(0, 600); await wait(1500);
+    tapText('[role="tab"]', 'Event Interested List'); await wait(1400);
+    tap('[aria-label="My Guests"] ~ div button[aria-label="Refresh"]'); await wait(1500);
+    tapText('button', 'Mark Confirmed'); await wait(1100);
+    await glide(bottom(), 1500); await wait(900); await glide(0, 1200); await wait(500);` },
+  { id: 'host-offers', width: 1280, height: 760, scale: 1, out: 1280, alt: 'Live offers: publishing a new offer, and guests’ redemption codes settled at the counter', script: `
+    await wait(1200); tapText('button', 'Publish Offer'); await wait(800);
+    await type('#offer-title', 'Live music Fridays: free dessert', 45); await wait(300);
+    await type('#offer-description', 'With any two mains, 8 to 11 PM', 30); await wait(400);
+    tapText('form button[type="submit"]', ''); await wait(1500);
+    await glideTo('section[aria-label="Guest requests"]', 1300, 0.3); await wait(700);
+    tapText('section[aria-label="Guest requests"] button', 'Settle'); await wait(1200);
+    tapText('section[aria-label="Guest requests"] button', 'Settle'); await wait(1200);
+    await glide(0, 1300); await wait(600);` },
+  { id: 'host-services', width: 1280, height: 760, scale: 1, out: 1280, alt: 'Services and partners: guests’ service requests ringing in from the menu, handled one by one', script: `
+    await wait(1800); tapText('button', 'Done'); await wait(1600);
+    tapText('button', 'Done'); await wait(2200);
+    tapText('button', 'Done'); await wait(1800);
+    tapText('button', 'Done'); await wait(2000);` },
+  { id: 'kitchen-board', width: 1280, height: 760, scale: 1, out: 1280, alt: 'The live kitchen board: a ticket started, a dish ticked off, a ticket marked ready, and a new order arriving', script: `
+    await wait(1000); tapText('article[aria-label^="Ticket 142"] button', 'Start preparing'); await wait(1200);
+    tap('article[aria-label^="Ticket 141"] [aria-label="1 Paneer Tikka"]'); await wait(900);
+    tapText('article[aria-label^="Ticket 141"] button', 'Mark ready'); await wait(1300);
+    window.__showcaseStep(1); await wait(1600);
+    tap('article[aria-label^="Ticket 142"] [aria-label="1 Avocado Toast"]'); await wait(900);
+    tapText('article[aria-label^="Ticket 143"] button', 'Start preparing'); await wait(1600);
+    await glide(bottom(), 1300); await wait(900); await glide(0, 1100); await wait(600);` },
 ];
 
 /** The manifest written last time, so recording a few ids keeps the others. */

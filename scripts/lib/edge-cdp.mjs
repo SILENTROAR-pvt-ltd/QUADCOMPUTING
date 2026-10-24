@@ -51,7 +51,11 @@ export async function launchEdge(port = 9333) {
     await loaded;
     return evaluate(`(async () => {
       await document.fonts.ready;
-      await Promise.all([...document.images].map((i) => i.complete ? null : new Promise((r) => { i.onload = i.onerror = r; })));
+      // Lazy images off screen are never fetched (and never fire load), so load them all now, and give up after 10 s.
+      await Promise.race([
+        Promise.all([...document.images].map((i) => { i.loading = 'eager'; return i.complete ? null : new Promise((r) => { i.onload = i.onerror = r; }); })),
+        new Promise((r) => setTimeout(r, 10000)),
+      ]);
       await new Promise((r) => setTimeout(r, 1500));
       // Extensions inject custom elements (a hyphen in the tag) under <html> or <body>; the page never does, bar Next's announcer.
       for (const n of [...document.documentElement.children, ...document.body.children]) {

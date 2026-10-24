@@ -6,6 +6,7 @@ import { BillLines } from '@/components/guest/menu/bill/BillLines';
 import { BillTotals } from '@/components/guest/menu/bill/BillTotals';
 import { WalletBalanceCard } from '@/components/guest/lobby/wallet/WalletBalanceCard';
 import { DEMO_VENUE } from '@/lib/showcase/demo-orders';
+import { LUXE_FONT_VAR } from '@/components/guest/luxe/luxe-theme';
 import { GuestMenuScreen } from './GuestMenuScreen';
 import { VibeyScreen } from './VibeyScreen';
 import { LoungeScreen } from './LoungeScreen';
@@ -25,12 +26,12 @@ const Tracker = () => {
   const [step, setStep] = useState(0);
   useEffect(() => { window.__showcaseStep = setStep; return () => { delete window.__showcaseStep; }; }, []);
   return (
-    <div className="min-h-screen space-y-4 bg-white p-4">
-      <div className="rounded-3xl border border-zinc-200 p-4">
+    <div className={`${LUXE_FONT_VAR} min-h-screen space-y-4 bg-[#f5f1e8] p-4`}>
+      <div className="rounded-3xl border border-[#e8dfcc] bg-[#fbf9f4] p-4">
         <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">Table T-04 · KOT #142</p>
         <div className="mt-3"><TrackerTimeline currentStep={step} status={STATUS[step]} /></div>
       </div>
-      <div className="rounded-3xl border border-zinc-200 p-4">
+      <div className="rounded-3xl border border-[#e8dfcc] bg-[#fbf9f4] p-4">
         <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">Your bill</p>
         <BillLines lines={lines} />
         <BillTotals subtotal={960} gst={48} payable={1008} />

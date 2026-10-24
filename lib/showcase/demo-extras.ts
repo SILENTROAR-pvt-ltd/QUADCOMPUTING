@@ -43,7 +43,15 @@ export const vendors = [
 
 const photo = (id: string) => `https://images.unsplash.com/photo-${id}?auto=format&fit=crop&w=480&h=480&q=70`;
 
-/** Four dishes for the guest menu screenshot. */
+/** The memory vault on the guest menu: evenings the sample café keeps (the home page's own photographs). */
+export const guestGallery = [
+  { url: '/media/vibers/photo-club-dinner-v1.webp', caption: 'Long-table supper, Saturday' },
+  { url: '/media/vibers/photo-courtyard-v1.webp', caption: 'The courtyard at golden hour' },
+  { url: '/media/vibers/photo-club-rooftop-v1.webp', caption: 'Rooftop sundowner' },
+  { url: '/media/vibers/photo-lounge-v1.webp', caption: 'Live set in the lounge' },
+];
+
+/** The dishes on the guest menu recordings (Vibey's scripted reply refers to them by id). */
 export const guestDishes = [
   { id: 'g1', name: 'Cappuccino', description: 'Double shot, steamed milk, a light cocoa dust.', price: 180, category: 'Coffee', image_url: photo('1509042239860-f550ce710b93') },
   { id: 'g2', name: 'Chef’s Signature Plate', description: 'Today’s plated special, finished with micro-greens.', price: 420, category: 'Mains', image_url: photo('1414235077428-338989a2e8c0') },

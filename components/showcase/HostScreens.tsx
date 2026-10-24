@@ -1,7 +1,6 @@
 'use client';
 
-import React, { Suspense } from 'react';
-import { ControlCenterHeader, type ControlCenterTab } from '@/components/host/ControlCenterHeader';
+import React from 'react';
 import { KpiStrip } from '@/components/host/workspaces/dashboard/KpiStrip';
 import { TopItemsTable } from '@/components/host/workspaces/dashboard/TopItemsTable';
 import { StockAlertsCard } from '@/components/host/workspaces/dashboard/StockAlertsCard';
@@ -21,24 +20,17 @@ import { VendorCard } from '@/components/host/workspaces/vendors/VendorCard';
 import { formatRupees } from '@/components/host/wallet/money';
 import { analytics, dues, invoices, pnl, reports } from '@/lib/showcase/demo-screens';
 import { deliveries, vendors } from '@/lib/showcase/demo-extras';
-import { DEMO_VENUE } from '@/lib/showcase/demo-orders';
 import { TableZonesScreen } from './TableScreens';
 import { TourScreen } from './TourScreen';
+import { Chrome } from './ShowcaseChrome';
+import { PosScreen } from './PosScreen';
+import { KitchenScreen } from './KitchenScreen';
+import { EventsScreen, OffersScreen, ServicesScreen } from './GrowthScreens';
 
 const CARD = 'rounded-2xl border border-neutral-200 bg-white p-5 sm:p-6';
 const CHANNEL_COLOR = { dine_in: '#2a78d6', rooms: '#1baf7a', delivery: '#eb6834', counter: '#8a6d2b' } as const;
 const noop = () => undefined;
 const hours = reports.by_hour.slice(9, 23).map((h) => ({ key: String(h.hour), label: h.label, value: h.sales }));
-
-/** The real control-centre header, on the given tab. */
-function Chrome({ tab, children }: { tab: ControlCenterTab; children: React.ReactNode }) {
-  return (
-    <div className="bg-[#faf9f6]">
-      <Suspense><ControlCenterHeader activeTab={tab} onTabChange={noop} venueName={DEMO_VENUE.name} venueId={DEMO_VENUE.id} /></Suspense>
-      <div className="mx-auto max-w-7xl space-y-4 px-8 py-6">{children}</div>
-    </div>
-  );
-}
 
 const Overview = () => (
   <Chrome tab="dashboard">
@@ -85,6 +77,11 @@ const pad = (node: React.ReactNode) => <div className="bg-[#faf9f6] p-6">{node}<
 export const HOST_SCREENS: Record<string, () => React.ReactElement> = {
   'table-zones': TableZonesScreen,
   'host-tour': TourScreen,
+  'pos-billing': PosScreen,
+  'kitchen-board': KitchenScreen,
+  'host-events': EventsScreen,
+  'host-offers': OffersScreen,
+  'host-services': ServicesScreen,
   overview: Overview,
   dues: Dues,
   pnl: () => pad(<ProfitLossCard p={pnl} format={formatRupees} />),
