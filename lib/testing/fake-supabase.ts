@@ -59,6 +59,10 @@ function parseOr(expr: string): Array<(r: Row) => boolean> {
     if (op === 'eq') return (r: Row) => String(r[col]) === val;
     if (op === 'neq') return (r: Row) => r[col] != null && String(r[col]) !== val;
     if (op === 'is' && val === 'null') return (r: Row) => r[col] == null;
+    if (op === 'gt') return (r: Row) => r[col] != null && String(r[col]) > val;
+    if (op === 'gte') return (r: Row) => r[col] != null && String(r[col]) >= val;
+    if (op === 'lt') return (r: Row) => r[col] != null && String(r[col]) < val;
+    if (op === 'lte') return (r: Row) => r[col] != null && String(r[col]) <= val;
     if (op === 'ilike') {
       const re = likeToRegExp(val);
       return (r: Row) => r[col] != null && re.test(String(r[col]));
@@ -85,7 +89,13 @@ class QueryBuilder implements PromiseLike<{ data: any; error: DbError | null }> 
 
   constructor(private db: FakeSupabase, private table: string, private opts: FakeOptions) {}
 
-  select(_cols?: string, _o?: unknown) { if (this.op !== 'select') this.returning = true; return this; }
+  private countOpt: { head: boolean } | null = null;
+  // `{ count: 'exact', head: true }` answers with the number of matching rows (and no rows when head), as PostgREST does.
+  select(_cols?: string, o?: { count?: string; head?: boolean }) {
+    if (this.op !== 'select') this.returning = true;
+    if (o?.count) this.countOpt = { head: Boolean(o.head) };
+    return this;
+  }
   insert(rows: Row | Row[]) { this.op = 'insert'; this.payload = rows; return this; }
   update(patch: Row) { this.op = 'update'; this.payload = patch; return this; }
   delete() { this.op = 'delete'; return this; }
@@ -167,6 +177,7 @@ class QueryBuilder implements PromiseLike<{ data: any; error: DbError | null }> 
         const { col, asc } = this.orderBy;
         out = [...out].sort((a, b) => (a[col] > b[col] ? 1 : a[col] < b[col] ? -1 : 0) * (asc ? 1 : -1));
       }
+      if (this.countOpt) return { data: this.countOpt.head ? null : out.map((r) => ({ ...r })), error: null, count: out.length } as any;
       out = out.slice(this.rangeFrom, this.limitN == null ? undefined : this.rangeFrom + this.limitN);
       return this.shape(out.map((r) => ({ ...r })));
     }

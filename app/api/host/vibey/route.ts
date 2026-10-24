@@ -11,6 +11,7 @@ import { loadLockedModules } from '@/lib/vibey/host/locks';
 import { hasMasterUnlock, masterUnlockFromCookieHeader } from '@/lib/services/security/master-unlock';
 import { hostReplySchema, hostRequestSchema } from '@/lib/vibey/host/schema';
 import { makeContext } from '@/lib/vibey/host/tools';
+import { hasFeature, requireFeature } from '@/lib/services/billing/feature-gate';
 
 // Node, not Edge: the service-role client and LangGraph's async context need it.
 export const runtime = 'nodejs';
@@ -31,7 +32,8 @@ function later(job: () => Promise<void>) {
 export const GET = withApiErrorBoundary(async function GET(request: Request) {
   const auth = await requireHost(request);
   if (auth.error) return auth.error;
-  return NextResponse.json({ enabled: vibeyFlags(auth.business).host, simple: !vibeyModelConfigured() }, { headers: NO_STORE });
+  const onPlan = await hasFeature(auth.businessId, 'vibey');
+  return NextResponse.json({ enabled: vibeyFlags(auth.business).host && onPlan, planRequired: !onPlan, simple: !vibeyModelConfigured() }, { headers: NO_STORE });
 }, 'HostVibeyGET');
 
 /** POST /api/host/vibey : one question about the signed-in venue, answered read-only from the dashboard's own services. */
@@ -40,6 +42,8 @@ export const POST = withApiErrorBoundary(async function POST(request: Request) {
   if (auth.error) return auth.error;
   const { businessId } = auth;
   if (!vibeyFlags(auth.business).host) return NextResponse.json({ success: false, error: 'Vibey is not switched on for this venue.' }, { status: 403 });
+  const blocked = await requireFeature(businessId, 'vibey');
+  if (blocked) return blocked;
 
   const parsed = hostRequestSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ success: false, error: 'Invalid question.' }, { status: 400 });

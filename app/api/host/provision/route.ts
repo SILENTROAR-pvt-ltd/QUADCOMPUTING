@@ -6,6 +6,8 @@ import { generateOwnerCafeId } from '@/lib/utils/ids';
 import { withApiErrorBoundary } from '@/lib/middleware/error-handler';
 import { safeMessage } from '@/lib/utils/safe-message';
 import { provisionRef } from '@/lib/services/host/provision-ref';
+import { defaultStartPlan } from '@/lib/services/wallet/start-plan';
+import { startTrial } from '@/lib/services/wallet/trial.service';
 
 export const POST = withApiErrorBoundary(async function POST(request: Request) {
   try {
@@ -66,6 +68,16 @@ export const POST = withApiErrorBoundary(async function POST(request: Request) {
         locationId: rpcResult.location_id,
         qrCodeHash,
       });
+    }
+
+    // The first month the host chose. A trial that cannot start (e.g. before the plans migration) never undoes the
+    // venue: it stays on Rhodium per bill and the trial can still be started from Wallet.
+    const startPlan = validatedData.startPlan ?? defaultStartPlan(validatedData.categories);
+    if (startPlan !== 'rhodium_ppb') {
+      for (const b of processedBusinesses) {
+        const trial = await startTrial(adminDb(), b.id, startPlan).catch((e) => ({ ok: false as const, status: 500, error: String(e?.message || e) }));
+        if (!trial.ok) console.warn('[HostProvisionPOST] Trial not started:', { businessId: b.id, reason: trial.error });
+      }
     }
 
     const primaryBusinessId = processedBusinesses[0]?.id || '';

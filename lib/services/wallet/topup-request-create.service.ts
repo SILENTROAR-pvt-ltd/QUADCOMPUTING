@@ -1,4 +1,4 @@
-import type { PlanTier, TopupRequestType, VenueTopupRequest } from '@/types/wallet';
+import type { PurchaseId, TopupRequestType, VenueTopupRequest } from '@/types/wallet';
 import { memTopupRequests } from './wallet-memory.store';
 import { getVenuePendingTopup } from './topup-request-queries.service';
 
@@ -14,7 +14,7 @@ export async function createTopupRequest(
     amount: number;
     utrNumber: string;
     paymentMethod?: string;
-    requestedPlanTier?: PlanTier | null;
+    requestedPlanTier?: PurchaseId | null;
     requestType?: TopupRequestType;
     notes?: string | null;
   }
@@ -52,6 +52,10 @@ export async function createTopupRequest(
   if (error) {
     if (error.code === '23505') {
       throw new TopupRequestError('This UTR / transaction reference has already been submitted.', 409);
+    }
+    // A plan id the database does not accept yet (migration 20261024000001 not applied).
+    if (error.code === '23514') {
+      throw new TopupRequestError('This purchase opens once the new plans are switched on. Please try again soon.', 503);
     }
     console.error('[createTopupRequest] insert failed:', { venueId, code: error.code, message: error.message });
     throw new TopupRequestError('Could not record your payment request. Please try again.', 500);

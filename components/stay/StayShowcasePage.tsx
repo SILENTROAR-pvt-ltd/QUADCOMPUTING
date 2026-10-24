@@ -62,7 +62,9 @@ export function StayShowcasePage({ venueParam }: { venueParam: string }) {
         <StayAccountBar account={gate.account} loading={gate.loading} signingOut={gate.signingOut} onSignIn={gate.openSignIn} onSignOut={() => void gate.logout()} />
         <StayDateStrip checkIn={s.checkIn} checkOut={s.checkOut} onChange={s.setDates} error={s.range?.error} />
 
-        {s.types.length === 0 ? (
+        {venue.bookable === false ? (
+          <StayNotice>Rooms here are not taken online right now. Call {venue.name} at {venue.phones[0] || 'the number on their menu'} to ask about a stay.</StayNotice>
+        ) : s.types.length === 0 ? (
           <StayNotice>This venue has not listed its rooms yet. Call them at {venue.phones[0] || 'the number on their menu'}.</StayNotice>
         ) : (
           <section id="rooms" aria-labelledby="stay-rooms" className="scroll-mt-20">
@@ -79,7 +81,7 @@ export function StayShowcasePage({ venueParam }: { venueParam: string }) {
           </section>
         )}
 
-        <StayHowItWorks inRoomDining={venue.in_room_dining_enabled} />
+        {venue.bookable !== false && <StayHowItWorks inRoomDining={venue.in_room_dining_enabled} />}
       </div>
 
       <GuestAuthSheet isOpen={gate.authOpen} venueId={venue.id} tableNumber="" notice={gate.notice}

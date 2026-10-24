@@ -1,13 +1,13 @@
 import type { PlanTier } from '@/types/wallet';
 import { mem } from './wallet-memory.store';
 import { getVenuePendingTopup } from './topup-request-queries.service';
-import { planState } from './subscription-state';
+import { paidPlanRunning, planState } from './subscription-state';
 import { adminDb } from '@/lib/supabase/admin';
 
 /**
- * The only plan change a venue can make for itself: back to pay-as-you-go. Paid plans start only
- * when the platform approves a verified payment (approve_topup_request), never from this call.
- * A plan that is still paid up is not dropped either: it would throw away months already paid for.
+ * The only plan change a venue can make for itself: back to Pay as you go (₹3 a bill). Paid plans start only
+ * when the platform approves a verified payment (approve_topup_request), never from this call. A plan that is still
+ * paid up is not dropped either (it would throw away months already paid for); a free trial can be ended early.
  */
 export async function updateVenuePlan(
   supabase: any,
@@ -25,9 +25,9 @@ export async function updateVenuePlan(
   const db = adminDb();
   const { data: sub } = await db.from('venue_subscriptions').select('*').eq('venue_id', venueId).maybeSingle();
   const state = planState(sub);
-  if (state.feesWaived) {
+  if (paidPlanRunning(state)) {
     const until = new Date(state.endsAt as string).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
-    return { success: false, error: `Your ${state.plan?.name} plan is paid until ${until}. It moves to pay-as-you-go by itself when it ends.` };
+    return { success: false, error: `Your ${state.plan?.name} plan is paid until ${until}. It moves to You earn, we earn (₹3 a bill) by itself when it ends.` };
   }
 
   const patch = { plan_tier: 'pay_as_you_go' as const, status: 'active' as const, trial_ends_at: null, expires_at: null, updated_at: new Date().toISOString() };

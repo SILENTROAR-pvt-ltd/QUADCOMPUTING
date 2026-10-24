@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { VenueSubscription, VenueWallet, UsageLedgerItem, VenueTopupRequest } from '@/types/wallet';
-import type { PlanInfo } from '@/lib/services/wallet/plans';
-import { planState } from '@/lib/services/wallet/subscription-state';
+import { planCharge, topupSetupDue, type PlanInfo } from '@/lib/services/wallet/plans';
+import { canBuyVibeyAddon, canUse, entitlementsOf } from '@/lib/services/billing/entitlements';
+import { PLAN_REFRESH_EVENT } from '@/components/host/plan/usePlanFeatures';
 import { apiRequest, jsonRequest } from '@/lib/utils/api-client';
 import { usePoll } from '@/lib/utils/use-poll';
 
-export type PaymentTarget = { kind: 'topup'; amount: number } | { kind: 'plan'; plan: PlanInfo };
+/** A plan payment or a first top-up carries the one-time setup this venue still owes (worked out when it is opened). */
+export type PaymentTarget = { kind: 'topup'; amount: number; setup?: number } | { kind: 'plan'; plan: PlanInfo; setup?: number } | { kind: 'addon' };
 export interface PlatformPayment { upi_id: string; payee_name: string }
 
 interface WalletData {
@@ -56,7 +58,25 @@ export function useWalletWorkspace(venueId: string) {
   usePoll(() => { void fetchWalletData(); }, 15_000);
 
   const hasPendingApproval = Boolean(data.pendingRequest);
-  const openPayment = (target: PaymentTarget) => { if (!hasPendingApproval) { setActionError(null); setPayFor(target); } };
+  const openPayment = (target: PaymentTarget) => {
+    if (hasPendingApproval) return;
+    setActionError(null);
+    setPayFor(target.kind === 'plan' ? { ...target, setup: planCharge(target.plan, data.subscription).setup }
+      : target.kind === 'topup' ? { ...target, setup: topupSetupDue(data.subscription) } : target);
+  };
+
+  // The free month is offered only once the subscription row carries trial_used_at (the plans migration) and it is empty.
+  const sub = data.subscription as (VenueSubscription & { trial_used_at?: string | null }) | null;
+  const trialAvailable = Boolean(sub && 'trial_used_at' in sub && !sub.trial_used_at);
+  const [starting, setStarting] = useState(false);
+  const startTrial = async (plan: PlanInfo) => {
+    setStarting(true);
+    const res = await apiRequest('/api/host/wallet', jsonRequest('POST', { action: 'start_trial', planTier: plan.id, venueId }));
+    setActionError(res.ok ? null : res.error);
+    setStarting(false);
+    fetchWalletData();
+    window.dispatchEvent(new CustomEvent(PLAN_REFRESH_EVENT));
+  };
 
   const switchToPayAsYouGo = async () => {
     setSwitching(true);
@@ -64,11 +84,15 @@ export function useWalletWorkspace(venueId: string) {
     setActionError(res.ok ? null : res.error);
     setSwitching(false);
     fetchWalletData();
+    window.dispatchEvent(new CustomEvent(PLAN_REFRESH_EVENT));
   };
 
+  const access = entitlementsOf(data.subscription);
   return {
     ...data,
-    plan: planState(data.subscription),
+    plan: access.state,
+    /** The Vibey add-on: whether this plan can take it, and when a running one ends. */
+    vibeyAddon: { eligible: canBuyVibeyAddon(access), included: canUse(access, 'vibey') && !access.vibeyUntil, until: access.vibeyUntil },
     hasPendingApproval,
     loading,
     switching,
@@ -78,5 +102,8 @@ export function useWalletWorkspace(venueId: string) {
     closePayment: () => setPayFor(null),
     fetchWalletData,
     switchToPayAsYouGo,
+    trialAvailable,
+    starting,
+    startTrial,
   };
 }

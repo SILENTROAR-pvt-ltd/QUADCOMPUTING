@@ -8,6 +8,7 @@ import { availabilityFromRows, OPEN_BOOKING_STATUSES } from '@/lib/services/stay
 import { validateStayBooking, nightsBetween } from '@/lib/services/stay/stay-booking.service';
 import { todayIst } from '@/lib/services/reservations/venue-hours.service';
 import { policyFee, readPolicies } from '@/lib/services/stay/stay-policy';
+import { hasFeature } from '@/lib/services/billing/feature-gate';
 
 export const dynamic = 'force-dynamic';
 
@@ -33,6 +34,9 @@ export const GET = withApiErrorBoundary(async function GET(request: Request) {
     // limit the reads are simply discarded. Read-only and cheap, so this costs nothing and saves a round trip.
     const db = adminDb();
     const limitCheck = enforceRateLimit(request, 'stay_showcase', 120, 60_000, business.id);
+    // Rooms are a Rhodium (and You earn, we earn) feature: on another plan no room is offered for booking. The venue's
+    // details still answer, so a guest already holding a pass can check in.
+    const bookable = await hasFeature(business.id, 'rooms', db);
     const [limited, [{ data: categories, error: catErr }, { data: rooms, error: roomsErr }, bookingsRes]] = await Promise.all([limitCheck, Promise.all([
       db.from('room_categories').select('id, name, price, occupancy, total_units, photos, amenities, available_addons').eq('business_id', business.id).order('price', { ascending: true }),
       db.from('rooms').select('id, category_id, status, check_out_date, check_out_time').eq('business_id', business.id),
@@ -48,7 +52,7 @@ export const GET = withApiErrorBoundary(async function GET(request: Request) {
     const today = todayIst();
     const range = hasRange ? { checkIn, checkOut } : { checkIn: today, checkOut: today };
     const policies = readPolicies(business.stay_policies);
-    const types = (categories || []).map((c: any) => {
+    const types = (bookable ? categories || [] : []).map((c: any) => {
       const own = (rooms || []).filter((r: any) => r.category_id === c.id);
       const bookings = (bookingsRes.data || []).filter((b: any) => b.category_id === c.id);
       const a = availabilityFromRows(own, bookings, range.checkIn, range.checkOut);
@@ -67,7 +71,7 @@ export const GET = withApiErrorBoundary(async function GET(request: Request) {
     return NextResponse.json({
       success: true,
       venue: {
-        id: business.id, name: business.business_name || business.name || 'Venue', slug: business.slug || null,
+        id: business.id, name: business.business_name || business.name || 'Venue', slug: business.slug || null, bookable,
         tagline: business.stay_tagline || info.tagline || null, address: info.address || null, phones: info.phones,
         categories: business.categories || [], checkin_time: business.checkin_time || null, checkout_time: business.checkout_time || null,
         self_checkin_enabled: Boolean(business.self_checkin_enabled), in_room_dining_enabled: business.in_room_dining_enabled !== false,

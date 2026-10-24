@@ -78,14 +78,15 @@ export function StayHero({ venue, venueParam, coverPhoto, roomsCount, myRoom = n
         </div>
       </div>
 
-      <ul className="grid grid-cols-1 divide-y divide-[#e8dfcc] border-t border-[#e8dfcc] bg-[#f8f4ea] sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+      {/* The reservation promises only where rooms can be reserved online. */}
+      {venue.bookable !== false && <ul className="grid grid-cols-1 divide-y divide-[#e8dfcc] border-t border-[#e8dfcc] bg-[#f8f4ea] sm:grid-cols-3 sm:divide-x sm:divide-y-0">
         {PROMISES.map(({ icon: Icon, title, hint }) => (
           <li key={title} className="flex items-center gap-3 px-5 py-3.5 sm:px-6">
             <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#0f2a1e] text-[#d9c193]"><Icon className="h-4 w-4" aria-hidden /></span>
             <span className="min-w-0"><span className="block text-[13px] font-semibold text-[#10231a]">{title}</span><span className="block truncate text-[11.5px] text-[#10231a]/55">{hint}</span></span>
           </li>
         ))}
-      </ul>
+      </ul>}
     </section>
   );
 }

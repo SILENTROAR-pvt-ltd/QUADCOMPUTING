@@ -5,6 +5,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { X, Copy, Check, ShieldCheck, Loader2 } from 'lucide-react';
 import { usePaymentForm, upiLink } from './hooks/usePaymentForm';
 import type { PaymentTarget, PlatformPayment } from './hooks/useWalletWorkspace';
+import { VIBEY_ADDON } from '@/lib/services/wallet/plans';
 
 interface Props {
   venueId: string;
@@ -29,9 +30,14 @@ export function PaymentModal({ venueId, target, payment, onClose, onSubmitted }:
   }, [target, onClose]);
   if (!target) return null;
 
-  const isPlan = target.kind === 'plan';
-  const title = isPlan ? `${target.plan.name} plan` : 'Add wallet credit';
-  const note = isPlan ? `Quad ${target.plan.name} plan` : 'Quad wallet top-up';
+  // A plan or the add-on has a fixed price; only a top-up amount is typed.
+  const isPlan = target.kind !== 'topup';
+  const setup = target.kind === 'plan' ? target.setup ?? 0 : 0;
+  const title = target.kind === 'plan' ? target.plan.name : target.kind === 'addon' ? VIBEY_ADDON.name : 'Add wallet credit';
+  const note = isPlan ? `Vibers ${title}` : 'Vibers wallet top-up';
+  const planNote = target.kind === 'plan'
+    ? `${target.plan.termMonths} months${setup ? `, plus the one-time ₹${setup} setup` : ''}. Starts when your payment is verified.`
+    : `Vibey for ${VIBEY_ADDON.termMonths} months on top of your plan. Switches on when your payment is verified.`;
   const copy = async () => {
     if (!payment) return;
     try { await navigator.clipboard.writeText(payment.upi_id); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch {}
@@ -44,7 +50,9 @@ export function PaymentModal({ venueId, target, payment, onClose, onSubmitted }:
           <div>
             <h3 className="font-serif text-lg font-medium text-neutral-900">{title}</h3>
             <p className="text-xs text-neutral-500 mt-0.5">
-              {isPlan ? `12 months + ${target.plan.bonusMonths} months free. Starts when your payment is verified.` : 'Credit is used for pay-as-you-go fees. Added once your payment is verified.'}
+              {isPlan ? planNote : f.setup
+                ? `Your first top-up includes the one-time ₹${f.setup} setup; the rest becomes credit for the ₹3 bill fees.`
+                : 'Credit pays the ₹3 per-bill fees. Added once your payment is verified.'}
             </p>
           </div>
           <button type="button" onClick={onClose} aria-label="Close" className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-900 hover:bg-neutral-100"><X className="w-4 h-4" /></button>
@@ -67,11 +75,12 @@ export function PaymentModal({ venueId, target, payment, onClose, onSubmitted }:
               </div>
               {payment && <p className="text-[11px] text-neutral-500">Payee: <span className="font-medium text-neutral-800">{payment.payee_name}</span></p>}
               {isPlan ? (
-                <p className="text-2xl font-semibold tabular-nums text-neutral-900">{inr(target.plan.price)}</p>
+                <p className="text-2xl font-semibold tabular-nums text-neutral-900">{inr(f.amount)}</p>
               ) : (
                 <label className="block">
                   <span className="text-[11px] text-neutral-500">Amount (₹)</span>
-                  <input type="number" inputMode="decimal" min={100} max={100000} step="1" value={f.amountText} onChange={(e) => f.setAmountText(e.target.value)} className={`${input} mt-1`} />
+                  <input type="number" inputMode="decimal" min={f.min} max={100000} step="1" value={f.amountText} onChange={(e) => f.setAmountText(e.target.value)} className={`${input} mt-1`} />
+                  {f.setup > 0 && f.amountOk && <span className="mt-1 block text-[11px] text-neutral-500">₹{f.setup} setup + {inr(f.amount - f.setup)} credit</span>}
                 </label>
               )}
             </div>

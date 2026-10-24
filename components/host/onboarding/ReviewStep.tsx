@@ -2,7 +2,9 @@
 
 import { Pencil } from 'lucide-react';
 import type { HostOnboardingForm } from '@/lib/validations/onboarding';
-import { FOOD_TYPES, STAY_TYPES } from '@/lib/venue/venue-model';
+import { businessModel, FOOD_TYPES, STAY_TYPES } from '@/lib/venue/venue-model';
+import type { StartPlan } from '@/lib/services/wallet/start-plan';
+import { StartPlanChoice } from './StartPlanChoice';
 import { Section } from '@/components/host/workspaces/profile/ProfileFields';
 import { genderOptions } from './onboarding.constants';
 
@@ -18,10 +20,16 @@ function Row({ label, value }: { label: string; value?: string }) {
   );
 }
 
-interface Props { values: HostOnboardingForm; submitError?: string; onEdit: (step: number) => void }
+interface Props {
+  values: HostOnboardingForm;
+  startPlan: StartPlan;
+  onStartPlan: (plan: StartPlan) => void;
+  submitError?: string;
+  onEdit: (step: number) => void;
+}
 
-/** Step 3: everything at a glance before the venue is created. */
-export function ReviewStep({ values, submitError, onEdit }: Props) {
+/** Step 3: everything at a glance, and how the venue starts, before it is created. */
+export function ReviewStep({ values, startPlan, onStartPlan, submitError, onEdit }: Props) {
   const edit = (step: number) => (
     <button type="button" onClick={() => onEdit(step)} className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-sm font-medium text-neutral-600 hover:bg-neutral-100 hover:text-neutral-950 cursor-pointer">
       <Pencil aria-hidden="true" className="h-3.5 w-3.5" /> Edit
@@ -48,6 +56,8 @@ export function ReviewStep({ values, submitError, onEdit }: Props) {
           ))}
         </dl>
       </Section>
+
+      <StartPlanChoice value={startPlan} hasStays={businessModel(values.categories) !== 'food'} onChange={onStartPlan} />
 
       <p className="rounded-2xl bg-neutral-100/80 px-4 py-3 text-sm text-neutral-600">
         You can add GST, FSSAI, bank and UPI details, and set your PINs, in <span className="font-semibold text-neutral-900">My profile</span> once you&apos;re in.

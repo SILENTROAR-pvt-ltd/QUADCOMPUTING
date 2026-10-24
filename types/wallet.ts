@@ -1,4 +1,10 @@
-export type PlanTier = '8k_2m' | '12k_6m' | '14k_9m' | 'pay_as_you_go';
+/**
+ * The QC² plans (Oct 2026): M¹-Pro, M²-Pro, Rhodium Pro yearly and Rhodium Pro per bill. "pay_as_you_go" is the
+ * older name for per bill and means the same; the three old yearly tiers are kept only so past rows still read.
+ */
+export type PlanTier = 'm1_pro' | 'm2_pro' | 'rhodium_annual' | 'rhodium_ppb' | 'pay_as_you_go' | '8k_2m' | '12k_6m' | '14k_9m';
+/** What a payment request can be for: a plan, or the Vibey add-on bought on top of M¹-Pro or M²-Pro. */
+export type PurchaseId = PlanTier | 'vibey_addon';
 export type SubscriptionStatus = 'trial' | 'active' | 'expired';
 
 export interface VenueSubscription {
@@ -8,6 +14,12 @@ export interface VenueSubscription {
   status: SubscriptionStatus;
   trial_ends_at: string | null;
   expires_at: string | null;
+  /** When the venue started its one free trial (a venue gets one). */
+  trial_used_at?: string | null;
+  /** When the one-time setup fee (M¹-Pro) was paid. */
+  setup_fee_paid_at?: string | null;
+  /** End of the Vibey add-on (M¹-Pro / M²-Pro venues). */
+  vibey_until?: string | null;
   created_at?: string;
   updated_at?: string;
 }
@@ -84,7 +96,7 @@ export interface VenueTopupRequest {
   amount: number;
   utr_number: string;
   payment_method: string;
-  requested_plan_tier: PlanTier | null;
+  requested_plan_tier: PurchaseId | null;
   status: TopupRequestStatus;
   notes?: string | null;
   reviewed_by?: string | null;

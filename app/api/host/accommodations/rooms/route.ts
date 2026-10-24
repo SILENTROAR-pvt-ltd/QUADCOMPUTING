@@ -4,6 +4,7 @@ import { requireHost } from '@/lib/auth/guards';
 import { withApiErrorBoundary } from '@/lib/middleware/error-handler';
 import { CLOSED_ORDER_STATUSES } from '@/lib/services/accommodation/stay-folio.util';
 import { belongsToStay, stayStartMs } from '@/lib/services/stay/stay-scope';
+import { requireFeature } from '@/lib/services/billing/feature-gate';
 
 export const dynamic = 'force-dynamic';
 
@@ -78,6 +79,9 @@ export const POST = withApiErrorBoundary(async function POST(request: Request) {
     const auth = await requireHost(request);
     if (auth.error) return auth.error;
     const { businessId, supabase } = auth;
+    // Rooms are a Rhodium feature: adding one needs it; rooms already set up keep working.
+    const blocked = await requireFeature(businessId, 'rooms');
+    if (blocked) return blocked;
 
     const body = await request.json();
     const { category_id, room_number } = body;

@@ -15,6 +15,7 @@ import { useRoomRequests } from './control-center/useRoomRequests';
 import { useReservationsUnread } from './control-center/useReservationsUnread';
 import { StaffAlertsTray } from './control-center/StaffAlertsTray';
 import { requestOpenBookings, requestOpenRoom, requestOpenTable } from '@/lib/host/open-room-request';
+import { useOpenTabRequests } from '@/lib/host/open-tab-request';
 import { alertCountsByTab } from '@/lib/host/alert-routing';
 import { HostAlertSound } from './control-center/HostAlertSound';
 import { useVenueTabGuard } from './control-center/useVenueTabGuard';
@@ -85,6 +86,7 @@ export default function ControlCenterWorkspace({
     }
     switchTab(resolvedTab);
   };
+  useOpenTabRequests((tab) => { if (CONTROL_CENTER_TABS.some((t) => t.id === tab)) handleTabChange(tab as ControlCenterTab); });
 
   // Each waiting call lights the workspace it belongs to, so the desk sees where it is wanted without opening the tray.
   // A room's own pending request (check-out, pay now) keeps Accommodations lit even after the bell's call was cleared.

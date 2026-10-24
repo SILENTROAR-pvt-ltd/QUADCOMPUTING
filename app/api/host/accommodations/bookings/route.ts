@@ -5,6 +5,7 @@ import { withApiErrorBoundary, handleApiError } from '@/lib/middleware/error-han
 import { todayIst } from '@/lib/services/reservations/venue-hours.service';
 import { createStayBooking, readStayBookingInput, StayBookingError } from '@/lib/services/stay/stay-booking.service';
 import { readExpectedArrival, readPolicies } from '@/lib/services/stay/stay-policy';
+import { requireFeature } from '@/lib/services/billing/feature-gate';
 
 export const dynamic = 'force-dynamic';
 
@@ -47,6 +48,9 @@ export const POST = withApiErrorBoundary(async function POST(request: Request) {
     const auth = await requireHost(request);
     if (auth.error) return auth.error;
     const { businessId } = auth;
+    // A new reservation needs Rhodium (rooms); the ones already booked are confirmed, checked in and settled as usual.
+    const blocked = await requireFeature(businessId, 'rooms');
+    if (blocked) return blocked;
     const body = await request.json().catch(() => ({}));
     const db = adminDb();
     const { data: biz } = await db.from('businesses').select('stay_policies').eq('id', businessId).maybeSingle();

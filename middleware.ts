@@ -89,12 +89,14 @@ export async function middleware(request: NextRequest) {
     if (aalDenied) return aalDenied;
   }
 
-  // 2. Admin Page Protection: non-admin sent to /auth/host
+  // 2. Admin Page Protection: anyone without the super-admin role goes to the separate admin sign-in, which brings
+  // them back to the page they asked for.
   if (isAdminPageRoute) {
     const isSuperAdmin = user?.app_metadata?.role === 'super_admin';
     if (!user || !isSuperAdmin) {
       const url = request.nextUrl.clone();
-      url.pathname = '/auth/host';
+      url.pathname = '/auth/admin';
+      url.search = `?next=${encodeURIComponent(pathname)}`;
       const redirectResponse = NextResponse.redirect(url);
       supabaseResponse.cookies.getAll().forEach((cookie) => {
         redirectResponse.cookies.set(cookie.name, cookie.value);

@@ -13,7 +13,7 @@ interface WalletBalanceCardProps {
   isLocked?: boolean;
 }
 
-/** Credit for pay-as-you-go fees. Below zero it never blocks billing: fees wait as outstanding dues. */
+/** Credit for the ₹3 per-bill fees. Below zero it never blocks billing: fees wait as outstanding dues. */
 export function WalletBalanceCard({ wallet, feesWaived, onTopUp, isLoading, isLocked }: WalletBalanceCardProps) {
   const balance = Number(wallet?.balance || 0);
   const low = !feesWaived && balance < 100;
@@ -40,8 +40,8 @@ export function WalletBalanceCard({ wallet, feesWaived, onTopUp, isLoading, isLo
       </div>
       <p className="text-xs text-neutral-500 leading-relaxed">
         {feesWaived
-          ? 'Your plan covers platform fees, so nothing is taken from this credit while it runs.'
-          : 'Pay-as-you-go fees are taken from this credit. If it runs out, billing keeps working and fees are kept as dues.'}
+          ? 'Your plan covers the per-bill fee, so nothing is taken from this credit while it runs.'
+          : 'The ₹3 per-bill fee is taken from this credit. If it runs out, billing keeps working and fees are kept as dues.'}
       </p>
       <WalletTopUpActions isLoading={isLoading} isLocked={isLocked} onTopUp={onTopUp} />
     </section>

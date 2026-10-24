@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireHost, adminDb } from '@/lib/auth/guards';
 import { withApiErrorBoundary, handleApiError } from '@/lib/middleware/error-handler';
 import { legacyToEvent, type LegacyMoment } from '@/lib/services/live-events/legacy-import';
+import { requireFeature } from '@/lib/services/billing/feature-gate';
 
 export const dynamic = 'force-dynamic';
 const NO_STORE = { 'Cache-Control': 'no-store' };
@@ -29,6 +30,8 @@ export const POST = withApiErrorBoundary(async function POST(request: Request) {
   try {
     const auth = await requireHost(request);
     if (auth.error) return auth.error;
+    const blocked = await requireFeature(auth.businessId, 'events');
+    if (blocked) return blocked;
     const db = adminDb();
     const moments = await legacyMoments(db, auth.businessId);
     if (moments.length === 0) return NextResponse.json({ success: true, imported: 0 }, { headers: NO_STORE });

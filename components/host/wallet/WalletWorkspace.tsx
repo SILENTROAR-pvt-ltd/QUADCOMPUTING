@@ -7,7 +7,10 @@ import { PaymentVerificationBanner } from './PaymentVerificationBanner';
 import { WalletBalanceCard } from './WalletBalanceCard';
 import { PlanStatusCard } from './PlanStatusCard';
 import { PlanCards } from './PlanCards';
+import { PlanCompareTable } from './PlanCompareTable';
+import { PerBillCalculator } from './PerBillCalculator';
 import { PaymentModal } from './PaymentModal';
+import { VibeyAddonCard } from './VibeyAddonCard';
 import { useWalletWorkspace } from './hooks/useWalletWorkspace';
 
 interface WalletWorkspaceProps {
@@ -46,7 +49,12 @@ export function WalletWorkspace({ venueId, onNavigate }: WalletWorkspaceProps) {
         />
       </div>
 
-      <PlanCards plan={w.plan} isLocked={locked} isLoading={w.loading} onSelectPlan={(plan) => w.openPayment({ kind: 'plan', plan })} />
+      <PlanCards plan={w.plan} trialAvailable={w.trialAvailable} isLocked={locked} isLoading={w.loading} starting={w.starting} switching={w.switching}
+        onSelectPlan={(plan) => w.openPayment({ kind: 'plan', plan })} onStartTrial={w.startTrial} onSwitchPayAsYouGo={w.switchToPayAsYouGo} />
+      <VibeyAddonCard eligible={w.vibeyAddon.eligible} included={w.vibeyAddon.included} until={w.vibeyAddon.until} isLocked={locked}
+        onBuy={() => w.openPayment({ kind: 'addon' })} />
+      <PlanCompareTable />
+      <PerBillCalculator />
 
       {onNavigate && (
         <button type="button" onClick={() => onNavigate('payments')}

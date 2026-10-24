@@ -3,6 +3,7 @@ import { requireHost, adminDb } from '@/lib/auth/guards';
 import { withApiErrorBoundary } from '@/lib/middleware/error-handler';
 import { loadDeliverySettings, saveDeliverySettings } from '@/lib/services/delivery/delivery-settings.service';
 import { parseDeliverySettingsInput } from '@/lib/services/delivery/delivery-input';
+import { requireFeature } from '@/lib/services/billing/feature-gate';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,6 +39,11 @@ export const PUT = withApiErrorBoundary(async function PUT(request: Request) {
     input = parseDeliverySettingsInput(body);
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 400 });
+  }
+  // Turning delivery on needs M²-Pro or Rhodium; turning it off or editing the terms while off never does.
+  if (input.enabled) {
+    const blocked = await requireFeature(auth.business.id, 'delivery');
+    if (blocked) return blocked;
   }
 
   try {

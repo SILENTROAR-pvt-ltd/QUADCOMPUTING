@@ -8,6 +8,7 @@ import { guestContact } from '@/lib/services/live-events/guest-identity';
 import { cleanEmail, normalizePhone } from '@/lib/services/live-events/guest-key';
 import { ownGuestKey, resolveGuestKey } from '@/lib/services/live-events/ledger.service';
 import { checkParty, fitsSeats, seatsLeft } from '@/lib/services/live-events/party';
+import { hasFeature } from '@/lib/services/billing/feature-gate';
 
 export const dynamic = 'force-dynamic';
 const NO_STORE = { 'Cache-Control': 'no-store' };
@@ -30,6 +31,7 @@ export const POST = withApiErrorBoundary(async function POST(request: Request) {
   if (!UUID_REGEX.test(eventId)) return bad('Choose an event.');
 
   const db = adminDb();
+  if (!(await hasFeature(businessId, 'events', db))) return bad('Events are not open at this venue right now.', 402);
   const { data: event } = await db.from('venue_live_events').select('*').eq('id', eventId).eq('business_id', businessId).maybeSingle();
   if (!event || event.status !== 'LIVE') return bad('This event is no longer open.', 404);
   const ends = Date.parse(event.ends_at || '') || Date.parse(event.starts_at) + 4 * 60 * 60 * 1000;

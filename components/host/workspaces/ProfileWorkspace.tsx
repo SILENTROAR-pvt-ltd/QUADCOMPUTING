@@ -10,6 +10,7 @@ import { AddressSection, BankingSection, OwnerSection } from './profile/AddressO
 import { SecuritySection } from './profile/SecuritySection';
 import { WaiterPermissionsSection } from './profile/WaiterPermissionsSection';
 import { VibeySection } from './profile/VibeySection';
+import { SupportSection } from './profile/SupportSection';
 import { StaffAccessSection } from './profile/StaffAccessSection';
 import { HoursServicesSection } from './profile/HoursServicesSection';
 
@@ -66,6 +67,7 @@ export function ProfileWorkspace(_props: ProfileWorkspaceProps) {
       <StaffAccessSection />
       <WaiterPermissionsSection />
       <VibeySection />
+      <SupportSection />
 
       {p.notice && (
         <div role="status" className="fixed bottom-6 right-6 z-[120] flex max-w-sm items-start gap-3 rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-sm text-neutral-900 shadow-xl animate-in fade-in slide-in-from-bottom-5 duration-300">

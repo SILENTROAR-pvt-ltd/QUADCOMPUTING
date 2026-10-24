@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ArrowUpRight } from 'lucide-react';
+import { ArrowUpRight, ShieldCheck } from 'lucide-react';
 import { Reveal } from './Reveal';
 import { PHOTOS } from './vibers-media';
 import { BTN_GHOST_LIGHT, BTN_IVORY, CONTAINER, SITE } from './vibers-brand';
@@ -53,6 +53,10 @@ export function ClosingAndFooter() {
           <div>
             <p className="flex items-baseline gap-2"><span className={`${DISPLAY} text-[26px] font-semibold tracking-[0.22em]`}>VIBERS</span><span className={`${SCRIPT} text-[28px] text-[#d9c193]`}>Connect</span></p>
             <p className="mt-2 text-[13px] text-[#f5f1e8]/55">Find your vibe. Find your people. Find yourself.</p>
+            {/* The platform team's own door, kept quiet: the page behind it admits only a super-admin login. */}
+            <Link href="/auth/admin" className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-[#f5f1e8]/15 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#f5f1e8]/55 transition-colors hover:border-[#d9c193]/60 hover:text-[#d9c193]">
+              <ShieldCheck aria-hidden="true" className="h-3.5 w-3.5" /> Super admin login
+            </Link>
           </div>
           <div className="text-[13px] text-[#f5f1e8]/60 sm:text-right">
             <p>{SITE.domain} · <a href={SITE.instagram} target="_blank" rel="noopener noreferrer" className="hover:text-[#d9c193]">{SITE.handle}</a></p>

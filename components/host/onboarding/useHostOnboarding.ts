@@ -8,6 +8,7 @@ import { hostOnboardingSchema, type HostOnboardingForm } from '@/lib/validations
 import { emptyBusiness } from './onboarding.constants';
 import { createHostAccount } from './create-host-account';
 import { lookupPincode } from './pincode-lookup';
+import { defaultStartPlan, type StartPlan } from '@/lib/services/wallet/start-plan';
 
 const STEP_FIELDS: Record<number, FieldPath<HostOnboardingForm>[]> = {
   1: ['fullName', 'email', 'password', 'gender', 'dob'],
@@ -55,5 +56,9 @@ export function useHostOnboarding() {
     }
   });
 
-  return { form, businesses, step, setStep, next, back, onPincode, submit, submitError };
+  // The first month: what the host picked, else the default for the venue type (rooms start on Rhodium).
+  const startPlan = form.watch('startPlan') ?? defaultStartPlan(form.watch('categories'));
+  const setStartPlan = (plan: StartPlan) => form.setValue('startPlan', plan, { shouldDirty: true });
+
+  return { form, businesses, step, setStep, next, back, onPincode, submit, submitError, startPlan, setStartPlan };
 }

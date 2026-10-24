@@ -3,8 +3,10 @@
 import React, { useEffect, useState } from 'react';
 import { Sparkles } from 'lucide-react';
 import { apiRequest, jsonRequest } from '@/lib/utils/api-client';
+import { PlanLockedCard } from '@/components/host/plan/PlanLockedCard';
 
-type Switches = { guest: boolean; host: boolean; pilot: boolean; available: boolean };
+/** onPlan: the venue's plan has Vibey (Rhodium, or the add-on on M¹-Pro / M²-Pro). */
+type Switches = { guest: boolean; host: boolean; pilot: boolean; available: boolean; onPlan?: boolean };
 type Which = 'guest' | 'host';
 
 const ROWS: { key: Which; title: string; hint: string; on: string; off: string }[] = [
@@ -22,6 +24,8 @@ export function VibeySection() {
   const [state, setState] = useState<Switches | null>(null);
   const [busy, setBusy] = useState<Which | null>(null);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
+  // Off the plan, a switch can still be turned off but not on.
+  const locked = state?.onPlan === false;
 
   useEffect(() => {
     let live = true;
@@ -53,6 +57,7 @@ export function VibeySection() {
           <p className="mt-0.5 text-xs leading-relaxed text-neutral-500">Your venue&apos;s assistant. Switch it on for guests, for yourself, or both.</p>
         </div>
       </div>
+      {locked && <div className="mt-4"><PlanLockedCard feature="vibey" /></div>}
       <ul className="mt-4 divide-y divide-neutral-100 rounded-2xl border border-neutral-100">
         {ROWS.map((row) => {
           const on = state?.[row.key] === true;
@@ -62,7 +67,7 @@ export function VibeySection() {
                 <p className="text-sm font-semibold text-neutral-900">{row.title}</p>
                 <p className="mt-0.5 text-xs leading-relaxed text-neutral-500">{row.hint}</p>
               </div>
-              <button type="button" role="switch" aria-checked={on} aria-label={row.title} onClick={() => void flip(row)} disabled={!state || busy !== null}
+              <button type="button" role="switch" aria-checked={on} aria-label={row.title} onClick={() => void flip(row)} disabled={!state || busy !== null || (locked && !on)}
                 className={`relative h-7 w-12 shrink-0 cursor-pointer rounded-full transition-colors disabled:opacity-50 ${on ? 'bg-emerald-700' : 'bg-neutral-300'}`}>
                 <span className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-all ${on ? 'left-[22px]' : 'left-0.5'}`} />
               </button>
@@ -70,7 +75,7 @@ export function VibeySection() {
           );
         })}
       </ul>
-      {state?.pilot && <p className="mt-3 text-xs text-amber-700">This venue is in the Vibey pilot, so Vibey stays on for testing whatever these switches say.</p>}
+      {state?.pilot && !locked && <p className="mt-3 text-xs text-amber-700">This venue is in the Vibey pilot, so Vibey stays on for testing whatever these switches say.</p>}
       {state && !state.available && <p className="mt-3 text-xs text-amber-700">Vibey is paused across the platform right now; your choice is saved for when it returns.</p>}
       {message && <p role={message.ok ? 'status' : 'alert'} className={`mt-3 text-xs font-medium ${message.ok ? 'text-emerald-700' : 'text-rose-600'}`}>{message.text}</p>}
     </section>

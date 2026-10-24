@@ -1,5 +1,5 @@
 import type { UsageLedgerItem } from '@/types/wallet';
-import { planById } from '@/lib/services/wallet/plans';
+import { planById, VIBEY_ADDON } from '@/lib/services/wallet/plans';
 
 export type LedgerKind = 'credit' | 'plan' | 'debit' | 'free';
 
@@ -32,9 +32,11 @@ export function describeLedger(item: UsageLedgerItem & { metadata?: any }) {
   if (item.action_type === 'PLAN_PURCHASE') {
     const plan = planById(meta.plan_tier);
     const paid = Number(meta.amount) || 0;
-    return { kind: 'plan' as LedgerKind, label: plan ? `${plan.name} plan purchased` : LABELS.PLAN_PURCHASE, reference, amount: paid ? `${money(paid)} paid` : '—' };
+    const label = meta.plan_tier === VIBEY_ADDON.id ? `${VIBEY_ADDON.name} purchased` : plan ? `${plan.name} plan purchased` : LABELS.PLAN_PURCHASE;
+    return { kind: 'plan' as LedgerKind, label, reference, amount: paid ? `${money(paid)} paid` : '—' };
   }
-  const label = LABELS[item.action_type] || item.action_type.replace(/_/g, ' ');
+  const setup = CREDIT_TYPES.has(item.action_type) ? Number(meta.setup_fee) || 0 : 0;
+  const label = setup ? `Credit added (₹${setup} setup taken)` : LABELS[item.action_type] || item.action_type.replace(/_/g, ' ');
   if (CREDIT_TYPES.has(item.action_type) || cost < 0) return { kind: 'credit' as LedgerKind, label, reference, amount: `+${money(Math.abs(cost))}` };
   if (cost === 0) return { kind: 'free' as LedgerKind, label, reference, amount: 'Free' };
   return { kind: 'debit' as LedgerKind, label, reference, amount: `−${money(cost)}` };

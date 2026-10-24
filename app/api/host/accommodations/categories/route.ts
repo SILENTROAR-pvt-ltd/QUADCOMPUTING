@@ -8,6 +8,7 @@ import {
   updateAccommodationCategory,
 } from '@/lib/services/accommodation.service';
 import { withApiErrorBoundary } from '@/lib/middleware/error-handler';
+import { requireFeature } from '@/lib/services/billing/feature-gate';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,6 +31,8 @@ export const POST = withApiErrorBoundary(async function POST(request: Request) {
     const auth = await requireHost(request);
     if (auth.error) return auth.error;
     const { user, businessId, supabase } = auth;
+    const blocked = await requireFeature(businessId, 'rooms');
+    if (blocked) return blocked;
 
     const body = await request.json();
     const result = await createAccommodationCategory(body, supabase, user.id, businessId);

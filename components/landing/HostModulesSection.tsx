@@ -4,7 +4,7 @@ import { CONTAINER, EYEBROW, H2, LEAD, SECTION } from './landing-styles';
 // The control centre's workspaces, in the order of its navigation bar.
 const MODULES = [
   { icon: UserRound, name: 'My Profile', text: 'Venue details, hours, delivery and booking terms, and a PIN lock for shared screens.' },
-  { icon: Wallet, name: 'Subscription & Wallet', text: 'Yearly plans or pay-as-you-go from prepaid credit, with a clear statement.' },
+  { icon: Wallet, name: 'Subscription & Wallet', text: 'Yearly plans or You earn, we earn (₹3 a bill from prepaid credit), with a clear statement.' },
   { icon: Banknote, name: 'Dues', text: 'You earn against we earn, daily 10 AM to 10 PM slips, and every invoice a tap away.' },
   { icon: BarChart3, name: 'Analytics & COGS', text: 'A-to-Z reports for any range and a full profit and loss with every expense.' },
   { icon: BookOpen, name: 'Menu Catalog', text: 'Categories, add-ons, dish photos and recipes linked to raw stock.' },

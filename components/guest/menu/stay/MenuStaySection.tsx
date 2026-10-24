@@ -30,6 +30,8 @@ export function MenuStaySection({ venueId, venueName, services, onSelectService 
   const showcase = useStayShowcase(venueParam);
   const stayHref = venueParam ? `/stay/${encodeURIComponent(venueParam)}` : null;
   const catalogRooms = services.filter(isAccommodation);
+  // A stay venue whose plan has no rooms takes no reservations: the section stays out of the menu.
+  if (stayHref && showcase.venue?.bookable === false) return null;
 
   const rooms: Array<RoomCardData & { open: () => void }> = stayHref && showcase.types.length
     ? showcase.types.map((t) => ({

@@ -11,6 +11,7 @@ import { guestReplySchema, guestRequestSchema } from '@/lib/vibey/guest/schema';
 import { loadGuestVenue } from '@/lib/vibey/guest/venue';
 import { loadPopularity, venueHour } from '@/lib/vibey/guest/popularity';
 import { listPublicEvents } from '@/lib/services/live-events/events.service';
+import { hasFeature } from '@/lib/services/billing/feature-gate';
 
 // Node, not Edge: the service-role client, node:crypto and LangGraph's async context need it.
 export const runtime = 'nodejs';
@@ -22,7 +23,7 @@ const NO_STORE = { 'Cache-Control': 'no-store' };
 const graph = buildGuestGraph({
   understand: (prompt, schema) => chatJson({ ...prompt, schema, timeoutMs: 3500, maxTokens: 300 }),
   reserveModel: async (businessId) => vibeyModelConfigured() && spendModelBudget(businessId, 'guest'),
-  loadEvents: (businessId) => listPublicEvents(adminDb(), businessId),
+  loadEvents: async (businessId) => ((await hasFeature(businessId, 'events')) ? listPublicEvents(adminDb(), businessId) : []),
   // A guest writing in another language gets the reply translated (dish names and prices are kept out of the model's reach).
   translate: (prompt, schema) => chatJson({ ...prompt, schema, timeoutMs: 4000, maxTokens: 600 }),
 });
@@ -40,7 +41,8 @@ export const GET = withApiErrorBoundary(async function GET(request: Request) {
   const limited = await enforceRateLimit(request, 'vibey_guest_status', 120, 60_000, validation.businessId);
   if (limited) return limited;
   const venue = await loadGuestVenue(adminDb(), validation.businessId);
-  const enabled = Boolean(venue && vibeyFlags(venue.business).guest);
+  // Vibey is a Rhodium feature (or the add-on on M¹-Pro / M²-Pro): on any other plan the launcher stays hidden.
+  const enabled = Boolean(venue && vibeyFlags(venue.business).guest) && (await hasFeature(validation.businessId, 'vibey'));
   return NextResponse.json({ enabled, simple: enabled && !vibeyModelConfigured() }, { headers: NO_STORE });
 }, 'GuestVibeyGET');
 
@@ -62,7 +64,7 @@ export const POST = withApiErrorBoundary(async function POST(request: Request) {
   const db = adminDb();
   const venue = await loadGuestVenue(db, businessId);
   if (!venue) return NextResponse.json({ success: false, error: 'Venue not found.' }, { status: 404 });
-  if (!vibeyFlags(venue.business).guest) return NextResponse.json({ success: false, error: 'Vibey is not available at this venue.' }, { status: 403 });
+  if (!vibeyFlags(venue.business).guest || !(await hasFeature(businessId, 'vibey', db))) return NextResponse.json({ success: false, error: 'Vibey is not available at this venue.' }, { status: 403 });
 
   const popularity = await loadPopularity(db, businessId);
   const input = {

@@ -4,6 +4,7 @@ import { requireHost, adminDb } from '@/lib/auth/guards';
 import { withApiErrorBoundary } from '@/lib/middleware/error-handler';
 import { withOfferImage } from '@/lib/services/offers/offer-columns';
 import { readOfferImage } from '@/lib/services/offers/offer-photo';
+import { hasFeature, requireFeature } from '@/lib/services/billing/feature-gate';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const OFFER_CATEGORIES = ['room', 'food', 'general'];
@@ -35,6 +36,10 @@ export const GET = withApiErrorBoundary(async function GET(request: Request) {
         return NextResponse.json({ error: 'Offer list not found for this venue' }, { status: 403 });
       }
     }
+    // Offers are part of M²-Pro and Rhodium: on M¹-Pro guests see none (the host still sees its own, to pause or delete).
+    if (activeOnly && !(await hasFeature(venueId, 'offers'))) {
+      return NextResponse.json({ success: true, source: 'supabase', offers: [] });
+    }
 
     const { data, error } = await withOfferImage((columns) => {
       let query = adminDb()
@@ -60,6 +65,8 @@ export const POST = withApiErrorBoundary(async function POST(request: Request) {
     const auth = await requireHost(request);
     if (auth.error) return auth.error;
     const { businessId } = auth;
+    const blocked = await requireFeature(businessId, 'offers');
+    if (blocked) return blocked;
 
     const body = await request.json().catch(() => ({}));
     const { title, description, category, discount_badge, valid_until, is_active } = body;
@@ -112,6 +119,11 @@ export const PATCH = withApiErrorBoundary(async function PATCH(request: Request)
 
     if (!id) {
       return NextResponse.json({ error: 'Offer id is required' }, { status: 400 });
+    }
+    // Without offers on the plan an offer can still be paused (or deleted), never edited or switched back on.
+    if (is_active !== false) {
+      const blocked = await requireFeature(businessId, 'offers');
+      if (blocked) return blocked;
     }
 
     const updates: Record<string, unknown> = {};

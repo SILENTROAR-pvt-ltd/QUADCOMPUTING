@@ -70,7 +70,8 @@ export async function getOrProvisionVenueWallet(supabase: any, venueId: string) 
           trial_ends_at: null,
           expires_at: null,
         },
-        wallet: { id: `wal_${venueId}`, venue_id: venueId, balance: 150.0, currency: 'INR' },
+        // No free credit: a venue's wallet starts empty, here as in the database.
+        wallet: { id: `wal_${venueId}`, venue_id: venueId, balance: 0, currency: 'INR' },
         ledger: [],
       });
     }

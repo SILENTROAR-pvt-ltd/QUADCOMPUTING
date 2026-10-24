@@ -6,6 +6,7 @@ import { enforceRateLimit } from '@/lib/middleware/rate-limiter';
 import { accountForRequest } from '@/lib/services/guest-auth/guest-account.service';
 import { cleanOfferRequest } from '@/lib/services/offers/offer-request-input';
 import { createOfferRequest } from '@/lib/services/offers/offer-requests';
+import { hasFeature } from '@/lib/services/billing/feature-gate';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,6 +27,8 @@ export const POST = withApiErrorBoundary(async function POST(request: Request) {
   if (!checked.ok) return fail(checked.error, 400);
 
   const db = adminDb();
+  // Offers are part of M²-Pro and Rhodium.
+  if (!(await hasFeature(venue.businessId, 'offers', db))) return fail('This offer is no longer available.', 402);
   const account = await accountForRequest(db, request, venue.businessId);
   const input = {
     ...checked.value,

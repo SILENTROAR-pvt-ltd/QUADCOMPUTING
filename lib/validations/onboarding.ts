@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { normalizeVenueTypes } from '@/lib/venue/venue-model';
+import { START_PLANS } from '@/lib/services/wallet/start-plan';
 
 export const businessLocationSchema = z.object({
   businessName: z.string().min(2, 'Business name is required'),
@@ -26,6 +27,8 @@ export const hostOnboardingSchema = z.object({
   businesses: z
     .array(businessLocationSchema)
     .min(1, 'At least one business location is required'),
+  /** The first month: a free trial of M²-Pro or M¹-Pro, or Rhodium per bill. Unset: the default for the venue type. */
+  startPlan: z.enum(START_PLANS).optional(),
 });
 
 export type HostOnboardingForm = z.infer<typeof hostOnboardingSchema>;

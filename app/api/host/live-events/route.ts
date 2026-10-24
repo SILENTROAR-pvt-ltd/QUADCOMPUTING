@@ -4,6 +4,7 @@ import { withApiErrorBoundary, handleApiError } from '@/lib/middleware/error-han
 import { parseEvent } from '@/lib/services/live-events/event-input';
 import { bookedSeats } from '@/lib/services/live-events/events.service';
 import { UUID_REGEX } from '@/lib/auth/guest-validate';
+import { requireFeature } from '@/lib/services/billing/feature-gate';
 
 export const dynamic = 'force-dynamic';
 const NO_STORE = { 'Cache-Control': 'no-store' };
@@ -38,6 +39,8 @@ export const POST = withApiErrorBoundary(async function POST(request: Request) {
   try {
     const auth = await requireHost(request);
     if (auth.error) return auth.error;
+    const blocked = await requireFeature(auth.businessId, 'events');
+    if (blocked) return blocked;
     const parsed = parseEvent(await request.json().catch(() => ({})));
     if (!parsed.ok) return bad(parsed.error);
     const { data, error } = await adminDb().from('venue_live_events').insert({ ...parsed.value, business_id: auth.businessId }).select('*').single();
@@ -57,6 +60,11 @@ export const PATCH = withApiErrorBoundary(async function PATCH(request: Request)
     if (!UUID_REGEX.test(String(body?.id ?? ''))) return bad('Missing event.');
     const parsed = parseEvent(body, { partial: true });
     if (!parsed.ok) return bad(parsed.error);
+    // On a plan without events a venue can still hide, cancel or delete the ones it has, never edit or reopen them.
+    if (parsed.value.status !== 'CANCELLED' && parsed.value.status !== 'DRAFT') {
+      const blocked = await requireFeature(auth.businessId, 'events');
+      if (blocked) return blocked;
+    }
     const { data, error } = await adminDb().from('venue_live_events').update({ ...parsed.value, updated_at: new Date().toISOString() })
       .eq('id', body.id).eq('business_id', auth.businessId).select('*').maybeSingle();
     if (error) return dbProblem(error);

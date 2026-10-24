@@ -4,6 +4,10 @@ import React from 'react';
 import dynamic from 'next/dynamic';
 import type { ControlCenterTab } from '../ControlCenterHeader';
 import { WorkspaceErrorBoundary } from './WorkspaceErrorBoundary';
+import { usePlanFeatures } from '@/components/host/plan/usePlanFeatures';
+import { PlanLockedCard } from '@/components/host/plan/PlanLockedCard';
+import { PlanReminderBanner } from '@/components/host/plan/PlanReminderBanner';
+import { AnnouncementBanner } from '@/components/host/plan/AnnouncementBanner';
 
 // Each workspace is its own bundle, so a host opening one tab does not download the other nine.
 // The skeleton shows while the chunk arrives; the view itself is unchanged.
@@ -39,12 +43,18 @@ interface WorkspaceViewRouterProps {
 
 export function WorkspaceViewRouter({ activeTab, venueId, onNavigate }: WorkspaceViewRouterProps) {
   const handleNav = (tab: string) => onNavigate(tab as ControlCenterTab);
+  // A section the plan lacks shows what it is part of; its running work (orders on the way, stays in house) stays reachable.
+  const { has } = usePlanFeatures(venueId);
+  const lockedFeature = activeTab === 'delivery' && !has('delivery') ? 'delivery' : activeTab === 'accommodations' && !has('rooms') ? 'rooms' : null;
 
   return (
     <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full pb-28">
+      <AnnouncementBanner />
+      {activeTab !== 'wallet' && <PlanReminderBanner venueId={venueId} />}
       {/* A crash in one view is contained here: the sidebar and the other tabs keep working. */}
       <WorkspaceErrorBoundary label={String(activeTab)} resetKey={String(activeTab)}>
         <div className="animate-in fade-in duration-300">
+          {lockedFeature && <div className="mb-5"><PlanLockedCard feature={lockedFeature} /></div>}
           {activeTab === 'billing' && <BillingWorkspace onNavigate={handleNav} />}
           {activeTab === 'tables' && <LiveTablesWorkspace venueId={venueId} onNavigate={handleNav} />}
           {activeTab === 'reservations' && <ReservationsWorkspace onNavigate={handleNav} venueId={venueId} />}

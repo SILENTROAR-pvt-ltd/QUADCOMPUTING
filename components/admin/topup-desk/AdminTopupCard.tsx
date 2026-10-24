@@ -3,12 +3,30 @@
 import React from 'react';
 import { Building2, MapPin, Check, Sparkles, Clock, Wallet, Zap } from 'lucide-react';
 import type { VenueTopupRequest } from '@/types/wallet';
+import { planById, VIBEY_ADDON } from '@/lib/services/wallet/plans';
+import { setupInNote } from '@/lib/services/wallet/topup-input';
 
 interface AdminTopupCardProps {
   req: VenueTopupRequest;
   isProcessing: boolean;
   onApprove: (id: string) => void;
   onReject: (id: string) => void;
+}
+
+/** "QC² M¹-Pro · ₹8,999 + ₹599 setup": the plan by name, and the setup fee when the amount includes it. */
+function planLine(req: VenueTopupRequest): string {
+  if (req.requested_plan_tier === VIBEY_ADDON.id) return `${VIBEY_ADDON.name} · 1 year · ₹${VIBEY_ADDON.price.toLocaleString('en-IN')}`;
+  const plan = planById(req.requested_plan_tier);
+  if (!plan) return String(req.requested_plan_tier || 'Unknown plan');
+  const setup = Number(req.amount) - plan.price;
+  return `${plan.name} · ₹${plan.price.toLocaleString('en-IN')}${setup > 0 ? ` + ₹${setup.toLocaleString('en-IN')} setup` : ''}`;
+}
+
+/** "₹599 setup + ₹401 credit" for a first top-up that carries the setup, else the credit added. */
+function topupLine(req: VenueTopupRequest): string {
+  const setup = setupInNote(req.notes);
+  const credit = Number(req.amount) - setup;
+  return setup ? `₹${setup} setup + ₹${credit.toLocaleString('en-IN')} credit` : `Spendable Wallet (+₹${req.amount})`;
 }
 
 export function AdminTopupCard({ req, isProcessing, onApprove, onReject }: AdminTopupCardProps) {
@@ -31,12 +49,12 @@ export function AdminTopupCard({ req, isProcessing, onApprove, onReject }: Admin
               isPlanSub ? 'bg-purple-50 text-purple-900 border-purple-300' : 'bg-blue-50 text-blue-900 border-blue-300'
             }`}>
               {isPlanSub ? <Zap className="w-3 h-3 text-purple-700" /> : <Wallet className="w-3 h-3 text-blue-700" />}
-              {isPlanSub ? 'Plan Subscription Upgrade' : 'Wallet Top-Up'}
+              {isPlanSub ? 'Plan purchase' : 'Wallet Top-Up'}
             </span>
           </div>
           <div className="flex items-center gap-3 text-xs text-neutral-500 flex-wrap">
-            <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-neutral-400" /><span>{req.venue_address || 'Old Manali, Himachal Pradesh'}</span></span>
-            <span>•</span><span className="font-mono text-[11px]">ID: {req.venue_id.slice(0, 8)}...</span>
+            {req.venue_address && <><span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-neutral-400" /><span>{req.venue_address}</span></span><span>•</span></>}
+            <span className="font-mono text-[11px]">ID: {req.venue_id.slice(0, 8)}...</span>
           </div>
         </div>
         <div className="text-left sm:text-right">
@@ -48,7 +66,7 @@ export function AdminTopupCard({ req, isProcessing, onApprove, onReject }: Admin
         <div><span className="block text-[10px] uppercase font-bold tracking-wider text-neutral-400">UTR / Ref Number</span><strong className="text-neutral-900 font-semibold">{req.utr_number}</strong></div>
         <div>
           <span className="block text-[10px] uppercase font-bold tracking-wider text-neutral-400">{isPlanSub ? 'Target Plan Tier' : 'Balance Destination'}</span>
-          <strong className="text-neutral-900 font-semibold">{isPlanSub ? `${req.requested_plan_tier} (Active Tier)` : 'Spendable Wallet (+₹' + req.amount + ')'}</strong>
+          <strong className="text-neutral-900 font-semibold">{isPlanSub ? planLine(req) : topupLine(req)}</strong>
         </div>
         <div>
           <span className="block text-[10px] uppercase font-bold tracking-wider text-neutral-400">Submission Date</span>

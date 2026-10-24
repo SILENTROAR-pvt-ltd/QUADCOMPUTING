@@ -4,6 +4,7 @@ import { validateGuestAccess } from '@/lib/auth/guest-validate';
 import { enforceRateLimit } from '@/lib/middleware/rate-limiter';
 import { withApiErrorBoundary, handleApiError } from '@/lib/middleware/error-handler';
 import { loadPublicDeliveryTerms } from '@/lib/services/delivery/delivery-settings.service';
+import { hasFeature } from '@/lib/services/billing/feature-gate';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,8 +17,10 @@ export const GET = withApiErrorBoundary(async function GET(request: Request) {
     const limited = await enforceRateLimit(request, 'guest_delivery_info', 600, 60_000, validation.businessId);
     if (limited) return limited;
 
-    const terms = await loadPublicDeliveryTerms(adminDb(), validation.businessId);
-    return NextResponse.json({ success: true, ...terms }, { headers: { 'Cache-Control': 'no-store' } });
+    const db = adminDb();
+    const [terms, onPlan] = await Promise.all([loadPublicDeliveryTerms(db, validation.businessId), hasFeature(validation.businessId, 'delivery', db)]);
+    // Delivery is part of M²-Pro and Rhodium: on M¹-Pro the guest sees no delivery option.
+    return NextResponse.json({ success: true, ...terms, enabled: terms.enabled && onPlan }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error: any) {
     return handleApiError(error, request, 'GuestDeliveryInfoGET');
   }

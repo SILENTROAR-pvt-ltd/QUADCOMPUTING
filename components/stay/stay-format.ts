@@ -50,6 +50,8 @@ export interface StayType {
 export interface StayVenue {
   id: string;
   name: string;
+  /** Rooms can be reserved online (the venue's plan includes rooms). False: no rooms listed; stays in house carry on. */
+  bookable?: boolean;
   slug: string | null;
   tagline: string | null;
   address: string | null;

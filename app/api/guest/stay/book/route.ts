@@ -9,6 +9,7 @@ import { readExpectedArrival, readPolicies } from '@/lib/services/stay/stay-poli
 import { accountForRequest } from '@/lib/services/guest-auth/guest-account.service';
 import { ringNewReservation } from '@/lib/services/stay/booking-alert.service';
 import { afterResponse } from '@/lib/utils/after-response';
+import { hasFeature } from '@/lib/services/billing/feature-gate';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,6 +28,10 @@ export const POST = withApiErrorBoundary(async function POST(request: Request) {
     if (limited) return limited;
 
     const db = adminDb();
+    // Rooms are a Rhodium feature: a venue on another plan takes no new room bookings.
+    if (!(await hasFeature(businessId, 'rooms', db))) {
+      return NextResponse.json({ success: false, error: 'This venue is not taking room bookings online right now.', code: 'NOT_AVAILABLE' }, { status: 402 });
+    }
     // Signed in with a Vibers ID: the booking is theirs, and their account supplies the name and mobile they did not type.
     const [business, account] = await Promise.all([loadStayBusiness(db, businessId), accountForRequest(db, request, businessId)]);
     const input = readStayBookingInput(body, account);

@@ -15,6 +15,7 @@ import { applyRequestIdentity } from '@/lib/services/guest-auth/request-identity
 import { newDeliveryTableNumber } from '@/lib/services/delivery/delivery-input';
 import { isRoomTable } from '@/lib/guest/room-mode';
 import { assertVenueBillingAllowed } from '@/lib/services/billing/venue-guard.service';
+import { hasFeature } from '@/lib/services/billing/feature-gate';
 import { afterResponse } from '@/lib/utils/after-response';
 
 /**
@@ -76,6 +77,10 @@ export const POST = withApiErrorBoundary(async function POST(request: Request) {
     }
 
     const supabase = adminDb();
+    // Delivery is part of M²-Pro and Rhodium: a venue on M¹-Pro takes table orders only.
+    if (isDelivery && !(await hasFeature(businessId, 'delivery', supabase))) {
+      return apiError('This venue is not taking delivery orders right now.', 'DELIVERY_UNAVAILABLE', 402);
+    }
     body.business_id = businessId;
     body.cafe_id = businessId;
     body.table_number = tableNumber;
