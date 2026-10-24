@@ -1,26 +1,28 @@
 'use client';
 
 import React from 'react';
-import { Check } from 'lucide-react';
 import { VIDEOS } from '@/lib/landing/videos';
+import { PhoneDeck } from '@/components/landing-shots/PhoneDeck';
 import { Reveal } from '@/components/vibers/Reveal';
 import { DISPLAY } from '@/components/vibers/vibers-fonts';
 import { CONTAINER, DEMO_NOTE, H2, KICKER, LEAD, SECTION, TURN } from '../qc-brand';
 import { useAutoStep } from '../useAutoStep';
 import { BrowserWindow, StageVideo } from '../StageVideo';
 import { LEVERS } from './growth-levers';
-import { LiftSimulator } from './LiftSimulator';
 import s from '@/components/vibers/luxe.module.css';
 
+const PHONES = LEVERS.map((l) => l.phone);
+
 /**
- * The tools that bring guests in, not just bill them: events with an interested list, offers with redemption codes, and
- * services sold beyond the menu, each a real portal recording that takes its turn, then a calculator on the venue's own
- * numbers.
+ * The tools that bring guests in, not just bill them. For each one, both sides at once: the venue's portal (a real
+ * recording) with the guest's phone (a real recording) in front of it, and the four beats from the venue's tap to a guest
+ * through the door. The levers take turns; choosing one holds it.
  */
 export function GrowthSection() {
   const { ref, active, choose, running, inView, calm } = useAutoStep(LEVERS.length, (i) => LEVERS[i].ms, 0.25);
   const lever = LEVERS[active];
   const v = VIDEOS[lever.video];
+  const live = inView && !calm;
 
   return (
     <section id="grow" aria-labelledby="grow-title" className={`${SECTION} bg-[#f6f3ec] text-[#0c0f0d]`}>
@@ -46,25 +48,39 @@ export function GrowthSection() {
             ))}
           </div>
 
-          <div key={lever.id} className={`${s.fadeUp} mt-8 grid items-start gap-8 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] lg:gap-12`}>
-            <div role="tabpanel" aria-label={lever.label}>
-              <BrowserWindow url={lever.url} ratio={v.width / v.height}><StageVideo id={lever.video} play={inView && !calm} /></BrowserWindow>
-              <p className="mt-3 text-right text-[11px] text-[#0c0f0d]/45">{DEMO_NOTE}</p>
+          <div className="mt-10 grid items-start gap-12 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)] lg:gap-14">
+            <div role="tabpanel" aria-label={lever.label} className="relative lg:pb-10 lg:pr-16">
+              <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.26em] text-[#0c0f0d]/50">What you see · Quad Computing</p>
+              <div key={lever.id} className={s.fadeUp}>
+                <BrowserWindow url={lever.url} ratio={v.width / v.height}><StageVideo id={lever.video} play={live} /></BrowserWindow>
+              </div>
+              <div className="mx-auto mt-8 w-[200px] lg:absolute lg:-bottom-6 lg:right-0 lg:mt-0 lg:w-[180px]">
+                <p className="mb-2 text-center text-[10px] font-semibold uppercase tracking-[0.26em] text-[#8a6d3f]">What your guest sees</p>
+                <PhoneDeck ids={PHONES} active={lever.phone} live={live} className="w-full drop-shadow-[0_30px_40px_rgba(12,15,13,0.35)]" />
+              </div>
             </div>
-            <div>
-              <h3 className={`${DISPLAY} text-[2rem] font-light leading-tight`}>{lever.title}</h3>
+
+            <div key={`copy-${lever.id}`} className={s.fadeUp}>
+              <h3 className={`${DISPLAY} text-[2.1rem] font-light leading-tight`}>{lever.title}</h3>
               <p className="mt-3 text-[14.5px] leading-relaxed text-[#0c0f0d]/65">{lever.lead}</p>
-              <ul className="mt-6 space-y-3">
-                {lever.points.map((p) => (
-                  <li key={p} className="flex items-start gap-3 text-[14px] leading-relaxed text-[#0c0f0d]/85"><Check aria-hidden="true" className="mt-1 h-3.5 w-3.5 shrink-0 text-[#8a6d3f]" /> {p}</li>
+              <ol className="relative mt-8 space-y-5 before:absolute before:bottom-4 before:left-[19px] before:top-4 before:w-px before:bg-[#b08d57]/40">
+                {lever.steps.map((st, i) => (
+                  <li key={st.text} className="relative flex items-start gap-4">
+                    <span className={`relative z-10 grid h-10 w-10 shrink-0 place-items-center rounded-full border ${st.who === 'You' ? 'border-[#0c0f0d] bg-[#0c0f0d] text-[#d9c193]' : 'border-[#b08d57] bg-[#fbf9f4] text-[#8a6d3f]'}`}>
+                      <st.icon aria-hidden="true" className="h-4 w-4" />
+                    </span>
+                    <span className="pt-1">
+                      <span className="block text-[10px] font-semibold uppercase tracking-[0.24em] text-[#0c0f0d]/45">{String(i + 1).padStart(2, '0')} · {st.who}</span>
+                      <span className="mt-0.5 block text-[15px] font-medium leading-snug">{st.text}</span>
+                    </span>
+                  </li>
                 ))}
-              </ul>
-              <p className="mt-6 inline-flex rounded-full border border-[#0c0f0d]/10 px-3 py-1.5 text-[11.5px] text-[#0c0f0d]/60">On {lever.plans}</p>
+              </ol>
+              <p className="mt-8 inline-flex rounded-full border border-[#0c0f0d]/10 px-3 py-1.5 text-[11.5px] text-[#0c0f0d]/60">On {lever.plans}</p>
             </div>
           </div>
+          <p className="mt-6 text-[11px] text-[#0c0f0d]/45">{DEMO_NOTE}</p>
         </div>
-
-        <Reveal index={1}><div className="mt-16"><LiftSimulator /></div></Reveal>
       </div>
     </section>
   );

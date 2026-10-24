@@ -1,6 +1,6 @@
 'use client';
 
-import { arrivingServiceRequest, demoEvents, demoLeads, demoLedger, demoOfferRequests, demoOffers, demoServiceRequests } from '@/lib/showcase/demo-growth';
+import { arrivingServiceRequest, demoEvents, demoGuestEvents, demoLeads, demoLedger, demoOfferRequests, demoOffers, demoServiceRequests } from '@/lib/showcase/demo-growth';
 
 // The showcase pages (QC_SHOWCASE=1 only) draw real host workspaces whose hooks read and write /api routes. Here those
 // routes answer from the sample café's data in memory instead, so the recordings show live portal screens and nothing
@@ -15,7 +15,10 @@ const state = {
   offerRequests: [...demoOfferRequests],
   services: [...demoServiceRequests] as typeof demoServiceRequests,
   serviceReads: 0,
+  guestLead: null as Record<string, unknown> | null,
+  redeemReads: 0,
 };
+const LEAD_ID = '6f1c2a9e-3b4d-4e5f-9a7b-1c2d3e4f5a6b';
 
 const ROUTES: Array<[method: string, path: RegExp, reply: Reply]> = [
   ['GET', /^\/api\/host\/live-events\/import$/, () => ({ success: true, count: 0 })],
@@ -51,6 +54,21 @@ const ROUTES: Array<[method: string, path: RegExp, reply: Reply]> = [
     return { success: true, requests: state.services };
   }],
   ['PATCH', /^\/api\/host\/notifications$/, (_, b) => { state.services = state.services.map((s) => (s.id === b.id ? { ...s, status: 'HANDLED' } : s)); return { success: true }; }],
+  // The guest side of the same tools: events with "I'm Interested", and offers redeemed for a code.
+  ['GET', /^\/api\/guest\/events$/, () => ({ success: true, events: demoGuestEvents })],
+  ['GET', /^\/api\/guest\/events\/prefill$/, () => ({ success: true, signedIn: true, name: 'Aanya Mehra', handle: '@aanya', email: 'aanya@example.com', hasPhone: true })],
+  ['GET', /^\/api\/guest\/events\/mine$/, () => ({ success: true, statuses: state.guestLead ? { e1: state.guestLead } : {} })],
+  ['POST', /^\/api\/guest\/events\/interest$/, (_, b) => {
+    const party = b.party as Record<string, number> | undefined;
+    state.guestLead = { lead_id: LEAD_ID, status: 'INTERESTED', party_size: Object.values(party ?? {}).reduce((a, n) => a + Number(n || 0), 0) || 2, updated_at: new Date().toISOString() };
+    return { success: true, lead_id: LEAD_ID, message: 'You’re on the guest list. The venue will confirm your place.' };
+  }],
+  ['POST', /^\/api\/guest\/offers\/requests$/, () => ({ success: true, request: { id: 'rq9', code: 'HH-5130', status: 'open' } })],
+  ['GET', /^\/api\/guest\/offers\/requests\/[^/]+$/, () => {
+    // The counter settles it a few seconds later, as it would at the till.
+    state.redeemReads += 1;
+    return { success: true, request: { id: 'rq9', kind: 'redeem', code: 'HH-5130', status: state.redeemReads >= 1 ? 'settled' : 'open', offer_title: demoOffers[0].title } };
+  }],
 ];
 
 declare global { interface Window { __showcaseFetch?: boolean } }

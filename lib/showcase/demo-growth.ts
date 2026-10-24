@@ -10,7 +10,7 @@ const event = (id: string, title: string, category: string, d: number, hour: num
 
 export const demoEvents = [
   event('e1', 'Rooftop Sundowner Sessions', 'Live Music', 1, 19, 0, 120, 96, 38),
-  event('e2', 'Sunday Brunch Club', 'Brunch', 2, 11, 899, 60, 41, 17),
+  event('e2', 'Long-table Brunch Club', 'Brunch', 2, 11, 899, 60, 41, 17),
   event('e3', 'Bollywood Retro Night', 'DJ Night', 6, 21, 499, 150, 22, 9, 'DRAFT'),
 ];
 
@@ -58,6 +58,23 @@ export const demoServiceRequests = [
   { id: 's2', table_number: 'T-07', message: 'Bonfire setup (₹1,500)', status: 'PENDING', created_at: hoursAgo(0.2) },
   { id: 's3', table_number: 'T-02', message: 'Airport drop (₹1,200)', status: 'PENDING', created_at: hoursAgo(0.6) },
   { id: 's4', table_number: 'T-09', message: 'Guided heritage walk (₹600)', status: 'HANDLED', created_at: hoursAgo(3) },
+];
+
+/** The same events as guests see them on the menu and in the lounge. */
+export const demoGuestEvents = [
+  { id: 'e1', title: 'Rooftop Sundowner Sessions', description: 'Acoustic sets as the sun goes down, with small plates from the kitchen.', banner_url: '/media/vibers/photo-club-rooftop-v1.webp',
+    category: 'Live Music', starts_at: inDays(1, 19), ends_at: null, entry_fee: 0, perks: ['Welcome drink', 'Reserved seating'],
+    spots_left: 24, spots_left_men: null, spots_left_women: null, has_split: false, is_live_now: false },
+  { id: 'e2', title: 'Long-table Brunch Club', description: 'Long tables, slow coffee and the brunch board.', banner_url: '/media/vibers/photo-club-dinner-v1.webp',
+    category: 'Brunch', starts_at: inDays(2, 11), ends_at: null, entry_fee: 899, perks: ['Bottomless coffee'],
+    spots_left: 19, spots_left_men: null, spots_left_women: null, has_split: false, is_live_now: false },
+];
+
+/** Venue services as guests see them at the foot of the menu. */
+export const demoGuestServices = [
+  { id: 'vs1', name: 'Bicycle rental', description: 'Explore the old town at your own pace. Helmet included.', price: 250, category: 'Services', image_url: '/media/vibers/photo-walk-v1.webp' },
+  { id: 'vs2', name: 'Bonfire evening', description: 'A private fire on the lawn, blankets and a pot of chai.', price: 1500, category: 'Services', image_url: '/media/vibers/photo-bonfire-v1.webp' },
+  { id: 'vs3', name: 'Couple spa session', description: 'Sixty minutes, two therapists, booked to your time.', price: 2400, category: 'Services', image_url: '/media/vibers/photo-spa-phone-v1.webp' },
 ];
 
 /** The request that arrives while the recording runs, the way a guest's tap lands on the list. */

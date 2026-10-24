@@ -80,6 +80,20 @@ const VIDEOS = [
     await glideTo('article:nth-of-type(2)', 1300, 0.06); await wait(800);
     await glideTo('article:nth-of-type(3)', 1300, 0.06); await wait(800);
     await glide(0, 1500); await wait(500);` },
+  { id: 'guest-events', ...PHONE, alt: 'A guest sees the venue’s live events, taps I’m Interested and asks for a place for two', script: `
+    await wait(1300); await glideTo('main article', 1100, 0.12); await wait(700);
+    tapText('main article button', 'Interested'); await wait(1100);
+    tap('[role="dialog"] button[aria-label="More Women"]'); await wait(700);
+    tapText('[role="dialog"] button', 'Request my place'); await wait(2600);
+    tap('[role="dialog"] button[aria-label="Close"]'); await wait(1200);
+    await glide(bottom(), 1300); await wait(800); await glide(0, 1100); await wait(500);` },
+  { id: 'guest-offers', ...PHONE, alt: 'A guest opens a live offer on the menu, redeems it for a code, and the counter settles it', script: `
+    await wait(1500); tapText('[aria-label="Live venue offers"] button', 'Happy hours'); await wait(1300);
+    tapText('[role="dialog"] button', 'Redeem this offer'); await wait(6500); await wait(1500);` },
+  { id: 'guest-book-service', ...PHONE, alt: 'A guest opens a venue service at the foot of the menu and requests it', script: `
+    await wait(1200); await glideTo('#services-section', 1200, 0.08); await wait(900);
+    tap('#services-section button[aria-label="Bonfire evening, request it"]'); await wait(1600);
+    tapText('[role="dialog"] button', 'Request this'); await wait(3200); await glide(0, 1100); await wait(500);` },
   { id: 'dues-phone', ...PHONE, alt: 'Dues on a phone: You earn and We earn, the split, and how guests paid', script: `
     await wait(1100); await glide(bottom(), 3200); await wait(1200); await glide(0, 2300); await wait(900);` },
   { id: 'overview', width: 1280, height: 760, scale: 1, out: 1280, alt: 'The analytics dashboard: totals, sales by hour, channels, categories and guests', script: `

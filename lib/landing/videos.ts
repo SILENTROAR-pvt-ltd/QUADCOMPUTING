@@ -76,6 +76,27 @@ export const VIDEOS = {
     "width": 1280,
     "height": 760,
     "alt": "Services and partners: guests’ service requests ringing in from the menu, handled one by one"
+  },
+  "guest-events": {
+    "src": "/media/landing/guest-events-v3.mp4",
+    "poster": "/media/landing/guest-events-poster-v3.webp",
+    "width": 600,
+    "height": 1111,
+    "alt": "A guest sees the venue’s live events, taps I’m Interested and asks for a place for two"
+  },
+  "guest-offers": {
+    "src": "/media/landing/guest-offers-v3.mp4",
+    "poster": "/media/landing/guest-offers-poster-v3.webp",
+    "width": 600,
+    "height": 1111,
+    "alt": "A guest opens a live offer on the menu, redeems it for a code, and the counter settles it"
+  },
+  "guest-book-service": {
+    "src": "/media/landing/guest-book-service-v3.mp4",
+    "poster": "/media/landing/guest-book-service-poster-v3.webp",
+    "width": 600,
+    "height": 1111,
+    "alt": "A guest opens a venue service at the foot of the menu and requests it"
   }
 } as const;
 

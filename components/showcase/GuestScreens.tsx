@@ -11,6 +11,7 @@ import { GuestMenuScreen } from './GuestMenuScreen';
 import { VibeyScreen } from './VibeyScreen';
 import { LoungeScreen } from './LoungeScreen';
 import { ServicesScreen } from './ServicesScreen';
+import { GuestEventsScreen, GuestOffersScreen, GuestServiceScreen } from './GuestGrowthScreens';
 
 const lines = [
   { id: 'l1', itemName: 'Cappuccino', quantity: 2, unitPrice: 180, lineTotal: 360, notes: null },
@@ -45,4 +46,5 @@ const Tracker = () => {
 /** Each guest (phone) screen, by its id. */
 export const GUEST_SCREENS: Record<string, () => React.ReactElement> = {
   'guest-menu': GuestMenuScreen, 'guest-tracker': Tracker, 'guest-vibey': VibeyScreen, 'guest-lounge': LoungeScreen, 'guest-services': ServicesScreen,
+  'guest-events': GuestEventsScreen, 'guest-offers': GuestOffersScreen, 'guest-book-service': GuestServiceScreen,
 };
